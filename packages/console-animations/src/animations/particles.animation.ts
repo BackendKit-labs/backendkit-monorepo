@@ -8,14 +8,12 @@ export class ParticlesAnimation extends AbstractAnimation {
 
   protected buildFrames(): string[] {
     return [
-      '. . . .',
-      '.. .. ..',
-      '... ... ...',
-      '.... ....',
-      '... ... ...',
-      '.. .. ..',
-      '. . . .',
-      '       ',
+      '·   ·   ·',
+      ' ·  ·  · ',
+      '  · · ·  ',
+      '   ···   ',
+      '  · · ·  ',
+      ' ·  ·  · ',
     ];
   }
 }

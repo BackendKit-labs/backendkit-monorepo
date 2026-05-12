@@ -7,6 +7,6 @@ export class DotsAnimation extends AbstractAnimation {
   }
 
   protected buildFrames(): string[] {
-    return ['.', '..', '...', '   '];
+    return ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'];
   }
 }

@@ -8,14 +8,14 @@ export class FireAnimation extends AbstractAnimation {
 
   protected buildFrames(): string[] {
     return [
-      '  ^  ',
-      ' ^^^ ',
-      '^^^^^',
-      ' ^^^ ',
-      '  ^  ',
-      ' ^^^^',
-      '^^^^^',
-      ' ^^^ ',
+      '   ▲   ',
+      '  ▲▲▲  ',
+      ' ▲▲▲▲▲ ',
+      '▲▲▲▲▲▲▲',
+      ' ▲▲█▲▲ ',
+      '  ▲█▲  ',
+      ' ▲▲█▲▲ ',
+      '▲▲▲█▲▲▲',
     ];
   }
 }

@@ -7,15 +7,14 @@ export class BouncingBallAnimation extends AbstractAnimation {
   }
 
   protected buildFrames(): string[] {
-    return [
-      '(o)    ',
-      ' (o)   ',
-      '  (o)  ',
-      '   (o) ',
-      '    (o)',
-      '   (o) ',
-      '  (o)  ',
-      ' (o)   ',
-    ];
+    const width = 12;
+    const frames: string[] = [];
+    for (let i = 0; i < width; i++) {
+      frames.push('[' + ' '.repeat(i) + '◉' + ' '.repeat(width - i - 1) + ']');
+    }
+    for (let i = width - 2; i > 0; i--) {
+      frames.push('[' + ' '.repeat(i) + '◉' + ' '.repeat(width - i - 1) + ']');
+    }
+    return frames;
   }
 }

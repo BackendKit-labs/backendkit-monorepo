@@ -7,15 +7,14 @@ export class CyberpunkAnimation extends AbstractAnimation {
   }
 
   protected buildFrames(): string[] {
-    return [
-      '[===>    ]',
-      '[====>   ]',
-      '[=====>  ]',
-      '[======> ]',
-      '[=======>]',
-      '[======> ]',
-      '[=====>  ]',
-      '[====>   ]',
-    ];
+    const total = 10;
+    const frames: string[] = [];
+    for (let i = 0; i <= total; i++) {
+      frames.push('▰'.repeat(i) + '▱'.repeat(total - i));
+    }
+    for (let i = total - 1; i >= 1; i--) {
+      frames.push('▰'.repeat(i) + '▱'.repeat(total - i));
+    }
+    return frames;
   }
 }

@@ -8,14 +8,16 @@ export class RainAnimation extends AbstractAnimation {
 
   protected buildFrames(): string[] {
     return [
-      ' | | | ',
-      '|||||||',
-      ' | | | ',
-      '  | |  ',
-      ' | | | ',
-      '|||||||',
-      ' | | | ',
-      '  | |  ',
+      ' ╷  ╷  ╷ ',
+      ' │  │  │ ',
+      '╷│ ╷│ ╷│ ',
+      '││ ││ ││ ',
+      '│╵ │╵ │╵ ',
+      ' ╵  ╵  ╵ ',
+      '    ╷    ',
+      '    │    ',
+      '    ╵    ',
+      '         ',
     ];
   }
 }

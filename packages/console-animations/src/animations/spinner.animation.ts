@@ -7,6 +7,6 @@ export class SpinnerAnimation extends AbstractAnimation {
   }
 
   protected buildFrames(): string[] {
-    return ['|', '/', '-', '\\'];
+    return ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   }
 }

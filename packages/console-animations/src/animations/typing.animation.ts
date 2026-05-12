@@ -13,14 +13,14 @@ export class TypingAnimation extends AbstractAnimation {
     const frames: string[] = [];
     const len = this.text.length;
     if (len === 0) {
-      frames.push('_');
+      frames.push('█');
       return frames;
     }
     for (let i = 0; i <= len; i++) {
-      frames.push(this.text.substring(0, i) + '_');
+      frames.push(this.text.substring(0, i) + '█');
     }
     for (let i = len; i >= 0; i--) {
-      frames.push(this.text.substring(0, i) + '_');
+      frames.push(this.text.substring(0, i) + '█');
     }
     return frames;
   }

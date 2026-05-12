@@ -7,11 +7,14 @@ export class WormAnimation extends AbstractAnimation {
   }
 
   protected buildFrames(): string[] {
-    return [
-      '[~>~~]',
-      '[~~>~]',
-      '[~~~>]',
-      '[~~~~]',
-    ];
+    const width = 10;
+    const frames: string[] = [];
+    for (let i = 0; i < width; i++) {
+      frames.push('[' + '─'.repeat(i) + '●' + '─'.repeat(width - i - 1) + ']');
+    }
+    for (let i = width - 2; i > 0; i--) {
+      frames.push('[' + '─'.repeat(i) + '●' + '─'.repeat(width - i - 1) + ']');
+    }
+    return frames;
   }
 }

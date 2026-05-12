@@ -20,7 +20,7 @@ export class ProgressBarAnimation extends AbstractAnimation {
       const filled = Math.round((i / steps) * this.width);
       const empty = this.width - filled;
       const percent = Math.round((i / steps) * 100);
-      frames.push(`[${repeat('=', filled)}${repeat(' ', empty)}] ${percent}%`);
+      frames.push(`[${repeat('█', filled)}${repeat('░', empty)}] ${percent}%`);
     }
     return frames;
   }

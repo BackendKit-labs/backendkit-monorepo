@@ -8,14 +8,12 @@ export class StarsAnimation extends AbstractAnimation {
 
   protected buildFrames(): string[] {
     return [
-      '*    ',
-      ' *   ',
-      '  *  ',
-      '   * ',
-      '    *',
-      '   * ',
-      '  *  ',
-      ' *   ',
+      '✦  ✧  ✦  ✧',
+      ' ✧  ✦  ✧  ',
+      '  ✦  ✧  ✦ ',
+      '✧  ✦  ✧  ✦',
+      ' ✦  ✧  ✦  ',
+      '  ✧  ✦  ✧ ',
     ];
   }
 }

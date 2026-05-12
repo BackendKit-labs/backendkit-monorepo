@@ -7,14 +7,6 @@ export class PulseAnimation extends AbstractAnimation {
   }
 
   protected buildFrames(): string[] {
-    return [
-      '    ',
-      ' *  ',
-      ' *** ',
-      '*****',
-      ' *** ',
-      ' *  ',
-      '    ',
-    ];
+    return ['·', '◌', '○', '◎', '●', '◎', '○', '◌'];
   }
 }
