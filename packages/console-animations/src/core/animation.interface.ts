@@ -14,6 +14,7 @@ export interface IAnimation {
   pause(): void;
   resume(): void;
   destroy(): void;
+  update(partial: Partial<AnimationConfig>): void;
 
   nextFrame(timestamp: number): Frame;
 

@@ -100,6 +100,13 @@ export abstract class AbstractAnimation implements IAnimation {
     this.transitionTo(AnimationState.IDLE);
   }
 
+  update(partial: Partial<AnimationConfig>): void {
+    Object.assign(this.config, partial);
+    if (partial.frames !== undefined) {
+      this.frames = partial.frames;
+    }
+  }
+
   on(event: AnimationEvent, handler: EventHandler): void {
     this.eventEmitter.on(event, handler);
   }

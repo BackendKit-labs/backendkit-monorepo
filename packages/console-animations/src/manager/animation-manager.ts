@@ -6,6 +6,7 @@ import { RenderEngine } from '../renderer/render-engine.js';
 import { FrameScheduler } from '../scheduler/frame-scheduler.js';
 import { AnimationRegistry } from '../registry/animation-registry.js';
 import { AnimationFactory } from '../factory/animation-factory.js';
+import { symbols } from '../utils/terminal.js';
 
 type EventHandler = (data: Record<string, unknown>) => void;
 
@@ -54,6 +55,10 @@ export class AnimationManager {
     this.registry.get(id)?.resume();
   }
 
+  update(id: string, partial: Partial<AnimationConfig>): void {
+    this.registry.get(id)?.update(partial);
+  }
+
   destroy(id: string): void {
     const animation = this.registry.get(id);
     if (animation) {
@@ -88,15 +93,45 @@ export class AnimationManager {
     this.eventEmitter.on(event, handler);
   }
 
-  async run<T>(config: AnimationConfig, task: () => Promise<T>): Promise<T> {
+  succeed(id: string, text?: string): void {
+    this._finalState(id, symbols.success, 'green', text);
+  }
+
+  fail(id: string, text?: string): void {
+    this._finalState(id, symbols.error, 'red', text);
+  }
+
+  warn(id: string, text?: string): void {
+    this._finalState(id, symbols.warning, 'yellow', text);
+  }
+
+  info(id: string, text?: string): void {
+    this._finalState(id, symbols.info, 'cyan', text);
+  }
+
+  async run<T>(
+    config: AnimationConfig,
+    task: () => Promise<T>,
+    options?: { successText?: string; failText?: string },
+  ): Promise<T> {
     const animation = this.start(config);
+    const label = (config.prefix ?? '').trim();
     try {
       const result = await task();
-      this.stop(animation.id);
+      this.succeed(animation.id, options?.successText ?? label);
       return result;
     } catch (error) {
-      this.stop(animation.id);
+      this.fail(animation.id, options?.failText ?? (label ? `${label} failed` : 'Failed'));
       throw error;
     }
+  }
+
+  private _finalState(id: string, symbol: string, color: string, text?: string): void {
+    const animation = this.registry.get(id);
+    const label = text ?? (animation?.getConfig().prefix ?? '').trim();
+    animation?.stop();
+    this.scheduler.unregister(id);
+    this.registry.unregister(id);
+    this.renderEngine.renderFinal(symbol, color, label);
   }
 }

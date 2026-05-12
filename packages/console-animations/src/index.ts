@@ -14,6 +14,8 @@ export type { AnimationConfig } from './core/animation-config.interface.js';
 export type { Frame } from './core/frame.type.js';
 export type { Color, ColorFn } from './types/color.types.js';
 export { generateId, clamp, repeat } from './utils/frame-utils.js';
+export { terminal, symbols } from './utils/terminal.js';
+export { Presets } from './presets/index.js';
 
 // Re-export all animation classes for custom usage
 export {

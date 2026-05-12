@@ -14,5 +14,6 @@ export interface AnimationConfig {
   frames?: string[];
   width?: number;
   total?: number;
+  showEta?: boolean;
   custom?: Record<string, unknown>;
 }

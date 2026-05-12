@@ -1,6 +1,7 @@
 import { Frame } from '../core/frame.type.js';
 import { CursorManager } from './cursor-manager.js';
 import { ColorManager } from './color-manager.js';
+import { terminal } from '../utils/terminal.js';
 
 export class RenderEngine {
   private cursorManager: CursorManager;
@@ -14,7 +15,7 @@ export class RenderEngine {
   }
 
   render(frame: Frame): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !terminal.isInteractive) return;
     const colored = this.colorManager.apply(frame.content, frame.color);
     if (frame.overwrite) {
       this.cursorManager.moveUp(1);
@@ -24,6 +25,15 @@ export class RenderEngine {
     if (!frame.overwrite) {
       process.stdout.write('\n');
     }
+  }
+
+  renderFinal(symbol: string, symbolColor: string, text: string): void {
+    if (this.destroyed) return;
+    const coloredSymbol = this.colorManager.apply(symbol, symbolColor);
+    if (terminal.isInteractive) {
+      process.stdout.write('\r\x1b[2K');
+    }
+    process.stdout.write(`${coloredSymbol} ${text}\n`);
   }
 
   enqueue(frame: Frame): void {
