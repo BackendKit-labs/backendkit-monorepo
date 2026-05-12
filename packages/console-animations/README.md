@@ -1,8 +1,51 @@
 # @backendkit-labs/console-animations
 
-> Enterprise-grade terminal animations library for Node.js CLI applications.
+> Enterprise-grade terminal animations for Node.js CLI applications and backend processes.
 
-**@backendkit-labs/console-animations** provides 17 built-in animations (spinner, dots, progress bar, worm, matrix, and more) with a clean, extensible API. Built with TypeScript, ESM + CJS dual format, and zero runtime dependencies.
+**17 built-in animations** — spinners, progress bars, loaders and visual effects — with a clean TypeScript API, ESM + CJS dual format, and zero runtime dependencies.
+
+---
+
+## Animations Preview
+
+### Spinners & Loaders
+
+| Animation | Type | Frames | Use case |
+|-----------|------|--------|----------|
+| **Spinner** | `SPINNER` | `⠋` `⠙` `⠹` `⠸` `⠼` `⠴` `⠦` `⠧` `⠇` `⠏` | Tasks, installs, fetching |
+| **Dots** | `DOTS` | `⣾` `⣽` `⣻` `⢿` `⡿` `⣟` `⣯` `⣷` | Waiting, processing |
+| **Pulse** | `PULSE` | `·` `◌` `○` `◎` `●` `◎` `○` `◌` | Heartbeat, status check |
+| **Worm** | `WORM` | `[●─────────]` `[────●─────]` `[─────────●]` | Indeterminate progress |
+| **Snake** | `SNAKE` | `●·········` `·····●····` `·········●` | Scanning, searching |
+| **Bouncing Ball** | `BOUNCING_BALL` | `[◉           ]` `[      ◉     ]` `[           ◉]` | Loading, buffering |
+
+### Progress & Fill
+
+| Animation | Type | Frames | Use case |
+|-----------|------|--------|----------|
+| **Progress Bar** | `PROGRESS_BAR` | `[████████░░░░] 67%` | File download, build steps |
+| **Cyberpunk** | `CYBERPUNK` | `▰▱▱▱▱▱▱▱▱▱` `▰▰▰▰▰▱▱▱▱▱` `▰▰▰▰▰▰▰▰▰▰` | Deploy, upload, sync |
+
+### Text & Typing
+
+| Animation | Type | Frames | Use case |
+|-----------|------|--------|----------|
+| **Typing** | `TYPING` | `D█` `De█` `Dep█` `Deploy█` | Command output, logs |
+
+### Visual Effects
+
+| Animation | Type | Frames | Use case |
+|-----------|------|--------|----------|
+| **Waves** | `WAVES` | `▁▂▃▄▅▆▇█▇▆▅▄▃▂` `▂▃▄▅▆▇█▇▆▅▄▃▂▁` | Audio, processing |
+| **Matrix** | `MATRIX` | `ｦｱｶｺｻｼｽｾｿ` `ｲｳｴｵﾀﾁﾂﾃﾄ` | Data stream, encryption |
+| **Hacker** | `HACKER` | `[FF] A3  2B  7C` `[A3] 7C  FF  2B` | Hex scan, network activity |
+| **Rain** | `RAIN` | `╷│╵` pattern | Ambient, idle state |
+| **Fire** | `FIRE` | `   ▲   ` `  ▲▲▲  ` `▲▲▲█▲▲▲` | Alerts, hot paths |
+| **Stars** | `STARS` | `✦  ✧  ✦  ✧` `✧  ✦  ✧  ✦` | Success, decorative |
+| **Particles** | `PARTICLES` | `·   ·   ·` `  · · ·  ` `   ···   ` | Ambient, decorative |
+| **Futurista** | `FUTURISTA` | `◆  ◇  ◆` `◇  ◆  ◇` `◈  ◇  ◈` | Sci-fi, startup |
+
+---
 
 ## Installation
 
@@ -10,211 +53,9 @@
 npm install @backendkit-labs/console-animations
 ```
 
+---
+
 ## Quick Start
-
-```typescript
-import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
-
-const manager = new AnimationManager();
-
-// Start a spinner
-const anim = manager.start({
-  type: AnimationType.SPINNER,
-  color: 'cyan',
-  speed: 80,
-  prefix: '  Loading... ',
-});
-
-// Stop after 3 seconds
-setTimeout(() => {
-  manager.stop(anim.id);
-}, 3000);
-```
-
-## API Reference
-
-### AnimationManager (Facade)
-
-The main entry point. Manages the full lifecycle of animations.
-
-```typescript
-const manager = new AnimationManager();
-```
-
-#### `start(config: AnimationConfig): IAnimation`
-
-Creates and starts an animation. Returns the animation instance.
-
-```typescript
-const anim = manager.start({
-  type: AnimationType.WORM,
-  color: 'magenta',
-  speed: 100,
-});
-```
-
-#### `stop(id: string): void`
-
-Stops and unregisters an animation by ID.
-
-#### `pause(id: string): void`
-
-Pauses an animation (freezes frame).
-
-#### `resume(id: string): void`
-
-Resumes a paused animation.
-
-#### `destroy(id: string): void`
-
-Destroys an animation and cleans up resources.
-
-#### `destroyAll(): void`
-
-Destroys all active animations and stops the scheduler.
-
-#### `get(id: string): IAnimation | undefined`
-
-Gets an animation by ID.
-
-#### `getAll(): IAnimation[]`
-
-Returns all registered animations.
-
-#### `getByType(type: AnimationType): IAnimation[]`
-
-Returns all animations of a given type.
-
-#### `on(event: AnimationEvent, handler: EventHandler): void`
-
-Subscribes to global events.
-
-```typescript
-manager.on(AnimationEvent.START, (data) => {
-  console.log(`Animation started: ${data.id}`);
-});
-```
-
-#### `run<T>(config: AnimationConfig, task: () => Promise<T>): Promise<T>`
-
-Runs an async task with an animation that auto-stops on completion or error.
-
-```typescript
-const result = await manager.run(
-  { type: AnimationType.DOTS, text: 'Processing', color: 'green' },
-  () => someAsyncTask(),
-);
-```
-
-### AnimationBuilder (Builder Pattern)
-
-Fluent API for building animation configs.
-
-```typescript
-import { AnimationBuilder, AnimationType } from '@backendkit-labs/console-animations';
-
-const config = new AnimationBuilder()
-  .setType(AnimationType.SPINNER)
-  .setColor('cyan')
-  .setSpeed(80)
-  .setPrefix('  Loading... ')
-  .build();
-
-const anim = manager.start(config);
-```
-
-### AnimationConfig
-
-| Property    | Type                  | Default     | Description                              |
-|-------------|-----------------------|-------------|------------------------------------------|
-| `type`      | `AnimationType`       | (required)  | Animation type identifier                |
-| `id`        | `string`              | auto-generated | Unique animation ID                   |
-| `text`      | `string`              | `''`        | Text content (used by dots, typing, etc.)|
-| `color`     | `Color`               | `undefined` | ANSI color name                          |
-| `speed`     | `number`              | `80`        | Milliseconds between frames              |
-| `prefix`    | `string`              | `''`        | Text prepended to each frame             |
-| `suffix`    | `string`              | `''`        | Text appended to each frame              |
-| `overwrite` | `boolean`             | `true`      | Overwrite current line on render         |
-| `multiline` | `boolean`             | `false`     | Frame spans multiple lines               |
-| `frames`    | `string[]`            | `undefined` | Custom frame array (overrides built-in)  |
-| `width`     | `number`              | `20`        | Width for progress-bar animation         |
-| `total`     | `number`              | `100`       | Total steps for progress-bar animation   |
-| `custom`    | `Record<string, unknown>` | `undefined` | Custom data for extended animations    |
-
-### AnimationType Enum
-
-| Value             | Description                    |
-|-------------------|--------------------------------|
-| `SPINNER`         | Classic spinner: `| / - \`     |
-| `DOTS`            | Bouncing dots: `⠋ ⠙ ⠹ ...`    |
-| `PROGRESS_BAR`    | Progress bar: `[====>   ] 50%` |
-| `WORM`            | Sliding worm: `[~>~~]`         |
-| `STARS`           | Twinkling stars                |
-| `PARTICLES`       | Floating particles             |
-| `WAVES`           | Wave pattern                   |
-| `PULSE`           | Pulsing circle                 |
-| `MATRIX`          | Matrix rain effect             |
-| `FIRE`            | Fire animation                 |
-| `TYPING`          | Typewriter effect              |
-| `SNAKE`           | Snake movement                 |
-| `BOUNCING_BALL`   | Bouncing ball                  |
-| `RAIN`            | Rain drops                     |
-| `CYBERPUNK`       | Cyberpunk neon style           |
-| `HACKER`          | Hacker terminal style          |
-| `FUTURISTA`       | Futuristic sci-fi style        |
-
-### AnimationState Enum
-
-| Value       | Description                        |
-|-------------|------------------------------------|
-| `IDLE`      | Created but not started            |
-| `RUNNING`   | Actively producing frames          |
-| `PAUSED`    | Frozen, no frames produced         |
-| `DONE`      | Stopped normally                   |
-| `ERROR`     | Stopped due to error               |
-| `DESTROYED` | Resources released                 |
-
-### AnimationEvent Enum
-
-| Value           | Description                        |
-|-----------------|------------------------------------|
-| `START`         | Animation started                  |
-| `STOP`          | Animation stopped                  |
-| `PAUSE`         | Animation paused                   |
-| `RESUME`        | Animation resumed                  |
-| `DESTROY`       | Animation destroyed                |
-| `STATE_CHANGE`  | State transition occurred          |
-| `FRAME`         | New frame produced                 |
-| `ERROR`         | Error occurred                     |
-| `COMPLETE`      | Animation completed                |
-
-### IAnimation Interface
-
-```typescript
-interface IAnimation {
-  readonly id: string;
-  readonly type: string;
-  readonly state: AnimationState;
-
-  start(): void;
-  stop(): void;
-  pause(): void;
-  resume(): void;
-  destroy(): void;
-  nextFrame(timestamp: number): Frame;
-  reset(): void;
-  on(event: AnimationEvent, handler: EventHandler): void;
-  getConfig(): AnimationConfig;
-}
-```
-
-### Color Type
-
-Supported colors: `'black'`, `'red'`, `'green'`, `'yellow'`, `'blue'`, `'magenta'`, `'cyan'`, `'white'`, `'gray'`, `'grey'`, `'redBright'`, `'greenBright'`, `'yellowBright'`, `'blueBright'`, `'magentaBright'`, `'cyanBright'`, `'whiteBright'`.
-
-## Examples
-
-### Basic Usage
 
 ```typescript
 import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
@@ -225,35 +66,123 @@ const spinner = manager.start({
   type: AnimationType.SPINNER,
   color: 'cyan',
   speed: 80,
-  prefix: '  Loading... ',
+  prefix: '  Installing packages ',
 });
 
-setTimeout(() => {
-  manager.stop(spinner.id);
-}, 3000);
+setTimeout(() => manager.stop(spinner.id), 3000);
 ```
 
-### Multiple Animations
+### Wrap an async task (auto-stop on finish or error)
 
 ```typescript
-const spinner = manager.start({ type: AnimationType.SPINNER, color: 'cyan' });
-const dots = manager.start({ type: AnimationType.DOTS, text: 'Task 2', color: 'yellow' });
-const worm = manager.start({ type: AnimationType.WORM, color: 'magenta' });
-
-// Stop individually
-setTimeout(() => manager.stop(spinner.id), 2000);
-setTimeout(() => manager.stop(dots.id), 3500);
-setTimeout(() => manager.stop(worm.id), 5000);
+const result = await manager.run(
+  { type: AnimationType.DOTS, color: 'green', prefix: '  Deploying ' },
+  () => deployToProduction(),
+);
 ```
 
-### Custom Animation
+### Progress bar with manual control
+
+```typescript
+const bar = manager.start({
+  type: AnimationType.PROGRESS_BAR,
+  width: 30,
+  color: 'cyan',
+  prefix: '  Uploading ',
+});
+
+// Drive progress externally
+bar.setProgress(45); // → [█████████████░░░░░░░░░░░░░░░░░] 45%
+bar.setProgress(100);
+manager.stop(bar.id);
+```
+
+---
+
+## API Reference
+
+### AnimationManager
+
+The main entry point. Manages the full lifecycle of animations.
+
+```typescript
+const manager = new AnimationManager();
+```
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `start` | `(config) → IAnimation` | Creates and starts an animation |
+| `stop` | `(id) → void` | Stops and unregisters an animation |
+| `pause` | `(id) → void` | Freezes the current frame |
+| `resume` | `(id) → void` | Resumes a paused animation |
+| `destroy` | `(id) → void` | Stops and releases all resources |
+| `destroyAll` | `() → void` | Destroys all active animations |
+| `get` | `(id) → IAnimation \| undefined` | Gets an animation by ID |
+| `getAll` | `() → IAnimation[]` | Returns all registered animations |
+| `getByType` | `(type) → IAnimation[]` | Filters by type |
+| `run<T>` | `(config, task) → Promise<T>` | Wraps an async task with auto-stop |
+| `on` | `(event, handler) → void` | Subscribes to global events |
+
+### AnimationBuilder
+
+Fluent API for composing animation configs.
+
+```typescript
+import { AnimationBuilder, AnimationType } from '@backendkit-labs/console-animations';
+
+const config = new AnimationBuilder()
+  .setType(AnimationType.WORM)
+  .setColor('magenta')
+  .setSpeed(60)
+  .setPrefix('  Migrating database ')
+  .build();
+
+const anim = manager.start(config);
+```
+
+### AnimationConfig
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `type` | `AnimationType` | required | Animation type |
+| `id` | `string` | auto | Unique animation ID |
+| `text` | `string` | `''` | Text for typing animation |
+| `color` | `Color` | `undefined` | ANSI color |
+| `speed` | `number` | `80` | ms between frames |
+| `prefix` | `string` | `''` | Text before the animation |
+| `suffix` | `string` | `''` | Text after the animation |
+| `overwrite` | `boolean` | `true` | Overwrite current line |
+| `multiline` | `boolean` | `false` | Multi-line frame |
+| `frames` | `string[]` | `undefined` | Custom frame array |
+| `width` | `number` | `20` | Progress bar width |
+| `total` | `number` | `100` | Progress bar total steps |
+| `custom` | `Record<string, unknown>` | `undefined` | Extra data for custom animations |
+
+### Events
+
+```typescript
+manager.on(AnimationEvent.START,        (data) => { /* animation started */ });
+manager.on(AnimationEvent.STOP,         (data) => { /* animation stopped */ });
+manager.on(AnimationEvent.STATE_CHANGE, (data) => { /* state transition */ });
+manager.on(AnimationEvent.FRAME,        (data) => { /* new frame rendered */ });
+manager.on(AnimationEvent.ERROR,        (data) => { /* error occurred */ });
+```
+
+### Colors
+
+`black` `red` `green` `yellow` `blue` `magenta` `cyan` `white` `gray`
+`redBright` `greenBright` `yellowBright` `blueBright` `magentaBright` `cyanBright` `whiteBright`
+
+---
+
+## Custom Animations
 
 Extend `AbstractAnimation` and implement `buildFrames()`:
 
 ```typescript
 import { AbstractAnimation, AnimationConfig } from '@backendkit-labs/console-animations';
 
-class MyCustomAnimation extends AbstractAnimation {
+class MyAnimation extends AbstractAnimation {
   constructor(config: AnimationConfig) {
     super(config);
   }
@@ -264,86 +193,41 @@ class MyCustomAnimation extends AbstractAnimation {
 }
 ```
 
-### Async Workflow with Auto-stop
-
-```typescript
-const result = await manager.run(
-  { type: AnimationType.DOTS, text: 'Processing', color: 'green' },
-  async () => {
-    // Your async task here
-    return await someApiCall();
-  },
-);
-```
+---
 
 ## Architecture
 
 ```
 AnimationManager (Facade)
-  ├── AnimationFactory (creates animations by type)
-  ├── AnimationRegistry (ID → IAnimation map)
-  ├── FrameScheduler (adaptive loop, min 16ms)
-  ├── RenderEngine (stdout writer, ANSI codes)
-  └── EventEmitter (observer pattern)
+  ├── AnimationFactory    — creates animations by type
+  ├── AnimationRegistry   — ID → IAnimation map
+  ├── FrameScheduler      — adaptive rAF loop, min 16 ms
+  ├── RenderEngine        — stdout writer + ANSI cursor control
+  └── EventEmitter        — observer pattern
 
 AbstractAnimation (Template Method)
-  └── 17 concrete animations (Spinner, Worm, Matrix, etc.)
+  └── 17 concrete animations
 
 AnimationBuilder (Fluent Builder)
 ```
 
-## Events
+---
 
-```typescript
-manager.on(AnimationEvent.START, (data) => {
-  console.log(`Animation ${data.id} started`);
-});
-
-manager.on(AnimationEvent.STATE_CHANGE, (data) => {
-  console.log(`${data.id}: ${data.from} → ${data.to}`);
-});
-
-manager.on(AnimationEvent.ERROR, (data) => {
-  console.error(`Animation ${data.id} error:`, data.error);
-});
-```
-
-## Running Examples
+## Examples
 
 ```bash
-# Clone the repo
 git clone https://github.com/backendkit-dev/backendkit-monorepo.git
 cd backendkit-monorepo/packages/console-animations
+npm install && npm run build
 
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run examples
 npx tsx examples/basic-usage.ts
 npx tsx examples/multi-animation.ts
 npx tsx examples/custom-animation.ts
 npx tsx examples/async-workflow.ts
 ```
 
-## Development
-
-```bash
-# Type check
-npm run typecheck
-
-# Test
-npm test
-
-# Build
-npm run build
-
-# Watch mode
-npm run dev
-```
+---
 
 ## License
 
-MIT
+MIT — [BackendKit Labs](https://github.com/backendkit-dev)
