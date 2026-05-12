@@ -1,6 +1,6 @@
 {
   "name": "@backendkit-labs/console-animations",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Enterprise-grade terminal animations library for Node.js CLI applications",
   "type": "module",
   "main": "./dist/index.cjs",
