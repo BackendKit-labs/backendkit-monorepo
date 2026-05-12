@@ -1,0 +1,24 @@
+{
+  "name": "backendkit-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for BackendKit Labs - Reusable backend libraries",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"packages/*/src/**/*.ts\"",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10.9.2"
+}
