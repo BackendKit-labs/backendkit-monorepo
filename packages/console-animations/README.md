@@ -1,19 +1,19 @@
-# cursor-animation
+# @backendkit-labs/console-animations
 
 > Enterprise-grade terminal animations library for Node.js CLI applications.
 
-**cursor-animation** provides 17 built-in animations (spinner, dots, progress bar, worm, matrix, and more) with a clean, extensible API. Built with TypeScript, ESM + CJS dual format, and zero runtime dependencies.
+**@backendkit-labs/console-animations** provides 17 built-in animations (spinner, dots, progress bar, worm, matrix, and more) with a clean, extensible API. Built with TypeScript, ESM + CJS dual format, and zero runtime dependencies.
 
 ## Installation
 
 ```bash
-npm install cursor-animation
+npm install @backendkit-labs/console-animations
 ```
 
 ## Quick Start
 
 ```typescript
-import { AnimationManager, AnimationType } from 'cursor-animation';
+import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
 
 const manager = new AnimationManager();
 
@@ -111,7 +111,7 @@ const result = await manager.run(
 Fluent API for building animation configs.
 
 ```typescript
-import { AnimationBuilder, AnimationType } from 'cursor-animation';
+import { AnimationBuilder, AnimationType } from '@backendkit-labs/console-animations';
 
 const config = new AnimationBuilder()
   .setType(AnimationType.SPINNER)
@@ -217,7 +217,7 @@ Supported colors: `'black'`, `'red'`, `'green'`, `'yellow'`, `'blue'`, `'magenta
 ### Basic Usage
 
 ```typescript
-import { AnimationManager, AnimationType } from 'cursor-animation';
+import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
 
 const manager = new AnimationManager();
 
@@ -251,7 +251,7 @@ setTimeout(() => manager.stop(worm.id), 5000);
 Extend `AbstractAnimation` and implement `buildFrames()`:
 
 ```typescript
-import { AbstractAnimation, AnimationConfig } from 'cursor-animation';
+import { AbstractAnimation, AnimationConfig } from '@backendkit-labs/console-animations';
 
 class MyCustomAnimation extends AbstractAnimation {
   constructor(config: AnimationConfig) {
@@ -312,8 +312,8 @@ manager.on(AnimationEvent.ERROR, (data) => {
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-username/cursor-animation.git
-cd cursor-animation
+git clone https://github.com/backendkit-dev/backendkit-monorepo.git
+cd backendkit-monorepo/packages/console-animations
 
 # Install dependencies
 npm install
