@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { AnimationManager } from '../manager/animation-manager.js';
 import { AnimationType } from '../types/animation-types.js';
 import { Presets } from '../presets/index.js';

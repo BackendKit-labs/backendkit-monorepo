@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AnimationManager } from '../../src/manager/animation-manager.js';
 import { AnimationType } from '../../src/types/animation-types.js';
 
+vi.mock('../../src/utils/terminal.js', () => ({
+  terminal: { isInteractive: true, supportsUnicode: true },
+  symbols: { success: '✔', error: '✖', warning: '⚠', info: 'ℹ' },
+}));
+
 describe('Full Cycle Integration', () => {
   let manager: AnimationManager;
   let writeSpy: ReturnType<typeof vi.spyOn>;

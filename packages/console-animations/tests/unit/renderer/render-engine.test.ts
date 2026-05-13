@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RenderEngine } from '../../../src/renderer/render-engine.js';
 import { Frame } from '../../../src/core/frame.type.js';
 
+vi.mock('../../../src/utils/terminal.js', () => ({
+  terminal: { isInteractive: true, supportsUnicode: true },
+  symbols: { success: '✔', error: '✖', warning: '⚠', info: 'ℹ' },
+}));
+
 describe('RenderEngine', () => {
   let engine: RenderEngine;
   let writeSpy: ReturnType<typeof vi.spyOn>;
