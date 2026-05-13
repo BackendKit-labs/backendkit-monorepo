@@ -11,6 +11,7 @@ export function WithCircuitBreaker(options: {
   failureThreshold?: number;
   openTimeoutMs?: number;
   isFailure?: (error: unknown) => boolean;
+  fallback?: (error: unknown) => unknown | Promise<unknown>;
 }) {
   return function (
     _target: unknown,
@@ -31,7 +32,10 @@ export function WithCircuitBreaker(options: {
         isFailure:        options.isFailure        ?? isHttpServerError,
       });
 
-      return cb.execute(() => originalMethod.apply(this, args));
+      return cb.execute(
+        () => originalMethod.apply(this, args),
+        options.fallback as ((error: unknown) => unknown | Promise<unknown>) | undefined,
+      );
     };
 
     return descriptor;

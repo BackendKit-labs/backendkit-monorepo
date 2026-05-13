@@ -164,6 +164,48 @@ describe('CircuitBreaker — metrics', () => {
   });
 });
 
+describe('CircuitBreaker — fallback', () => {
+  it('calls fallback with CircuitBreakerOpenError when circuit is OPEN', async () => {
+    const cb = new CircuitBreaker(makeConfig({ minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1 }));
+    await expect(cb.execute(fail)).rejects.toThrow(InfraError);
+
+    const result = await cb.execute(succeed, (err) => {
+      expect(err).toBeInstanceOf(CircuitBreakerOpenError);
+      return 'fallback-value';
+    });
+    expect(result).toBe('fallback-value');
+  });
+
+  it('calls fallback with the original error on infrastructure failure', async () => {
+    const cb = new CircuitBreaker(makeConfig());
+    const result = await cb.execute(fail, (err) => {
+      expect(err).toBeInstanceOf(InfraError);
+      return 'fallback-infra';
+    });
+    expect(result).toBe('fallback-infra');
+  });
+
+  it('does NOT call fallback for business errors — always rethrows', async () => {
+    const cb = new CircuitBreaker(makeConfig({
+      isFailure: (e) => !(e instanceof BusinessError),
+    }));
+
+    const fallbackSpy = vi.fn().mockReturnValue('should-not-be-called');
+    await expect(
+      cb.execute(() => Promise.reject(new BusinessError()), fallbackSpy),
+    ).rejects.toThrow(BusinessError);
+    expect(fallbackSpy).not.toHaveBeenCalled();
+  });
+
+  it('fallback can return a Promise', async () => {
+    const cb = new CircuitBreaker(makeConfig({ minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1 }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+
+    const result = await cb.execute(succeed, () => Promise.resolve('async-fallback'));
+    expect(result).toBe('async-fallback');
+  });
+});
+
 describe('CircuitBreaker — canAttempt', () => {
   it('returns true when CLOSED', () => {
     expect(new CircuitBreaker(makeConfig()).canAttempt()).toBe(true);

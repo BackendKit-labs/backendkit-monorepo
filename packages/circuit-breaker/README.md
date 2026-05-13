@@ -107,6 +107,14 @@ CLOSED ─────────────────────→ OPEN �
 // Execute a task — throws CircuitBreakerOpenError if circuit is OPEN
 await cb.execute(async () => { ... });
 
+// Execute with a fallback for controlled exits
+const data = await cb.execute(
+  () => fetchFromApi(id),
+  (err) => err instanceof CircuitBreakerOpenError
+    ? cache.get(id)        // circuit open  → serve cache
+    : defaultResponse(id), // infra failure → safe default
+);
+
 // Check if calls are currently allowed
 if (cb.canAttempt()) { ... }
 
@@ -119,6 +127,16 @@ cb.getMetrics();
 // Force-close the circuit and reset all counters
 cb.reset();
 ```
+
+### Fallback behavior
+
+| Scenario | Without fallback | With fallback |
+|----------|-----------------|---------------|
+| Circuit OPEN | throws `CircuitBreakerOpenError` | calls `fallback(CircuitBreakerOpenError)` |
+| Infrastructure error | throws original error | calls `fallback(originalError)` |
+| Business error | always re-thrown | always re-thrown (fallback is **not** called) |
+
+Business errors bypass the fallback intentionally — they represent domain failures (404, 401, validation) that callers should handle explicitly, not swallow with a generic fallback.
 
 ### `CircuitBreakerConfig`
 
@@ -259,7 +277,13 @@ export class PaymentService {
     public readonly circuitBreakerRegistry: CircuitBreakerRegistry,
   ) {}
 
-  @WithCircuitBreaker({ name: 'stripe', failureThreshold: 40 })
+  @WithCircuitBreaker({
+    name: 'stripe',
+    failureThreshold: 40,
+    fallback: (err) => err instanceof CircuitBreakerOpenError
+      ? { status: 'unavailable' }
+      : { status: 'error' },
+  })
   async charge(dto: ChargeDto) {
     return this.stripeClient.charge(dto);
   }

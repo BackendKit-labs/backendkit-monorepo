@@ -92,12 +92,35 @@ export class CircuitBreaker {
 
   constructor(private readonly config: CircuitBreakerConfig) {}
 
-  async execute<T>(task: () => Promise<T>): Promise<T> {
+  /**
+   * Executes a task inside the circuit breaker.
+   *
+   * @param task - The operation to protect.
+   * @param fallback - Optional controlled exit when the circuit is OPEN or an
+   *   infrastructure error occurs. Receives the error so you can distinguish
+   *   between `CircuitBreakerOpenError` (circuit was already open) and an
+   *   actual failure. Business errors (where `isFailure` returns `false`) are
+   *   always re-thrown without invoking the fallback.
+   *
+   * @example
+   * const data = await cb.execute(
+   *   () => fetchFromApi(id),
+   *   (err) => err instanceof CircuitBreakerOpenError
+   *     ? cache.get(id)          // circuit open  → serve cache
+   *     : defaultResponse(id),   // infra failure → safe default
+   * );
+   */
+  async execute<T>(
+    task: () => Promise<T>,
+    fallback?: (error: unknown) => T | Promise<T>,
+  ): Promise<T> {
     this.syncState();
 
     if (!this.canAttempt()) {
       this.notPermittedCalls++;
-      throw new CircuitBreakerOpenError(this.config.name);
+      const openError = new CircuitBreakerOpenError(this.config.name);
+      if (fallback) return fallback(openError);
+      throw openError;
     }
 
     if (this.state === CircuitBreakerState.HALF_OPEN) {
@@ -112,7 +135,10 @@ export class CircuitBreaker {
       this.onSuccess(Date.now() - startTime);
       return result;
     } catch (error: unknown) {
+      const isInfrastructure = this.config.isFailure(error);
       this.onError(error);
+
+      if (fallback && isInfrastructure) return fallback(error);
       throw error;
     }
   }
