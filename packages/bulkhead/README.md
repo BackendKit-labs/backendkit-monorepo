@@ -1,9 +1,9 @@
-# @backendkit-labs/resilience
+# @backendkit-labs/bulkhead
 
-[![npm version](https://img.shields.io/npm/v/@backendkit-labs/resilience?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/resilience)
+[![npm version](https://img.shields.io/npm/v/@backendkit-labs/bulkhead?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/bulkhead)
 [![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/resilience?style=flat-square)](LICENSE)
-[![Node](https://img.shields.io/node/v/@backendkit-labs/resilience?style=flat-square)](package.json)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/bulkhead?style=flat-square)](LICENSE)
+[![Node](https://img.shields.io/node/v/@backendkit-labs/bulkhead?style=flat-square)](package.json)
 
 > Bulkhead concurrency limiting for Node.js — inspired by Resilience4j. Framework-agnostic core with optional NestJS integration.
 
@@ -14,7 +14,7 @@ Prevents resource exhaustion and cascading failures by limiting how many operati
 ## Installation
 
 ```bash
-npm install @backendkit-labs/resilience
+npm install @backendkit-labs/bulkhead
 ```
 
 ---
@@ -22,7 +22,7 @@ npm install @backendkit-labs/resilience
 ## Quick Start — Framework-agnostic
 
 ```typescript
-import { Bulkhead } from '@backendkit-labs/resilience';
+import { Bulkhead } from '@backendkit-labs/bulkhead';
 
 const bulkhead = new Bulkhead({
   name: 'payments',
@@ -88,7 +88,7 @@ bulkhead.resetMetrics();
 ### Errors
 
 ```typescript
-import { BulkheadRejectedError, BulkheadTimeoutError } from '@backendkit-labs/resilience';
+import { BulkheadRejectedError, BulkheadTimeoutError } from '@backendkit-labs/bulkhead';
 
 try {
   await bulkhead.execute(task);
@@ -109,7 +109,7 @@ try {
 Manages named bulkhead instances with sensible defaults for common resource types:
 
 ```typescript
-import { BulkheadRegistry } from '@backendkit-labs/resilience';
+import { BulkheadRegistry } from '@backendkit-labs/bulkhead';
 
 const registry = new BulkheadRegistry();
 
@@ -140,13 +140,13 @@ registry.resetAllMetrics();
 ## NestJS Integration
 
 ```bash
-npm install @backendkit-labs/resilience
+npm install @backendkit-labs/bulkhead
 ```
 
 Import `BulkheadModule` into your NestJS application:
 
 ```typescript
-import { BulkheadModule } from '@backendkit-labs/resilience/nestjs';
+import { BulkheadModule } from '@backendkit-labs/bulkhead/nestjs';
 
 @Module({
   imports: [BulkheadModule],
@@ -157,7 +157,7 @@ export class AppModule {}
 ### Guard — declarative per-route protection
 
 ```typescript
-import { UseBulkhead, BulkheadGuard } from '@backendkit-labs/resilience/nestjs';
+import { UseBulkhead, BulkheadGuard } from '@backendkit-labs/bulkhead/nestjs';
 
 @Controller('orders')
 export class OrdersController {
@@ -180,7 +180,7 @@ Returns `503 Service Unavailable` when at capacity.
 ### Interceptor — wraps handler execution inside the bulkhead
 
 ```typescript
-import { BulkheadInterceptor } from '@backendkit-labs/resilience/nestjs';
+import { BulkheadInterceptor } from '@backendkit-labs/bulkhead/nestjs';
 
 // Apply globally
 app.useGlobalInterceptors(new BulkheadInterceptor(registry));
@@ -198,7 +198,7 @@ Returns `503` on rejection, `408` on timeout.
 Protects the entire service from being overwhelmed before requests even reach your handlers:
 
 ```typescript
-import { HttpBulkheadMiddleware } from '@backendkit-labs/resilience/nestjs';
+import { HttpBulkheadMiddleware } from '@backendkit-labs/bulkhead/nestjs';
 
 @Module({ imports: [BulkheadModule] })
 export class AppModule implements NestModule {
@@ -220,7 +220,7 @@ Returns `429 Too Many Requests` when the queue is full.
 ### Method Decorator
 
 ```typescript
-import { WithBulkhead } from '@backendkit-labs/resilience/nestjs';
+import { WithBulkhead } from '@backendkit-labs/bulkhead/nestjs';
 
 @Injectable()
 export class ReportService {
@@ -235,7 +235,7 @@ export class ReportService {
 ### Monitoring — BulkheadService
 
 ```typescript
-import { BulkheadService } from '@backendkit-labs/resilience/nestjs';
+import { BulkheadService } from '@backendkit-labs/bulkhead/nestjs';
 
 @Controller('health')
 export class HealthController {
@@ -258,17 +258,17 @@ export class HealthController {
 ## Architecture
 
 ```
-@backendkit-labs/resilience        (core — no framework deps)
-  Bulkhead                         queue-based concurrency limiter
-  BulkheadRegistry                 named instances + factory methods
+@backendkit-labs/bulkhead         (core — no framework deps)
+  Bulkhead                        queue-based concurrency limiter
+  BulkheadRegistry                named instances + factory methods
 
-@backendkit-labs/resilience/nestjs (optional NestJS layer)
-  BulkheadModule                   NestJS module
-  BulkheadGuard                    @UseBulkhead() per-route decorator
-  BulkheadInterceptor              wraps handler in execute()
-  HttpBulkheadMiddleware           global HTTP request limiter
-  WithBulkhead                     method-level decorator
-  BulkheadService                  metrics + auto-monitoring
+@backendkit-labs/bulkhead/nestjs  (optional NestJS layer)
+  BulkheadModule                  NestJS module
+  BulkheadGuard                   @UseBulkhead() per-route decorator
+  BulkheadInterceptor             wraps handler in execute()
+  HttpBulkheadMiddleware          global HTTP request limiter
+  WithBulkhead                    method-level decorator
+  BulkheadService                 metrics + auto-monitoring
 ```
 
 ---
