@@ -90,6 +90,51 @@ describe('retryWithBackoff', () => {
     expect(elapsed).toBeLessThan(500);
     expect(calls).toBe(4);
   }, 3000);
+
+  it('full jitter (true) keeps delay within [0, computedDelay]', async () => {
+    const delays: number[] = [];
+    const origSetTimeout = globalThis.setTimeout;
+    const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation((fn, ms, ...args) => {
+      delays.push(ms as number);
+      return origSetTimeout(fn, 0, ...args); // run immediately so test stays fast
+    });
+
+    let calls = 0;
+    await retryWithBackoff(
+      async () => { calls++; return calls < 4 ? fail('e') : ok('done'); },
+      { attempts: 5, delayMs: 100, maxDelayMs: 1_000, jitter: true },
+    );
+
+    spy.mockRestore();
+
+    // Full jitter: every delay must be in [0, computed] — never negative, never over cap
+    for (const d of delays) {
+      expect(d).toBeGreaterThanOrEqual(0);
+      expect(d).toBeLessThanOrEqual(1_000);
+    }
+  });
+
+  it('partial jitter (number) keeps delay within [0, maxDelayMs]', async () => {
+    const delays: number[] = [];
+    const origSetTimeout = globalThis.setTimeout;
+    const spy = vi.spyOn(globalThis, 'setTimeout').mockImplementation((fn, ms, ...args) => {
+      delays.push(ms as number);
+      return origSetTimeout(fn, 0, ...args);
+    });
+
+    let calls = 0;
+    await retryWithBackoff(
+      async () => { calls++; return calls < 4 ? fail('e') : ok('done'); },
+      { attempts: 5, delayMs: 100, maxDelayMs: 1_000, jitter: 0.25 },
+    );
+
+    spy.mockRestore();
+
+    for (const d of delays) {
+      expect(d).toBeGreaterThanOrEqual(0);
+      expect(d).toBeLessThanOrEqual(1_000);
+    }
+  });
 });
 
 describe('withTimeout', () => {

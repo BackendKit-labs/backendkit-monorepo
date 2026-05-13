@@ -15,6 +15,16 @@ export interface RetryOptions<E> {
 export interface BackoffOptions<E> extends RetryOptions<E> {
   /** Cap for the computed backoff delay. Default: 30_000 */
   maxDelayMs?: number;
+  /**
+   * Adds random noise to the backoff delay to avoid thundering herd when
+   * multiple instances retry simultaneously.
+   *
+   * - `true`   → full jitter: delay = random(0, computedDelay)
+   * - `number` → partial jitter: delay ± (computedDelay * factor), clamped to [0, maxDelayMs]
+   *              e.g. 0.25 adds ±25% noise
+   * - `false`  → no jitter (default)
+   */
+  jitter?: boolean | number;
 }
 
 /**
@@ -69,11 +79,7 @@ export async function retryWithBackoff<T, E = Error>(
     if (attempt === options.attempts) break;
     if (options.shouldRetry && !options.shouldRetry(last.error, attempt)) break;
     options.onRetry?.(last.error, attempt);
-    const delay = Math.min(
-      (options.delayMs ?? 100) * Math.pow(2, attempt - 1),
-      options.maxDelayMs ?? 30_000,
-    );
-    await sleep(delay);
+    await sleep(computeBackoffDelay(attempt, options));
   }
 
   return last;
@@ -99,6 +105,23 @@ export async function withTimeout<T, E>(
     setTimeout(() => resolve(fail<T, E>(timeoutError)), ms),
   );
   return Promise.race([fn(), timer]);
+}
+
+function computeBackoffDelay<E>(attempt: number, options: BackoffOptions<E>): number {
+  const base    = (options.delayMs ?? 100) * Math.pow(2, attempt - 1);
+  const capped  = Math.min(base, options.maxDelayMs ?? 30_000);
+  const { jitter } = options;
+
+  if (!jitter) return capped;
+
+  if (jitter === true) {
+    // Full jitter: uniform random in [0, capped] — maximises spread across instances
+    return Math.random() * capped;
+  }
+
+  // Partial jitter: ± (capped * factor), stays within [0, maxDelayMs]
+  const noise = (Math.random() * 2 - 1) * capped * jitter;
+  return Math.max(0, Math.min(capped + noise, options.maxDelayMs ?? 30_000));
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms));
