@@ -151,6 +151,7 @@ Business errors bypass the fallback intentionally — they represent domain fail
 | `halfOpenMaxCalls` | `number` | `3` | Test calls allowed in HALF_OPEN |
 | `openTimeoutMs` | `number` | `60000` | Wait in OPEN before probing (ms) |
 | `isFailure` | `(error) => boolean` | `() => true` | Error classifier |
+| `onStateChange` | `(from, to, metrics) => void` | `undefined` | Hook fired on every state transition |
 
 ### `CircuitBreakerMetrics`
 
@@ -182,6 +183,30 @@ try {
   }
 }
 ```
+
+---
+
+### Observability — `onStateChange`
+
+React proactively to every state transition without polling:
+
+```typescript
+const cb = new CircuitBreaker({
+  name: 'payment-api',
+  onStateChange: (from, to, metrics) => {
+    logger.warn(`Circuit ${metrics.name}: ${from} → ${to}`, {
+      failureRate: metrics.failureRate,
+      failedCalls: metrics.failedCalls,
+    });
+
+    if (to === CircuitBreakerState.OPEN) {
+      alerting.trigger('circuit-open', metrics);
+    }
+  },
+});
+```
+
+The callback receives a full `CircuitBreakerMetrics` snapshot taken at the exact moment of transition, so `failureRate`, counters, and `state` are already updated.
 
 ---
 

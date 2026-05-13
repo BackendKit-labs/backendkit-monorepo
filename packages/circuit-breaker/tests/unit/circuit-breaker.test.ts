@@ -164,6 +164,66 @@ describe('CircuitBreaker — metrics', () => {
   });
 });
 
+describe('CircuitBreaker — onStateChange', () => {
+  it('fires when circuit opens', async () => {
+    const onStateChange = vi.fn();
+    const cb = new CircuitBreaker(makeConfig({
+      minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1, onStateChange,
+    }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+    expect(onStateChange).toHaveBeenCalledOnce();
+    expect(onStateChange).toHaveBeenCalledWith(
+      CircuitBreakerState.CLOSED,
+      CircuitBreakerState.OPEN,
+      expect.objectContaining({ state: CircuitBreakerState.OPEN }),
+    );
+  });
+
+  it('fires OPEN → HALF_OPEN after timeout', async () => {
+    const onStateChange = vi.fn();
+    const cb = new CircuitBreaker(makeConfig({
+      minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1, openTimeoutMs: 50, onStateChange,
+    }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+    await new Promise(r => setTimeout(r, 80));
+    cb.getState(); // triggers syncState
+    expect(onStateChange).toHaveBeenCalledTimes(2);
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      CircuitBreakerState.OPEN,
+      CircuitBreakerState.HALF_OPEN,
+      expect.objectContaining({ state: CircuitBreakerState.HALF_OPEN }),
+    );
+  }, 2000);
+
+  it('fires HALF_OPEN → CLOSED on recovery', async () => {
+    const onStateChange = vi.fn();
+    const cb = new CircuitBreaker(makeConfig({
+      minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1,
+      openTimeoutMs: 50, halfOpenMaxCalls: 1, onStateChange,
+    }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+    await new Promise(r => setTimeout(r, 80));
+    await cb.execute(succeed);
+    expect(onStateChange).toHaveBeenCalledTimes(3);
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      CircuitBreakerState.HALF_OPEN,
+      CircuitBreakerState.CLOSED,
+      expect.objectContaining({ state: CircuitBreakerState.CLOSED }),
+    );
+  }, 2000);
+
+  it('receives accurate metrics snapshot at the moment of transition', async () => {
+    const onStateChange = vi.fn();
+    const cb = new CircuitBreaker(makeConfig({
+      minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1, onStateChange,
+    }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+    const metrics = onStateChange.mock.calls[0][2];
+    expect(metrics.failedCalls).toBe(1);
+    expect(metrics.state).toBe(CircuitBreakerState.OPEN);
+  });
+});
+
 describe('CircuitBreaker — fallback', () => {
   it('calls fallback with CircuitBreakerOpenError when circuit is OPEN', async () => {
     const cb = new CircuitBreaker(makeConfig({ minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1 }));

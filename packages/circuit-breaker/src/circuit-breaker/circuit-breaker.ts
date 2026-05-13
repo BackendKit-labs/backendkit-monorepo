@@ -42,6 +42,22 @@ export interface CircuitBreakerConfig {
    * isFailure: (err) => !(err instanceof HttpException) || err.getStatus() >= 500
    */
   isFailure: (error: unknown) => boolean;
+
+  /**
+   * Called every time the circuit transitions between states.
+   * Use it for logging, alerting, or updating external dashboards.
+   *
+   * @example
+   * onStateChange: (from, to, metrics) => {
+   *   logger.warn(`Circuit ${metrics.name}: ${from} → ${to}`);
+   *   if (to === CircuitBreakerState.OPEN) alerting.trigger(metrics);
+   * }
+   */
+  onStateChange?: (
+    from: CircuitBreakerState,
+    to: CircuitBreakerState,
+    metrics: CircuitBreakerMetrics,
+  ) => void;
 }
 
 export interface CircuitBreakerMetrics {
@@ -218,22 +234,25 @@ export class CircuitBreaker {
   }
 
   private transitionTo(next: CircuitBreakerState): void {
+    const prev = this.state;
     this.state = next;
 
     if (next === CircuitBreakerState.OPEN) {
-      this.openedAt         = Date.now();
-      this.halfOpenCalls    = 0;
+      this.openedAt          = Date.now();
+      this.halfOpenCalls     = 0;
       this.halfOpenSuccesses = 0;
     } else if (next === CircuitBreakerState.HALF_OPEN) {
-      this.halfOpenCalls    = 0;
+      this.halfOpenCalls     = 0;
       this.halfOpenSuccesses = 0;
-      this.window           = [];
+      this.window            = [];
     } else {
-      this.openedAt         = null;
-      this.halfOpenCalls    = 0;
+      this.openedAt          = null;
+      this.halfOpenCalls     = 0;
       this.halfOpenSuccesses = 0;
-      this.window           = [];
+      this.window            = [];
     }
+
+    this.config.onStateChange?.(prev, next, this.getMetrics());
   }
 
   canAttempt(): boolean {
