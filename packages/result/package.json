@@ -1,6 +1,6 @@
 {
   "name": "@backendkit-labs/result",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Type-safe Result monad for Node.js — generic error types, observability, resilience, and optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
