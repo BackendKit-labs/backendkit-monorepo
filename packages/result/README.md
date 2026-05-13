@@ -587,7 +587,7 @@ const result = await retry(
 
 ### `retryWithBackoff(fn, options)`
 
-Exponential backoff: delay doubles on each retry, capped at `maxDelayMs`.
+Exponential backoff: delay doubles on each retry, capped at `maxDelayMs`. Supports **jitter** to prevent thundering herd when multiple instances retry simultaneously.
 
 ```typescript
 import { retryWithBackoff, run } from '@backendkit-labs/result';
@@ -615,6 +615,37 @@ const result = await retryWithBackoff(
   },
 );
 ```
+
+#### Jitter
+
+When many instances of your service fail at the same time (e.g. a downstream goes down), they all retry on the same schedule — creating a synchronized spike that can overwhelm the recovering service. Jitter spreads those retries across time.
+
+```typescript
+// Full jitter — delay = random(0, computedDelay)
+// Maximum spread. Best for high-concurrency scenarios (many parallel clients).
+await retryWithBackoff(() => run(() => callApi()), {
+  attempts:   4,
+  delayMs:    500,
+  maxDelayMs: 10_000,
+  jitter:     true,
+});
+
+// Partial jitter — delay ± (computedDelay × factor)
+// Keeps delays close to the backoff curve while adding noise.
+// 0.25 = ±25%: a computed 1000ms delay becomes 750ms–1250ms.
+await retryWithBackoff(() => run(() => callApi()), {
+  attempts:   4,
+  delayMs:    500,
+  maxDelayMs: 10_000,
+  jitter:     0.25,
+});
+```
+
+| `jitter` value | Behaviour | Use when |
+|---|---|---|
+| `false` / omitted | No randomness — deterministic delays | Tests, single-instance services |
+| `true` | Full jitter: `random(0, delay)` | Many parallel clients retrying the same service |
+| `0.0–1.0` | Partial jitter: `delay ± (delay × factor)` | You want backoff shape preserved with light noise |
 
 ### `withTimeout(fn, ms, timeoutError)`
 
