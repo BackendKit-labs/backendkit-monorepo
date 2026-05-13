@@ -8,6 +8,7 @@ Reusable, enterprise-grade Node.js libraries by [BackendKit Labs](https://github
 |---------|---------|-------------|
 | [`@backendkit-labs/console-animations`](./packages/console-animations) | 0.1.2 | Terminal animations for Node.js CLI applications |
 | [`@backendkit-labs/bulkhead`](./packages/bulkhead) | 0.1.0 | Bulkhead concurrency limiting — framework-agnostic core + NestJS integration |
+| [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | 0.1.0 | Circuit Breaker with business vs infrastructure error classification + NestJS integration |
 
 ## Development
 
