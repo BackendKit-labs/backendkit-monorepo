@@ -107,15 +107,14 @@ interface ObservabilityOptions {
 
 ```typescript
 interface HttpTransportOptions {
-  url:                 string;
-  authToken?:          string;
-  headers?:            Record<string, string>;
-  batchSize?:          number;   // default 100
-  maxBufferSize?:      number;   // default 2000
-  flushIntervalMs?:    number;   // default 5000
-  timeoutMs?:          number;   // default 5000
-  cbFailureThreshold?: number;   // default 5
-  cbResetMs?:          number;   // default 30000
+  url:              string;
+  authToken?:       string;
+  headers?:         Record<string, string>;
+  batchSize?:       number;   // default 100
+  maxBufferSize?:   number;   // default 2000
+  flushIntervalMs?: number;   // default 5000
+  timeoutMs?:       number;   // default 5000
+  circuitBreaker?:  Partial<CircuitBreakerConfig>; // see below
 }
 ```
 
@@ -123,14 +122,13 @@ interface HttpTransportOptions {
 
 ```typescript
 interface MetricsOptions {
-  url:                 string;
-  authToken?:          string;
-  headers?:            Record<string, string>;
-  flushIntervalMs?:    number;   // default 10000
-  maxBufferSize?:      number;   // default 5000
-  timeoutMs?:          number;   // default 5000
-  cbFailureThreshold?: number;   // default 5
-  cbResetMs?:          number;   // default 30000
+  url:              string;
+  authToken?:       string;
+  headers?:         Record<string, string>;
+  flushIntervalMs?: number;   // default 10000
+  maxBufferSize?:   number;   // default 5000
+  timeoutMs?:       number;   // default 5000
+  circuitBreaker?:  Partial<CircuitBreakerConfig>; // see below
 }
 ```
 
@@ -314,13 +312,53 @@ const trace = this.correlation.getTraceContext();
 
 ## Circuit breaker behaviour
 
-Both the HTTP log transport and the metrics transport include a built-in circuit breaker that protects your application from cascading failures in the observability backend:
+Both the HTTP log transport and the metrics transport use [`@backendkit-labs/circuit-breaker`](../circuit-breaker) to protect your application from cascading failures in the observability backend:
 
 ```
-CLOSED → (N consecutive failures) → OPEN (drops sends for resetMs) → CLOSED
+CLOSED ──(failure rate ≥ threshold)──► OPEN ──(openTimeoutMs)──► HALF_OPEN ──(probe succeeds)──► CLOSED
+                                                                               └─(probe fails)───► OPEN
 ```
 
-Default: **5 failures → OPEN for 30 seconds**. Tune with `cbFailureThreshold` and `cbResetMs` in the transport options.
+### Transport defaults
+
+| Option | Default | Description |
+|---|---|---|
+| `failureThreshold` | `60` | % of calls in the window that must fail to open the circuit |
+| `slidingWindowSize` | `5` | Number of calls in the evaluation window |
+| `minimumCalls` | `3` | Minimum calls before thresholds are evaluated |
+| `openTimeoutMs` | `30 000` | Time to wait in OPEN before transitioning to HALF_OPEN |
+| `halfOpenMaxCalls` | `1` | Probe calls allowed in HALF_OPEN |
+| `slowCallThreshold` | `100` | % of slow calls to open the circuit (disabled by default) |
+| `slowCallDurationMs` | `60 000` | Duration above which a call is considered slow |
+
+### Customising the circuit breaker
+
+Pass any subset of `CircuitBreakerConfig` via the `circuitBreaker` option. `name` and `isFailure` are managed internally.
+
+```typescript
+import { CircuitBreakerState } from '@backendkit-labs/circuit-breaker';
+
+ObservabilityModule.forRoot({
+  serviceName: 'my-api',
+  metrics: {
+    url: 'https://metrics.example.com/ingest',
+    circuitBreaker: {
+      failureThreshold:  80,      // open only when 80% of calls fail
+      slidingWindowSize: 10,
+      minimumCalls:      5,
+      openTimeoutMs:     60_000,  // stay open for 60 s
+      halfOpenMaxCalls:  2,       // send 2 probes before closing
+      onStateChange: (from, to, metrics) => {
+        if (to === CircuitBreakerState.OPEN) {
+          alerting.trigger(`Metrics CB opened — failure rate ${metrics.failureRate}%`);
+        }
+      },
+    },
+  },
+});
+```
+
+The same `circuitBreaker` option is available on the `http` log transport.
 
 ---
 
