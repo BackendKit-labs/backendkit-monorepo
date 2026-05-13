@@ -1,3 +1,4 @@
+import { CircuitBreakerConfig }        from '@backendkit-labs/circuit-breaker';
 import { WinstonHttpTransportOptions } from './logger/winston-http.transport.js';
 
 export interface ObservabilityOptions {
@@ -42,11 +43,14 @@ export interface MetricsOptions {
   /** Request timeout in ms (default 5000). */
   timeoutMs?: number;
 
-  /** Circuit breaker: consecutive failures before OPEN (default 5). */
-  cbFailureThreshold?: number;
-
-  /** Circuit breaker: recovery window in ms (default 30 000). */
-  cbResetMs?: number;
+  /**
+   * Override any circuit breaker config fields.
+   * `name` and `isFailure` are set internally and cannot be overridden.
+   *
+   * Transport defaults: failureThreshold 60%, slidingWindowSize 5,
+   * minimumCalls 3, openTimeoutMs 30 000, halfOpenMaxCalls 1.
+   */
+  circuitBreaker?: Partial<Omit<CircuitBreakerConfig, 'name' | 'isFailure'>>;
 }
 
 export interface MetricEvent {

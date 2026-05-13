@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios                                                from 'axios';
+import { CircuitBreakerState }                              from '@backendkit-labs/circuit-breaker';
 import { MetricsService }                                   from '../../src/metrics/metrics.service.js';
 import { CorrelationIdService }                             from '../../src/correlation/correlation.service.js';
 import { ObservabilityOptions }                             from '../../src/observability.types.js';
@@ -12,15 +13,22 @@ vi.mock('axios', () => ({
   },
 }));
 
+// Fast-failing CB: opens after 2 failures in a window of 3 (≥60%)
 const opts: ObservabilityOptions = {
   serviceName: 'metrics-test',
   environment: 'test',
   metrics: {
-    url:            'http://metrics.local/ingest',
-    authToken:      'tok',
+    url:             'http://metrics.local/ingest',
+    authToken:       'tok',
     flushIntervalMs: 60_000, // long — we flush manually in tests
-    maxBufferSize:  10,
-    cbFailureThreshold: 3,
+    maxBufferSize:   10,
+    circuitBreaker: {
+      minimumCalls:     1,
+      slidingWindowSize: 3,
+      failureThreshold:  60, // 60% → opens after 2/3 failures
+      openTimeoutMs:     30_000,
+      halfOpenMaxCalls:  1,
+    },
   },
 };
 
@@ -45,7 +53,6 @@ describe('MetricsService', () => {
   it('does nothing when metrics config is absent', () => {
     const noMetrics = new MetricsService({ serviceName: 'x' });
     noMetrics.record('cpu', 42);
-    // No errors thrown
     expect(true).toBe(true);
   });
 
@@ -83,14 +90,17 @@ describe('MetricsService', () => {
     expect((svc as any).buffer.length).toBeLessThanOrEqual(10);
   });
 
-  it('activates circuit breaker after repeated flush failures', async () => {
+  it('opens the circuit breaker after repeated flush failures', async () => {
     postMock.mockRejectedValue(new Error('network down'));
+
+    // Need enough failures to pass minimumCalls (1) and hit failureThreshold (60%)
     for (let i = 0; i < 3; i++) {
       svc.record('x', i);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (svc as any).flush();
     }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((svc as any).cb?.isOpen).toBe(true);
+    expect((svc as any).cb?.getState()).toBe(CircuitBreakerState.OPEN);
   });
 });

@@ -1,9 +1,12 @@
-import TransportStream, { TransportStreamOptions } from 'winston-transport';
-import axios, { AxiosInstance }                    from 'axios';
-import * as http                                   from 'node:http';
-import * as https                                  from 'node:https';
-import { Logger }                                  from '@nestjs/common';
-import { TransportCircuitBreaker }                 from '../internal/transport-circuit-breaker.js';
+import TransportStream, { TransportStreamOptions }    from 'winston-transport';
+import axios, { AxiosInstance }                        from 'axios';
+import * as http                                       from 'node:http';
+import * as https                                      from 'node:https';
+import {
+  CircuitBreaker,
+  CircuitBreakerConfig,
+  CircuitBreakerOpenError,
+} from '@backendkit-labs/circuit-breaker';
 
 export interface WinstonHttpTransportOptions extends TransportStreamOptions {
   /** Full URL of the log-ingest endpoint. */
@@ -27,11 +30,14 @@ export interface WinstonHttpTransportOptions extends TransportStreamOptions {
   /** Request timeout in ms (default 5000). */
   timeoutMs?: number;
 
-  /** Circuit breaker: consecutive failures before OPEN (default 5). */
-  cbFailureThreshold?: number;
-
-  /** Circuit breaker: recovery window in ms (default 30 000). */
-  cbResetMs?: number;
+  /**
+   * Override any circuit breaker config fields.
+   * `name` and `isFailure` are set internally and cannot be overridden.
+   *
+   * Transport defaults: failureThreshold 60%, slidingWindowSize 5,
+   * minimumCalls 3, openTimeoutMs 30 000, halfOpenMaxCalls 1.
+   */
+  circuitBreaker?: Partial<Omit<CircuitBreakerConfig, 'name' | 'isFailure'>>;
 }
 
 interface LogEntry {
@@ -41,11 +47,20 @@ interface LogEntry {
   [key: string]: any;
 }
 
+const TRANSPORT_CB_DEFAULTS: Omit<CircuitBreakerConfig, 'name' | 'isFailure'> = {
+  failureThreshold:  60,
+  slowCallThreshold: 100,
+  slowCallDurationMs: 60_000,
+  minimumCalls:      3,
+  slidingWindowSize: 5,
+  halfOpenMaxCalls:  1,
+  openTimeoutMs:     30_000,
+};
+
 export class WinstonHttpTransport extends TransportStream {
-  private readonly client:  AxiosInstance;
-  private readonly cb:      TransportCircuitBreaker;
-  private readonly logger:  Logger;
-  private readonly buffer:  LogEntry[] = [];
+  private readonly client:       AxiosInstance;
+  private readonly cb:           CircuitBreaker;
+  private readonly buffer:       LogEntry[] = [];
   private readonly batchSize:    number;
   private readonly maxBufferSize: number;
   private readonly flushTimer:   ReturnType<typeof setInterval>;
@@ -53,11 +68,10 @@ export class WinstonHttpTransport extends TransportStream {
   constructor(opts: WinstonHttpTransportOptions) {
     super(opts);
 
-    this.logger       = new Logger(WinstonHttpTransport.name);
-    this.batchSize    = opts.batchSize    ?? 100;
+    this.batchSize     = opts.batchSize    ?? 100;
     this.maxBufferSize = opts.maxBufferSize ?? 2_000;
 
-    const keepAlive = new http.Agent({ keepAlive: true });
+    const keepAlive      = new http.Agent({ keepAlive: true });
     const keepAliveHttps = new https.Agent({ keepAlive: true });
 
     this.client = axios.create({
@@ -72,12 +86,12 @@ export class WinstonHttpTransport extends TransportStream {
       },
     });
 
-    this.cb = new TransportCircuitBreaker(
-      opts.cbFailureThreshold ?? 5,
-      opts.cbResetMs          ?? 30_000,
-      this.logger,
-      'WinstonHttpTransport',
-    );
+    this.cb = new CircuitBreaker({
+      ...TRANSPORT_CB_DEFAULTS,
+      ...opts.circuitBreaker,
+      name:      'WinstonHttpTransport',
+      isFailure: () => true,
+    });
 
     this.flushTimer = setInterval(
       () => { void this.flush(); },
@@ -92,9 +106,8 @@ export class WinstonHttpTransport extends TransportStream {
 
     if (this.buffer.length < this.maxBufferSize) {
       this.buffer.push(info as LogEntry);
-    } else {
-      this.logger.warn('[WinstonHttpTransport] buffer full — dropping log entry');
     }
+    // silently drop when full — buffer-full warn would cause infinite recursion
 
     if (this.buffer.length >= this.batchSize) {
       void this.flush();
@@ -111,23 +124,20 @@ export class WinstonHttpTransport extends TransportStream {
 
   private async flush(): Promise<void> {
     if (this.buffer.length === 0) return;
-    if (this.cb.isOpen) return;
 
     const batch = this.buffer.splice(0, this.batchSize);
 
     try {
-      await this.client.post('', batch);
-      this.cb.recordSuccess();
+      await this.cb.execute(() => this.client.post('', batch));
     } catch (err) {
-      this.cb.recordFailure();
-      this.logger.warn(
-        `[WinstonHttpTransport] flush failed — re-queueing ${batch.length} entries`,
-        err,
-      );
-      // Re-queue at the front (oldest-first) if there is still room
+      // Re-queue the batch (whether CB was open or the request failed)
       const room = this.maxBufferSize - this.buffer.length;
-      if (room > 0) {
-        this.buffer.unshift(...batch.slice(0, room));
+      if (room > 0) this.buffer.unshift(...batch.slice(0, room));
+
+      if (!(err instanceof CircuitBreakerOpenError)) {
+        // Network errors are worth logging; CB-open state was already surfaced
+        // via onStateChange in the CircuitBreaker itself
+        console.error(`[WinstonHttpTransport] flush failed — re-queued ${batch.length} entries`, err);
       }
     }
   }

@@ -2,19 +2,34 @@ import { Injectable, Inject, Optional, OnModuleDestroy, Logger } from '@nestjs/c
 import axios, { AxiosInstance }                                   from 'axios';
 import * as http                                                  from 'node:http';
 import * as https                                                 from 'node:https';
+import {
+  CircuitBreaker,
+  CircuitBreakerConfig,
+  CircuitBreakerOpenError,
+  CircuitBreakerState,
+}                                                                 from '@backendkit-labs/circuit-breaker';
 import { CorrelationIdService }                                   from '../correlation/correlation.service.js';
 import { OBSERVABILITY_OPTIONS }                                  from '../observability.constants.js';
 import { ObservabilityOptions, MetricEvent }                      from '../observability.types.js';
-import { TransportCircuitBreaker }                                from '../internal/transport-circuit-breaker.js';
+
+const TRANSPORT_CB_DEFAULTS: Omit<CircuitBreakerConfig, 'name' | 'isFailure'> = {
+  failureThreshold:  60,
+  slowCallThreshold: 100,
+  slowCallDurationMs: 60_000,
+  minimumCalls:      3,
+  slidingWindowSize: 5,
+  halfOpenMaxCalls:  1,
+  openTimeoutMs:     30_000,
+};
 
 @Injectable()
 export class MetricsService implements OnModuleDestroy {
-  private readonly client:       AxiosInstance | null = null;
-  private readonly cb:           TransportCircuitBreaker | null = null;
-  private readonly logger =      new Logger(MetricsService.name);
-  private readonly buffer:       MetricEvent[] = [];
+  private readonly client:        AxiosInstance | null = null;
+  private readonly cb:            CircuitBreaker | null = null;
+  private readonly logger =       new Logger(MetricsService.name);
+  private readonly buffer:        MetricEvent[] = [];
   private readonly maxBufferSize: number = 5_000;
-  private readonly flushTimer:   ReturnType<typeof setInterval> | null = null;
+  private readonly flushTimer:    ReturnType<typeof setInterval> | null = null;
 
   constructor(
     @Inject(OBSERVABILITY_OPTIONS)
@@ -42,12 +57,23 @@ export class MetricsService implements OnModuleDestroy {
       },
     });
 
-    this.cb = new TransportCircuitBreaker(
-      m.cbFailureThreshold ?? 5,
-      m.cbResetMs          ?? 30_000,
-      this.logger,
-      'MetricsService',
-    );
+    this.cb = new CircuitBreaker({
+      ...TRANSPORT_CB_DEFAULTS,
+      ...m.circuitBreaker,
+      name:      'MetricsService',
+      isFailure: () => true,
+      onStateChange: (from, to, metrics) => {
+        if (to === CircuitBreakerState.OPEN) {
+          this.logger.warn(
+            `[MetricsService] circuit breaker OPEN — pausing metric sends for ${(m.circuitBreaker?.openTimeoutMs ?? TRANSPORT_CB_DEFAULTS.openTimeoutMs) / 1_000}s`,
+            metrics,
+          );
+        } else if (to === CircuitBreakerState.CLOSED && from !== CircuitBreakerState.HALF_OPEN) {
+          this.logger.log(`[MetricsService] circuit breaker CLOSED — recovered`);
+        }
+        m.circuitBreaker?.onStateChange?.(from, to, metrics);
+      },
+    });
 
     this.flushTimer = setInterval(
       () => { void this.flush(); },
@@ -92,22 +118,21 @@ export class MetricsService implements OnModuleDestroy {
 
   private async flush(): Promise<void> {
     if (!this.client || this.buffer.length === 0) return;
-    if (this.cb?.isOpen) return;
 
     const batch = this.buffer.splice(0, 500);
 
     try {
-      await this.client.post('', batch);
-      this.cb?.recordSuccess();
+      await this.cb!.execute(() => this.client!.post('', batch));
     } catch (err) {
-      this.cb?.recordFailure();
-      this.logger.warn(
-        `[MetricsService] flush failed — re-queueing ${batch.length} events`,
-        err,
-      );
+      // Re-queue in both cases (CB open or network error)
       const room = this.maxBufferSize - this.buffer.length;
-      if (room > 0) {
-        this.buffer.unshift(...batch.slice(0, room));
+      if (room > 0) this.buffer.unshift(...batch.slice(0, room));
+
+      if (!(err instanceof CircuitBreakerOpenError)) {
+        this.logger.warn(
+          `[MetricsService] flush failed — re-queueing ${batch.length} events`,
+          err,
+        );
       }
     }
   }
