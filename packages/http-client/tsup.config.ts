@@ -1,0 +1,24 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: {
+    index:          'src/index.ts',
+    'nestjs/index': 'src/nestjs/index.ts',
+  },
+  format:    ['esm', 'cjs'],
+  dts:       true,
+  splitting: true,
+  sourcemap: true,
+  clean:     true,
+  minify:    false,
+  treeshake: true,
+  outDir:    'dist',
+  target:    'node18',
+  platform:  'node',
+  external: [
+    '@backendkit-labs/circuit-breaker',
+    '@backendkit-labs/pipeline',
+    '@backendkit-labs/result',
+    'axios',
+  ],
+});

@@ -13,6 +13,7 @@ Reusable, enterprise-grade Node.js libraries by [BackendKit Labs](https://github
 | [`@backendkit-labs/observability`](./packages/observability) | 0.1.0 | Structured logging, metrics, correlation ID propagation, performance interceptors, and exception handling for NestJS — optional OTel support |
 | [`@backendkit-labs/waf`](./packages/waf) | 0.1.1 | Web Application Firewall — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection + NestJS integration |
 | [`@backendkit-labs/pipeline`](./packages/pipeline) | 0.1.0 | Type-safe async pipeline (Chain of Responsibility) — stop-on-first / collect-all modes, conditional steps, observability hooks + NestJS integration |
+| [`@backendkit-labs/http-client`](./packages/http-client) | 0.1.0 | Production-grade HTTP client — axios + circuit breaker + retry + Result responses + cancellation + pipeline middleware + NestJS integration |
 
 ## Development
 
