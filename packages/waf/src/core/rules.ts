@@ -152,7 +152,7 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'path-traversal',
     severity:    'medium',
     description: 'Null byte injection used to truncate file paths',
-    pattern:     /%00|\x00/,
+    pattern:     /%00/,
     enabled:     true,
   },
 
