@@ -1,0 +1,23 @@
+:root {
+  --vp-c-brand-1: #3d6ef7;
+  --vp-c-brand-2: #2d5ce8;
+  --vp-c-brand-3: #1d4fd8;
+  --vp-c-brand-soft: rgba(61, 110, 247, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #6b99ff;
+  --vp-c-brand-2: #4d7ef0;
+  --vp-c-brand-3: #3d6ef7;
+  --vp-c-brand-soft: rgba(107, 153, 255, 0.16);
+}
+
+/* Home hero image */
+.VPHero .image-src {
+  max-width: 200px;
+}
+
+/* Feature links in home cards */
+.VPFeature a {
+  font-weight: 600;
+}

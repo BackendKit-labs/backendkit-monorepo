@@ -3,15 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "description": "Monorepo for BackendKit Labs - Reusable backend libraries",
-  "workspaces": ["packages/*"],
+  "workspaces": ["packages/*", "apps/*"],
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "test": "turbo run test",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "format": "prettier --write \"packages/*/src/**/*.ts\"",
-    "clean": "turbo run clean"
+    "build":        "turbo run build",
+    "dev":          "turbo run dev",
+    "test":         "turbo run test",
+    "lint":         "turbo run lint",
+    "typecheck":    "turbo run typecheck",
+    "format":       "prettier --write \"packages/*/src/**/*.ts\"",
+    "clean":        "turbo run clean",
+    "docs:dev":     "npm run dev     --workspace=apps/docs",
+    "docs:build":   "npm run build   --workspace=apps/docs",
+    "docs:preview": "npm run preview --workspace=apps/docs"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
