@@ -7,7 +7,7 @@ import { WAF_OPTIONS, type WafModuleOptions } from './waf.options.js';
 /**
  * @example
  * // app.module.ts
- * import { WafModule } from '@backendkit-labs/firewall/nestjs';
+ * import { WafModule } from '@backendkit-labs/request-firewall/nestjs';
  *
  * @Module({
  *   imports: [WafModule.forRoot({ mode: 'block', excludePaths: ['/health'] })],
