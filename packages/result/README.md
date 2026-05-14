@@ -46,6 +46,65 @@ npm install @nestjs/common @nestjs/core rxjs
 
 ---
 
+## TypeScript Configuration
+
+### Subpath exports (`/nestjs`)
+
+This package uses the `exports` field in `package.json` to expose the `/nestjs` subpath. TypeScript's ability to resolve it depends on the `moduleResolution` setting in your `tsconfig.json`.
+
+**Modern resolution (recommended) — no extra config needed:**
+
+```json
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+`"bundler"`, `"node16"`, and `"nodenext"` all understand the `exports` field natively. This is the recommended setting for any project using a bundler or NestJS on TypeScript ≥ 5.
+
+**Legacy resolution (`"node"`) — add a `paths` alias:**
+
+NestJS projects generated before ~2024 default to `"moduleResolution": "node"`, which ignores the `exports` field. Add an explicit alias so TypeScript can find the types:
+
+```json
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "paths": {
+      "@backendkit-labs/result/nestjs": [
+        "./node_modules/@backendkit-labs/result/dist/nestjs/index"
+      ]
+    }
+  }
+}
+```
+
+> **Why?** The `"node"` resolver was designed before subpath exports existed and only reads `main`/`types` at the package root — it ignores the `exports` map entirely. The `paths` alias manually points TypeScript to the correct `.d.ts` file.
+
+### NestJS decorator support
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+And import `reflect-metadata` once at application startup:
+
+```typescript
+// main.ts
+import 'reflect-metadata';
+```
+
+> NestJS CLI scaffolds these automatically. You only need to verify them if setting up a project manually.
+
+---
+
 ## Quick Start
 
 ```typescript
