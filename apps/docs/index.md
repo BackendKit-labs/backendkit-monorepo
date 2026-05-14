@@ -37,6 +37,21 @@ features:
     details: Structured logging, metrics shipping, correlation ID propagation via AsyncLocalStorage, and optional OpenTelemetry spans — all for NestJS.
     link: /packages/observability
     linkText: Explore Observability
+  - icon: 🔗
+    title: Pipeline
+    details: Chain of Responsibility pattern for async middleware. Steps transform context and return typed results — stop-on-first or collect-all error modes, conditional steps, observability hooks.
+    link: /packages/pipeline
+    linkText: Explore Pipeline
+  - icon: 🌐
+    title: HTTP Client
+    details: Production-grade HTTP client on axios. Every call returns Result<T,E> — no try/catch. Built-in circuit breaker, retry with jitter, request cancellation, and pre-request pipeline middleware.
+    link: /packages/http-client
+    linkText: Explore HTTP Client
+  - icon: 🔥
+    title: Request Firewall
+    details: WAF for Node.js with 23 built-in rules across 6 attack categories — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF. Framework-agnostic core + NestJS middleware and pipe.
+    link: /packages/request-firewall
+    linkText: Explore Request Firewall
   - icon: 🎬
     title: Console Animations
     details: 17 built-in terminal animations for Node.js CLIs — spinners, progress bars, visual effects. CI-aware, zero runtime dependencies.

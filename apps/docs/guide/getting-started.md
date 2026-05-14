@@ -23,6 +23,9 @@ BackendKit Labs is a monorepo of production-ready Node.js libraries. Every packa
 | [`@backendkit-labs/circuit-breaker`](/packages/circuit-breaker) | `0.1.0` | Sliding-window circuit breaker with business vs infrastructure error classification |
 | [`@backendkit-labs/bulkhead`](/packages/bulkhead) | `0.1.0` | Concurrency limiting — framework-agnostic core + NestJS guard, interceptor, middleware |
 | [`@backendkit-labs/observability`](/packages/observability) | `0.1.0` | Structured logging, metrics, correlation ID propagation, OTel support for NestJS |
+| [`@backendkit-labs/pipeline`](/packages/pipeline) | `0.1.0` | Type-safe async pipeline (Chain of Responsibility) — stop-on-first / collect-all, conditional steps, NestJS integration |
+| [`@backendkit-labs/http-client`](/packages/http-client) | `0.1.0` | Production-grade HTTP client — axios + circuit breaker + retry + Result responses + pipeline middleware + NestJS integration |
+| [`@backendkit-labs/request-firewall`](/packages/request-firewall) | `0.1.3` | Web Application Firewall — 23 built-in rules, SQLi / XSS / Path Traversal / NoSQL / SSRF + NestJS integration |
 | [`@backendkit-labs/console-animations`](/packages/console-animations) | `0.1.2` | Terminal animations for Node.js CLI applications |
 
 ## Choosing a package
@@ -35,6 +38,12 @@ BackendKit Labs is a monorepo of production-ready Node.js libraries. Every packa
 
 **Add `observability` if** you're building a NestJS service and want structured logging, request correlation, metrics, and performance tracing configured in a single `forRoot()` call.
 
+**Add `pipeline` if** you need composable, typed middleware chains — pre-request auth, validation, transformation — with stop-on-first or collect-all error semantics.
+
+**Add `http-client` if** you make outbound HTTP calls and want circuit breaker, retry, and typed errors without try/catch.
+
+**Add `request-firewall` if** you need WAF-level protection against SQLi, XSS, and other injection attacks at the request boundary.
+
 **Add `console-animations` if** you're building a CLI tool and want professional terminal animations with CI detection baked in.
 
 ## Installation
@@ -46,6 +55,13 @@ Each package is independent. Install only what you need:
 npm install @backendkit-labs/result
 npm install @backendkit-labs/circuit-breaker
 npm install @backendkit-labs/bulkhead
+
+# Middleware and HTTP
+npm install @backendkit-labs/pipeline
+npm install @backendkit-labs/http-client axios
+
+# Security
+npm install @backendkit-labs/request-firewall
 
 # NestJS observability stack
 npm install @backendkit-labs/observability
@@ -115,6 +131,9 @@ backendkit-monorepo/
 │   ├── circuit-breaker/
 │   ├── bulkhead/
 │   ├── observability/
+│   ├── pipeline/
+│   ├── http-client/
+│   ├── request-firewall/
 │   └── console-animations/
 └── apps/
     └── docs/          ← you are here
