@@ -50,11 +50,11 @@
   ],
   "author": "Mairon José Cuello Martínez",
   "license": "MIT",
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/firewall#readme",
+  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/request-firewall#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
-    "directory": "packages/firewall"
+    "directory": "packages/request-firewall"
   },
   "bugs": {
     "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
