@@ -1,11 +1,11 @@
-# @backendkit-labs/waf
+﻿# @backendkit-labs/firewall
 
-[![npm version](https://img.shields.io/npm/v/@backendkit-labs/waf?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/waf)
+[![npm version](https://img.shields.io/npm/v/@backendkit-labs/firewall?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/firewall)
 [![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/waf?style=flat-square)](LICENSE)
-[![Node](https://img.shields.io/node/v/@backendkit-labs/waf?style=flat-square)](package.json)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/firewall?style=flat-square)](LICENSE)
+[![Node](https://img.shields.io/node/v/@backendkit-labs/firewall?style=flat-square)](package.json)
 
-> Web Application Firewall for Node.js — pattern-based threat detection with optional NestJS integration.
+> Web Application Firewall for Node.js â€” pattern-based threat detection with optional NestJS integration.
 
 Detects and blocks the most common web attack vectors before they reach your application logic. Framework-agnostic core with 23 built-in rules across 6 categories. Designed for production: configurable modes, per-category toggles, path exclusions, and zero runtime dependencies in the core.
 
@@ -15,12 +15,12 @@ Detects and blocks the most common web attack vectors before they reach your app
 
 | Category | Rules | Severity | Default |
 |---|---|---|---|
-| SQL Injection | 7 | critical – medium | ✅ enabled |
-| XSS | 7 | critical – medium | ✅ enabled |
-| Path Traversal | 4 | critical – medium | ✅ enabled |
-| Command Injection | 3 | critical – high | ✅ enabled |
-| NoSQL Injection | 3 | critical – high | ✅ enabled |
-| SSRF | 3 | critical – high | ⚠️ opt-in |
+| SQL Injection | 7 | critical â€“ medium | âœ… enabled |
+| XSS | 7 | critical â€“ medium | âœ… enabled |
+| Path Traversal | 4 | critical â€“ medium | âœ… enabled |
+| Command Injection | 3 | critical â€“ high | âœ… enabled |
+| NoSQL Injection | 3 | critical â€“ high | âœ… enabled |
+| SSRF | 3 | critical â€“ high | âš ï¸ opt-in |
 
 SSRF is disabled by default due to higher false-positive rates in services that accept webhook URLs. Enable it explicitly when you control all URL inputs.
 
@@ -29,7 +29,7 @@ SSRF is disabled by default due to higher false-positive rates in services that 
 ## Installation
 
 ```bash
-npm install @backendkit-labs/waf
+npm install @backendkit-labs/firewall
 ```
 
 NestJS peer dependencies (only for the `/nestjs` subpath):
@@ -46,7 +46,7 @@ npm install @nestjs/common @nestjs/core rxjs
 
 This package uses the `exports` field in `package.json` to expose the `/nestjs` subpath. TypeScript's ability to resolve it depends on the `moduleResolution` setting in your `tsconfig.json`.
 
-**Modern resolution (recommended) — no extra config needed:**
+**Modern resolution (recommended) â€” no extra config needed:**
 
 ```json
 {
@@ -56,9 +56,9 @@ This package uses the `exports` field in `package.json` to expose the `/nestjs` 
 }
 ```
 
-`"bundler"`, `"node16"`, and `"nodenext"` all understand the `exports` field natively. This is the recommended setting for any project using a bundler or NestJS on TypeScript ≥ 5.
+`"bundler"`, `"node16"`, and `"nodenext"` all understand the `exports` field natively. This is the recommended setting for any project using a bundler or NestJS on TypeScript â‰¥ 5.
 
-**Legacy resolution (`"node"`) — add a `paths` alias:**
+**Legacy resolution (`"node"`) â€” add a `paths` alias:**
 
 NestJS projects generated before ~2024 default to `"moduleResolution": "node"`, which ignores the `exports` field. Add an explicit alias so TypeScript can find the types:
 
@@ -67,15 +67,15 @@ NestJS projects generated before ~2024 default to `"moduleResolution": "node"`, 
   "compilerOptions": {
     "moduleResolution": "node",
     "paths": {
-      "@backendkit-labs/waf/nestjs": [
-        "./node_modules/@backendkit-labs/waf/dist/nestjs/index"
+      "@backendkit-labs/firewall/nestjs": [
+        "./node_modules/@backendkit-labs/firewall/dist/nestjs/index"
       ]
     }
   }
 }
 ```
 
-> **Why?** The `"node"` resolver was designed before subpath exports existed and only reads `main`/`types` at the package root — it ignores the `exports` map entirely. The `paths` alias manually points TypeScript to the correct `.d.ts` file.
+> **Why?** The `"node"` resolver was designed before subpath exports existed and only reads `main`/`types` at the package root â€” it ignores the `exports` map entirely. The `paths` alias manually points TypeScript to the correct `.d.ts` file.
 
 ### NestJS decorator support
 
@@ -99,10 +99,10 @@ import 'reflect-metadata';
 
 ---
 
-## Quick Start — Framework-agnostic
+## Quick Start â€” Framework-agnostic
 
 ```typescript
-import { WafScanner } from '@backendkit-labs/waf';
+import { WafScanner } from '@backendkit-labs/firewall';
 
 const scanner = new WafScanner();
 
@@ -115,12 +115,12 @@ if (!result.clean) {
 
 ---
 
-## Quick Start — NestJS
+## Quick Start â€” NestJS
 
 ```typescript
 // app.module.ts
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { WafModule, WafMiddleware } from '@backendkit-labs/waf/nestjs';
+import { WafModule, WafMiddleware } from '@backendkit-labs/firewall/nestjs';
 
 @Module({
   imports: [
@@ -157,7 +157,7 @@ const scanner = new WafScanner(options?);
 
 ### `scan(data, location)`
 
-Scans any value — string, object, array, or nested structure — for threats. Recursively extracts all string values including **object keys** (critical for NoSQL injection detection).
+Scans any value â€” string, object, array, or nested structure â€” for threats. Recursively extracts all string values including **object keys** (critical for NoSQL injection detection).
 
 ```typescript
 const result = scanner.scan(req.body, 'body');
@@ -185,7 +185,7 @@ new WafScanner({
     'path-traversal': true, // default: true
     'cmd-injection':  true, // default: true
     'nosql-injection': true, // default: true
-    ssrf:          false, // default: false — opt-in
+    ssrf:          false, // default: false â€” opt-in
   },
 
   // Custom rules merged on top of built-in ones
@@ -226,7 +226,7 @@ new WafScanner({
 | Rule ID | Pattern | Severity |
 |---------|---------|---------|
 | `xss-001` | `<script>` tag injection | critical |
-| `xss-002` | Inline event handler (`onerror=`, `onclick=`, …) | high |
+| `xss-002` | Inline event handler (`onerror=`, `onclick=`, â€¦) | high |
 | `xss-003` | `javascript:` / `vbscript:` protocol | critical |
 | `xss-004` | `document.cookie` / `document.write` | high |
 | `xss-005` | `eval()` call | high |
@@ -254,7 +254,7 @@ new WafScanner({
 
 | Rule ID | Pattern | Severity |
 |---------|---------|---------|
-| `nosql-001` | MongoDB comparison operators (`$gt`, `$lt`, `$ne`, `$in` …) | critical |
+| `nosql-001` | MongoDB comparison operators (`$gt`, `$lt`, `$ne`, `$in` â€¦) | critical |
 | `nosql-002` | MongoDB evaluation operators (`$where`, `$regex`, `$expr`) | critical |
 | `nosql-003` | MongoDB logical operators (`$or`, `$and`, `$nor`) | high |
 
@@ -262,7 +262,7 @@ new WafScanner({
 
 | Rule ID | Pattern | Severity |
 |---------|---------|---------|
-| `ssrf-001` | RFC-1918 private IP in URL (`10.x`, `192.168.x`, …) | high |
+| `ssrf-001` | RFC-1918 private IP in URL (`10.x`, `192.168.x`, â€¦) | high |
 | `ssrf-002` | Localhost / `0.0.0.0` in URL | high |
 | `ssrf-003` | AWS EC2 metadata endpoint (`169.254.169.254`) | critical |
 
@@ -274,9 +274,9 @@ new WafScanner({
 
 ```typescript
 WafModule.forRoot({
-  // 'block'   — reject with 403 (default)
-  // 'log'     — allow but call onThreat and attach req.wafThreats
-  // 'monitor' — allow and call onThreat, no console output
+  // 'block'   â€” reject with 403 (default)
+  // 'log'     â€” allow but call onThreat and attach req.wafThreats
+  // 'monitor' â€” allow and call onThreat, no console output
   mode: 'block',
 
   rules: {
@@ -284,7 +284,7 @@ WafModule.forRoot({
     'cmd-injection': false, // disable for this service
   },
 
-  scanTargets: ['query', 'body', 'params'], // default — add 'headers' or 'cookies' if needed
+  scanTargets: ['query', 'body', 'params'], // default â€” add 'headers' or 'cookies' if needed
 
   excludePaths: ['/health', '/metrics', '/favicon.ico'],
 
@@ -307,7 +307,7 @@ Apply to all routes in `AppModule.configure()`:
 
 ```typescript
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { WafMiddleware } from '@backendkit-labs/waf/nestjs';
+import { WafMiddleware } from '@backendkit-labs/firewall/nestjs';
 
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -328,7 +328,7 @@ export class AppModule implements NestModule {
 }
 ```
 
-**Log / monitor mode** — the request continues and threats are attached to the request object for downstream inspection:
+**Log / monitor mode** â€” the request continues and threats are attached to the request object for downstream inspection:
 
 ```typescript
 // In a guard or interceptor
@@ -340,7 +340,7 @@ const threats = (req as any).wafThreats; // WafThreat[] | undefined
 Validates individual controller parameters. Throws `BadRequestException` when a threat is detected.
 
 ```typescript
-import { SanitizePipe } from '@backendkit-labs/waf/nestjs';
+import { SanitizePipe } from '@backendkit-labs/firewall/nestjs';
 
 @Controller('users')
 export class UsersController {
@@ -371,10 +371,10 @@ export class UsersController {
 
 ### Why not `g` flag on patterns?
 
-`RegExp` objects with the `g` flag are **stateful** — `.test()` advances `lastIndex` after a match. When rules are instantiated once and reused across requests (as they must be for performance), using `g` causes every second call to return a false negative:
+`RegExp` objects with the `g` flag are **stateful** â€” `.test()` advances `lastIndex` after a match. When rules are instantiated once and reused across requests (as they must be for performance), using `g` causes every second call to return a false negative:
 
 ```typescript
-const pattern = /UNION\s+SELECT/gi; // ← has `g`
+const pattern = /UNION\s+SELECT/gi; // â† has `g`
 pattern.test("UNION SELECT null"); // true  (lastIndex = 16)
 pattern.test("UNION SELECT null"); // false (starts from lastIndex 16, no match)
 pattern.test("UNION SELECT null"); // true  (lastIndex reset after miss)
@@ -386,7 +386,7 @@ All built-in rules use the `i` flag only. If you write custom rules, never use `
 
 `JSON.stringify` converts `{ "$ne": null }` to `'{"$ne":null}'` which looks like a string and matches patterns. But it also adds quotes, escapes characters, and makes it hard to report which field was attacked.
 
-This scanner recursively walks the object and scans **keys and values separately** — so `{ password: { "$ne": null } }` is caught via the key `$ne`, with the field reported as `password.$ne[key]`.
+This scanner recursively walks the object and scans **keys and values separately** â€” so `{ password: { "$ne": null } }` is caught via the key `$ne`, with the field reported as `password.$ne[key]`.
 
 ### SSRF is opt-in
 
@@ -397,12 +397,12 @@ Patterns like `http://192.168.x.x` have a high false-positive rate in services t
 ## Architecture
 
 ```
-@backendkit-labs/waf             (core — zero runtime dependencies)
+@backendkit-labs/firewall             (core â€” zero runtime dependencies)
   WafScanner                     detection engine
   BUILT_IN_RULES                 23 pre-compiled rules across 6 categories
   WafScanResult / WafThreat      result types
 
-@backendkit-labs/waf/nestjs      (optional NestJS layer)
+@backendkit-labs/firewall/nestjs      (optional NestJS layer)
   WafModule                      DynamicModule with forRoot()
   WafMiddleware                  global request scanner
   SanitizePipe                   per-param / per-body validation
@@ -412,4 +412,5 @@ Patterns like `http://192.168.x.x` have a high false-positive rate in services t
 
 ## License
 
-MIT — [BackendKit Labs](https://github.com/backendkit-dev)
+MIT â€” [BackendKit Labs](https://github.com/backendkit-dev)
+

@@ -1,6 +1,6 @@
 {
-  "name": "@backendkit-labs/waf",
-  "version": "0.1.1",
+  "name": "@backendkit-labs/firewall",
+  "version": "0.1.2",
   "description": "Web Application Firewall for Node.js — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection with optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -35,11 +35,11 @@
   ],
   "author": "Mairon José Cuello Martínez",
   "license": "MIT",
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/waf#readme",
+  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/firewall#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
-    "directory": "packages/waf"
+    "directory": "packages/firewall"
   },
   "bugs": { "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues" },
   "publishConfig": { "access": "public" },
