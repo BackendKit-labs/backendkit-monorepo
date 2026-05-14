@@ -1,6 +1,6 @@
 {
   "name": "@backendkit-labs/bulkhead",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Bulkhead concurrency limiting for Node.js — inspired by Resilience4j, with optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",

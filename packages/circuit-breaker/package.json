@@ -1,6 +1,6 @@
 {
   "name": "@backendkit-labs/circuit-breaker",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Circuit Breaker pattern for Node.js — fail-fast with business vs infrastructure error classification, optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",

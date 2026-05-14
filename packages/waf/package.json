@@ -1,6 +1,6 @@
 {
   "name": "@backendkit-labs/waf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Web Application Firewall for Node.js — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection with optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
