@@ -25,6 +25,82 @@ npm install @nestjs/common @nestjs/core rxjs
 
 ---
 
+## TypeScript Configuration
+
+### Subpath exports (`/nestjs`)
+
+This package uses the `exports` field in `package.json` to expose the `/nestjs` subpath. TypeScript's ability to resolve it depends on the `moduleResolution` setting in your `tsconfig.json`.
+
+**Modern resolution (recommended) — no extra config needed:**
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+`"bundler"`, `"node16"`, and `"nodenext"` all understand the `exports` field natively. This is the recommended setting for any project using a bundler (Webpack, esbuild, Vite) or for NestJS projects on TypeScript ≥ 5.
+
+**Legacy resolution (`"node"`) — add `paths` aliases:**
+
+NestJS projects generated before ~2024 default to `"moduleResolution": "node"`, which ignores the `exports` field entirely. TypeScript won't find the types for `@backendkit-labs/pipeline/nestjs` unless you add explicit path aliases:
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "paths": {
+      "@backendkit-labs/pipeline/nestjs": [
+        "./node_modules/@backendkit-labs/pipeline/dist/nestjs/index"
+      ]
+    }
+  }
+}
+```
+
+> **Why does this happen?** The `"node"` resolver was designed before subpath exports existed. It only knows how to find `main` and `types` at the root of a package — it does not read the `exports` map. The `paths` alias manually points TypeScript to the right `.d.ts` file for the subpath.
+>
+> The `splitting: true` tsup option (which this package uses) and this `paths` configuration solve completely different problems. `splitting` fixes a **runtime** class identity issue — ensuring there is only one copy of a class in memory across both bundles. The `paths` alias fixes a **compile-time** issue — helping TypeScript find the types. Both may be needed in a legacy project.
+
+---
+
+### NestJS decorator support
+
+NestJS requires two compiler options to be enabled:
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+And `reflect-metadata` must be imported once at application startup, before any NestJS module is loaded:
+
+```typescript
+// main.ts
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+> NestJS CLI scaffolds both of these automatically. You only need to check this if you are setting up a project manually or if decorator-related DI errors appear at runtime.
+
+---
+
 ## Quick Start — Framework-agnostic
 
 ```typescript
