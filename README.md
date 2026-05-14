@@ -36,4 +36,4 @@ npm run lint
 
 ## License
 
-MIT
+Apache-2.0

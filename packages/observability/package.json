@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "@backendkit-labs/observability",
   "version": "0.1.0",
-  "description": "Structured logging, metrics, correlation ID propagation, and exception handling for NestJS — no OTel SDK required",
+  "description": "Structured logging, metrics, correlation ID propagation, and exception handling for NestJS â€” no OTel SDK required",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -28,8 +28,8 @@
     "observability", "logging", "metrics", "correlation-id", "nestjs",
     "winston", "opentelemetry", "tracing", "structured-logging", "node"
   ],
-  "author": "Mairon José Cuello Martínez",
-  "license": "MIT",
+  "author": "Mairon JosÃ© Cuello MartÃ­nez",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/observability#readme",
   "repository": {
     "type": "git",
@@ -71,3 +71,4 @@
     "vitest":               "^2.0.0"
   }
 }
+

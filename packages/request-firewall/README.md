@@ -412,6 +412,6 @@ Patterns like `http://192.168.x.x` have a high false-positive rate in services t
 
 ## License
 
-MIT â€” [BackendKit Labs](https://github.com/backendkit-dev)
+Apache-2.0 â€” [BackendKit Labs](https://github.com/backendkit-dev)
 
 

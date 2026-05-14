@@ -1,4 +1,4 @@
-# @backendkit-labs/observability
+﻿# @backendkit-labs/observability
 
 Structured logging, distributed tracing correlation, metrics shipping, performance interceptors, and exception handling for **NestJS** — with optional OpenTelemetry integration.
 
@@ -364,4 +364,4 @@ The same `circuitBreaker` option is available on the `http` log transport.
 
 ## License
 
-MIT
+Apache-2.0

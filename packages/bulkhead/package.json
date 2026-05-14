@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "@backendkit-labs/bulkhead",
   "version": "0.1.1",
-  "description": "Bulkhead concurrency limiting for Node.js — inspired by Resilience4j, with optional NestJS integration",
+  "description": "Bulkhead concurrency limiting for Node.js â€” inspired by Resilience4j, with optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -44,8 +44,8 @@
     "node",
     "backend"
   ],
-  "author": "Mairon José Cuello Martínez <[backendkit.dev@gmail.com - mmairon@gmail.com]>",
-  "license": "MIT",
+  "author": "Mairon JosÃ© Cuello MartÃ­nez <[backendkit.dev@gmail.com - mmairon@gmail.com]>",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/bulkhead#readme",
   "repository": {
     "type": "git",
@@ -88,3 +88,4 @@
     "vitest": "^2.0.0"
   }
 }
+

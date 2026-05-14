@@ -1,4 +1,4 @@
-# @backendkit-labs/console-animations
+﻿# @backendkit-labs/console-animations
 
 [![npm version](https://img.shields.io/npm/v/@backendkit-labs/console-animations?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/console-animations)
 [![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
@@ -331,4 +331,4 @@ npx tsx examples/async-workflow.ts
 
 ## License
 
-MIT — [BackendKit Labs](https://github.com/backendkit-dev)
+Apache-2.0 — [BackendKit Labs](https://github.com/backendkit-dev)

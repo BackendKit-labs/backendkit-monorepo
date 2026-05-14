@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "@backendkit-labs/http-client",
   "version": "0.1.0",
-  "description": "Production-grade HTTP client for Node.js — built on axios with circuit breaker, retry with backoff, request cancellation, typed Result responses, pipeline middleware, and optional NestJS integration",
+  "description": "Production-grade HTTP client for Node.js â€” built on axios with circuit breaker, retry with backoff, request cancellation, typed Result responses, pipeline middleware, and optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -33,8 +33,8 @@
     "http", "axios", "circuit-breaker", "retry", "result",
     "pipeline", "cancel", "nestjs", "node", "typescript"
   ],
-  "author": "Mairon José Cuello Martínez",
-  "license": "MIT",
+  "author": "Mairon JosÃ© Cuello MartÃ­nez",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/http-client#readme",
   "repository": {
     "type": "git",
@@ -77,3 +77,4 @@
     "vitest":            "^2.0.0"
   }
 }
+

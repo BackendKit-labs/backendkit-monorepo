@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "@backendkit-labs/pipeline",
   "version": "0.1.0",
-  "description": "Type-safe async pipeline — Chain of Responsibility with stop-on-first / collect-all modes, conditional steps, observability hooks, and optional NestJS integration",
+  "description": "Type-safe async pipeline â€” Chain of Responsibility with stop-on-first / collect-all modes, conditional steps, observability hooks, and optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -33,8 +33,8 @@
     "pipeline", "chain-of-responsibility", "middleware", "handler",
     "async", "typescript", "nestjs", "node", "pattern"
   ],
-  "author": "Mairon José Cuello Martínez",
-  "license": "MIT",
+  "author": "Mairon JosÃ© Cuello MartÃ­nez",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/pipeline#readme",
   "repository": {
     "type": "git",
@@ -69,3 +69,4 @@
     "vitest":            "^2.0.0"
   }
 }
+

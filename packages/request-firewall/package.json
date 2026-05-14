@@ -1,10 +1,10 @@
-{
+﻿{
   "name": "@backendkit-labs/request-firewall",
   "version": "0.1.3",
   "publishConfig": {
     "access": "public"
   },
-  "description": "Web Application Firewall for Node.js — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection with optional NestJS integration",
+  "description": "Web Application Firewall for Node.js â€” SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection with optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -48,8 +48,8 @@
     "middleware",
     "node"
   ],
-  "author": "Mairon José Cuello Martínez",
-  "license": "MIT",
+  "author": "Mairon JosÃ© Cuello MartÃ­nez",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/request-firewall#readme",
   "repository": {
     "type": "git",

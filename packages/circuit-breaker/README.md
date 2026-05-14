@@ -1,4 +1,4 @@
-# @backendkit-labs/circuit-breaker
+﻿# @backendkit-labs/circuit-breaker
 
 [![npm version](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker)
 [![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
@@ -636,4 +636,4 @@ The core is a pure TypeScript library with no runtime dependencies. The NestJS l
 
 ## License
 
-MIT — [BackendKit Labs](https://github.com/backendkit-dev)
+Apache-2.0 — [BackendKit Labs](https://github.com/backendkit-dev)

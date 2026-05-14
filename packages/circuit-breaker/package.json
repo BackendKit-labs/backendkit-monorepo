@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "@backendkit-labs/circuit-breaker",
   "version": "0.1.1",
-  "description": "Circuit Breaker pattern for Node.js — fail-fast with business vs infrastructure error classification, optional NestJS integration",
+  "description": "Circuit Breaker pattern for Node.js â€” fail-fast with business vs infrastructure error classification, optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -43,8 +43,8 @@
     "node",
     "backend"
   ],
-  "author": "Mairon José Cuello Martínez <[backendkit.dev@gmail.com - mmairon@gmail.com]>",
-  "license": "MIT",
+  "author": "Mairon JosÃ© Cuello MartÃ­nez <[backendkit.dev@gmail.com - mmairon@gmail.com]>",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/circuit-breaker#readme",
   "repository": {
     "type": "git",
@@ -84,3 +84,4 @@
     "vitest": "^2.0.0"
   }
 }
+
