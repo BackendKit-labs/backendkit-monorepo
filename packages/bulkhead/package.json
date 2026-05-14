@@ -55,6 +55,7 @@
   "bugs": {
     "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
   },
+  "publishConfig": { "access": "public" },
   "sideEffects": false,
   "engines": {
     "node": ">=18"
