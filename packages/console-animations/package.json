@@ -1,6 +1,11 @@
 ﻿{
   "name": "@backendkit-labs/console-animations",
   "version": "0.1.2",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "backendkit.dev@gmail.com"
+  },
   "description": "Enterprise-grade terminal animations library for Node.js CLI applications",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -41,8 +46,6 @@
     "progress",
     "console"
   ],
-  "author": "Mairon JosÃ© Cuello MartÃ­nez <[backendkit.dev@gmail.com - mmairon@gmail.com]>",
-  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/console-animations#readme",
   "repository": {
     "type": "git",
@@ -52,7 +55,9 @@
   "bugs": {
     "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": false,
   "engines": {
     "node": ">=18"

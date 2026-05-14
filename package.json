@@ -1,19 +1,32 @@
 {
   "name": "backendkit-monorepo",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "backendkit.dev@gmail.com"
+  },
+  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/backendkit-dev/backendkit-monorepo.git"
+  },
   "private": true,
   "description": "Monorepo for BackendKit Labs - Reusable backend libraries",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "build":        "turbo run build",
-    "dev":          "turbo run dev",
-    "test":         "turbo run test",
-    "lint":         "turbo run lint",
-    "typecheck":    "turbo run typecheck",
-    "format":       "prettier --write \"packages/*/src/**/*.ts\"",
-    "clean":        "turbo run clean",
-    "docs:dev":     "npm run dev     --workspace=apps/docs",
-    "docs:build":   "npm run build   --workspace=apps/docs",
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"packages/*/src/**/*.ts\"",
+    "clean": "turbo run clean",
+    "docs:dev": "npm run dev     --workspace=apps/docs",
+    "docs:build": "npm run build   --workspace=apps/docs",
     "docs:preview": "npm run preview --workspace=apps/docs"
   },
   "devDependencies": {

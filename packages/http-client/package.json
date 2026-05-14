@@ -1,6 +1,11 @@
 ﻿{
   "name": "@backendkit-labs/http-client",
   "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "backendkit.dev@gmail.com"
+  },
   "description": "Production-grade HTTP client for Node.js â€” built on axios with circuit breaker, retry with backoff, request cancellation, typed Result responses, pipeline middleware, and optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -8,73 +13,94 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types":   "./dist/index.d.ts",
-      "import":  "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./nestjs": {
-      "types":   "./dist/nestjs/index.d.ts",
-      "import":  "./dist/nestjs/index.js",
+      "types": "./dist/nestjs/index.d.ts",
+      "import": "./dist/nestjs/index.js",
       "require": "./dist/nestjs/index.cjs"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build":          "tsup",
-    "dev":            "tsup --watch",
-    "test":           "vitest run",
-    "test:watch":     "vitest",
-    "test:coverage":  "vitest run --coverage",
-    "typecheck":      "tsc --noEmit",
-    "lint":           "eslint src/",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
     "prepublishOnly": "npm run build && npm run test && npm run lint"
   },
   "keywords": [
-    "http", "axios", "circuit-breaker", "retry", "result",
-    "pipeline", "cancel", "nestjs", "node", "typescript"
+    "http",
+    "axios",
+    "circuit-breaker",
+    "retry",
+    "result",
+    "pipeline",
+    "cancel",
+    "nestjs",
+    "node",
+    "typescript"
   ],
-  "author": "Mairon JosÃ© Cuello MartÃ­nez",
-  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/http-client#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
     "directory": "packages/http-client"
   },
-  "bugs": { "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues" },
-  "publishConfig": { "access": "public" },
+  "bugs": {
+    "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": false,
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@backendkit-labs/circuit-breaker": "*",
-    "@backendkit-labs/pipeline":        "*",
-    "@backendkit-labs/result":          "*"
+    "@backendkit-labs/pipeline": "*",
+    "@backendkit-labs/result": "*"
   },
   "peerDependencies": {
     "@nestjs/common": ">=10.0.0",
-    "@nestjs/core":   ">=10.0.0",
-    "axios":          ">=1.0.0",
-    "rxjs":           ">=7.0.0"
+    "@nestjs/core": ">=10.0.0",
+    "axios": ">=1.0.0",
+    "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "@nestjs/common": { "optional": true },
-    "@nestjs/core":   { "optional": true },
-    "rxjs":           { "optional": true }
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@nestjs/core": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "@eslint/js":        "^9.39.4",
-    "@nestjs/common":    "^10.0.0",
-    "@nestjs/core":      "^10.0.0",
-    "@types/node":       "^22.0.0",
-    "axios":             "^1.7.0",
+    "@eslint/js": "^9.39.4",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "axios": "^1.7.0",
     "axios-mock-adapter": "^2.1.0",
-    "eslint":            "^9.0.0",
-    "reflect-metadata":  "^0.2.0",
-    "rxjs":              "^7.8.0",
-    "tsup":              "^8.0.0",
-    "typescript":        "^5.5.0",
+    "eslint": "^9.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
     "typescript-eslint": "^8.59.3",
-    "vitest":            "^2.0.0"
+    "vitest": "^2.0.0"
   }
 }
-

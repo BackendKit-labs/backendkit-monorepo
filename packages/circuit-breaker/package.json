@@ -1,6 +1,11 @@
 ﻿{
   "name": "@backendkit-labs/circuit-breaker",
   "version": "0.1.1",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "backendkit.dev@gmail.com"
+  },
   "description": "Circuit Breaker pattern for Node.js â€” fail-fast with business vs infrastructure error classification, optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -43,8 +48,6 @@
     "node",
     "backend"
   ],
-  "author": "Mairon JosÃ© Cuello MartÃ­nez <[backendkit.dev@gmail.com - mmairon@gmail.com]>",
-  "license": "Apache-2.0",
   "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/circuit-breaker#readme",
   "repository": {
     "type": "git",
@@ -54,7 +57,9 @@
   "bugs": {
     "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": false,
   "engines": {
     "node": ">=18"
@@ -65,9 +70,15 @@
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "@nestjs/common": { "optional": true },
-    "@nestjs/core": { "optional": true },
-    "rxjs": { "optional": true }
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@nestjs/core": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -84,4 +95,3 @@
     "vitest": "^2.0.0"
   }
 }
-

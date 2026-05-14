@@ -1,6 +1,17 @@
 ﻿{
   "name": "@backendkit-labs/bulkhead",
   "version": "0.1.1",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "backendkit.dev@gmail.com"
+  },
+  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/backendkit-dev/backendkit-monorepo.git",
+    "directory": "packages/bulkhead"
+  },
   "description": "Bulkhead concurrency limiting for Node.js â€” inspired by Resilience4j, with optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -44,18 +55,12 @@
     "node",
     "backend"
   ],
-  "author": "Mairon JosÃ© Cuello MartÃ­nez <[backendkit.dev@gmail.com - mmairon@gmail.com]>",
-  "license": "Apache-2.0",
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/bulkhead#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
-    "directory": "packages/bulkhead"
-  },
   "bugs": {
     "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": false,
   "engines": {
     "node": ">=18"
@@ -67,10 +72,18 @@
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "@nestjs/common": { "optional": true },
-    "@nestjs/core": { "optional": true },
-    "express": { "optional": true },
-    "rxjs": { "optional": true }
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@nestjs/core": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -88,4 +101,3 @@
     "vitest": "^2.0.0"
   }
 }
-
