@@ -1,9 +1,9 @@
-﻿# @backendkit-labs/request-firewall
+﻿# @backendkit-labs/http-shield
 
-[![npm version](https://img.shields.io/npm/v/@backendkit-labs/request-firewall?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/request-firewall)
+[![npm version](https://img.shields.io/npm/v/@backendkit-labs/http-shield?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/http-shield)
 [![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/request-firewall?style=flat-square)](LICENSE)
-[![Node](https://img.shields.io/node/v/@backendkit-labs/request-firewall?style=flat-square)](package.json)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/http-shield?style=flat-square)](LICENSE)
+[![Node](https://img.shields.io/node/v/@backendkit-labs/http-shield?style=flat-square)](package.json)
 
 > Web Application Firewall for Node.js â€” pattern-based threat detection with optional NestJS integration.
 
@@ -29,7 +29,7 @@ SSRF is disabled by default due to higher false-positive rates in services that 
 ## Installation
 
 ```bash
-npm install @backendkit-labs/request-firewall
+npm install @backendkit-labs/http-shield
 ```
 
 NestJS peer dependencies (only for the `/nestjs` subpath):
@@ -67,8 +67,8 @@ NestJS projects generated before ~2024 default to `"moduleResolution": "node"`, 
   "compilerOptions": {
     "moduleResolution": "node",
     "paths": {
-      "@backendkit-labs/request-firewall/nestjs": [
-        "./node_modules/@backendkit-labs/request-firewall/dist/nestjs/index"
+      "@backendkit-labs/http-shield/nestjs": [
+        "./node_modules/@backendkit-labs/http-shield/dist/nestjs/index"
       ]
     }
   }
@@ -102,7 +102,7 @@ import 'reflect-metadata';
 ## Quick Start â€” Framework-agnostic
 
 ```typescript
-import { WafScanner } from '@backendkit-labs/request-firewall';
+import { WafScanner } from '@backendkit-labs/http-shield';
 
 const scanner = new WafScanner();
 
@@ -120,7 +120,7 @@ if (!result.clean) {
 ```typescript
 // app.module.ts
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { WafModule, WafMiddleware } from '@backendkit-labs/request-firewall/nestjs';
+import { WafModule, WafMiddleware } from '@backendkit-labs/http-shield/nestjs';
 
 @Module({
   imports: [
@@ -307,7 +307,7 @@ Apply to all routes in `AppModule.configure()`:
 
 ```typescript
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { WafMiddleware } from '@backendkit-labs/request-firewall/nestjs';
+import { WafMiddleware } from '@backendkit-labs/http-shield/nestjs';
 
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -340,7 +340,7 @@ const threats = (req as any).wafThreats; // WafThreat[] | undefined
 Validates individual controller parameters. Throws `BadRequestException` when a threat is detected.
 
 ```typescript
-import { SanitizePipe } from '@backendkit-labs/request-firewall/nestjs';
+import { SanitizePipe } from '@backendkit-labs/http-shield/nestjs';
 
 @Controller('users')
 export class UsersController {
@@ -397,12 +397,12 @@ Patterns like `http://192.168.x.x` have a high false-positive rate in services t
 ## Architecture
 
 ```
-@backendkit-labs/request-firewall             (core â€” zero runtime dependencies)
+@backendkit-labs/http-shield             (core â€” zero runtime dependencies)
   WafScanner                     detection engine
   BUILT_IN_RULES                 23 pre-compiled rules across 6 categories
   WafScanResult / WafThreat      result types
 
-@backendkit-labs/request-firewall/nestjs      (optional NestJS layer)
+@backendkit-labs/http-shield/nestjs      (optional NestJS layer)
   WafModule                      DynamicModule with forRoot()
   WafMiddleware                  global request scanner
   SanitizePipe                   per-param / per-body validation

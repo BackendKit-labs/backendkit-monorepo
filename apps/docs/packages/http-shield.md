@@ -1,13 +1,13 @@
----
+﻿---
 title: Request Firewall
 description: Web Application Firewall for Node.js — 23 built-in threat-detection rules across 6 attack categories, framework-agnostic core, and optional NestJS integration.
 ---
 
-# @backendkit-labs/request-firewall
+# @backendkit-labs/http-shield
 
-[![npm](https://img.shields.io/npm/v/@backendkit-labs/request-firewall?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/request-firewall)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/request-firewall?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
-[![Node](https://img.shields.io/node/v/@backendkit-labs/request-firewall?style=flat-square)](https://nodejs.org)
+[![npm](https://img.shields.io/npm/v/@backendkit-labs/http-shield?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/http-shield)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/http-shield?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![Node](https://img.shields.io/node/v/@backendkit-labs/http-shield?style=flat-square)](https://nodejs.org)
 
 > Web Application Firewall for Node.js. Pattern-based threat detection with 23 built-in rules across 6 attack categories. Zero runtime dependencies.
 
@@ -16,7 +16,7 @@ Framework-agnostic core that works in any Node.js project. Optional NestJS integ
 ## Installation
 
 ```bash
-npm install @backendkit-labs/request-firewall
+npm install @backendkit-labs/http-shield
 ```
 
 NestJS peer dependencies (only for the `/nestjs` subpath):
@@ -43,7 +43,7 @@ SSRF detection patterns match URLs and IP ranges, which can produce false positi
 ## Quick Start
 
 ```typescript
-import { WafScanner } from '@backendkit-labs/request-firewall';
+import { WafScanner } from '@backendkit-labs/http-shield';
 
 const scanner = new WafScanner();
 
@@ -121,7 +121,7 @@ if (allThreats.length > 0) {
 ### Standalone usage (Express, Fastify, plain Node.js)
 
 ```typescript
-import { WafScanner } from '@backendkit-labs/request-firewall';
+import { WafScanner } from '@backendkit-labs/http-shield';
 
 const scanner = new WafScanner({ rules: { ssrf: true } });
 
@@ -151,7 +151,7 @@ app.use(wafMiddleware);
 
 ```typescript
 // app.module.ts
-import { WafModule, WafMiddleware } from '@backendkit-labs/request-firewall/nestjs';
+import { WafModule, WafMiddleware } from '@backendkit-labs/http-shield/nestjs';
 import { NestModule, MiddlewareConsumer, Module } from '@nestjs/common';
 
 @Module({
@@ -219,7 +219,7 @@ Paths in `excludePaths` receive no scanning and pass through immediately.
 Apply at the controller level to scan individual parameters. Throws `BadRequestException` if the value contains threats.
 
 ```typescript
-import { SanitizePipe } from '@backendkit-labs/request-firewall/nestjs';
+import { SanitizePipe } from '@backendkit-labs/http-shield/nestjs';
 import { Controller, Get, Post, Param, Body } from '@nestjs/common';
 
 @Controller('products')
@@ -265,8 +265,8 @@ Add a path alias for the NestJS subpath:
   "compilerOptions": {
     "moduleResolution": "node",
     "paths": {
-      "@backendkit-labs/request-firewall/nestjs": [
-        "./node_modules/@backendkit-labs/request-firewall/dist/nestjs/index"
+      "@backendkit-labs/http-shield/nestjs": [
+        "./node_modules/@backendkit-labs/http-shield/dist/nestjs/index"
       ]
     }
   }
@@ -276,13 +276,13 @@ Add a path alias for the NestJS subpath:
 ## Architecture
 
 ```
-@backendkit-labs/request-firewall              (core — zero runtime dependencies)
+@backendkit-labs/http-shield              (core — zero runtime dependencies)
   WafScanner                                   pattern-based scanner with configurable rules
   WafThreat                                    structured threat report (ruleId, field, value, ...)
   23 built-in rules across 6 categories        SQL injection, XSS, Path Traversal,
                                                Command Injection, NoSQL Injection, SSRF
 
-@backendkit-labs/request-firewall/nestjs       (optional NestJS layer)
+@backendkit-labs/http-shield/nestjs       (optional NestJS layer)
   WafModule                                    NestJS module — .forRoot() configuration
   WafMiddleware                                global request scanning middleware
   SanitizePipe                                 per-parameter NestJS pipe

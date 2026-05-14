@@ -1,4 +1,4 @@
----
+﻿---
 layout: home
 
 hero:
@@ -48,10 +48,10 @@ features:
     link: /packages/http-client
     linkText: Explore HTTP Client
   - icon: 🔥
-    title: Request Firewall
+    title: HTTP Shield
     details: WAF for Node.js with 23 built-in rules across 6 attack categories — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF. Framework-agnostic core + NestJS middleware and pipe.
-    link: /packages/request-firewall
-    linkText: Explore Request Firewall
+    link: /packages/http-shield
+    linkText: Explore HTTP Shield
   - icon: 🎬
     title: Console Animations
     details: 17 built-in terminal animations for Node.js CLIs — spinners, progress bars, visual effects. CI-aware, zero runtime dependencies.

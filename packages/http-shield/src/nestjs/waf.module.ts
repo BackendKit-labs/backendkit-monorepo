@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+﻿import { DynamicModule, Module } from '@nestjs/common';
 import { WafScanner } from '../core/scanner.js';
 import { SanitizePipe } from './sanitize.pipe.js';
 import { WafMiddleware } from './waf.middleware.js';
@@ -7,7 +7,7 @@ import { WAF_OPTIONS, type WafModuleOptions } from './waf.options.js';
 /**
  * @example
  * // app.module.ts
- * import { WafModule } from '@backendkit-labs/request-firewall/nestjs';
+ * import { WafModule } from '@backendkit-labs/http-shield/nestjs';
  *
  * @Module({
  *   imports: [WafModule.forRoot({ mode: 'block', excludePaths: ['/health'] })],

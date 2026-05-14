@@ -1,6 +1,6 @@
-﻿{
-  "name": "@backendkit-labs/request-firewall",
-  "version": "0.1.3",
+{
+  "name": "@backendkit-labs/http-shield",
+  "version": "0.1.4",
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
@@ -53,11 +53,11 @@
     "middleware",
     "node"
   ],
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/request-firewall#readme",
+  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/http-shield#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
-    "directory": "packages/request-firewall"
+    "directory": "packages/http-shield"
   },
   "bugs": {
     "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
