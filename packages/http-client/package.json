@@ -50,7 +50,7 @@
     "node",
     "typescript"
   ],
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/http-client#readme",
+  "homepage": "https://backendkitlabs.dev/docs/http-client/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",

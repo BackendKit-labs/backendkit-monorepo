@@ -48,7 +48,7 @@
     "node",
     "backend"
   ],
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/circuit-breaker#readme",
+  "homepage": "https://backendkitlabs.dev/docs/circuit-breaker/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",

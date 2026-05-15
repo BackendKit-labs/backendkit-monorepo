@@ -4,6 +4,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/npm/l/@backendkit-labs/http-client?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/http-client?style=flat-square)](package.json)
+[![Docs](https://img.shields.io/badge/docs-backendkitlabs.dev-4f7eff?style=flat-square)](https://backendkitlabs.dev/docs/http-client/)
 
 > Production-grade HTTP client for Node.js — built on axios with circuit breaker, retry with exponential backoff, typed `Result<T, E>` responses, request cancellation, pre-request pipeline middleware, and optional NestJS DI integration.
 

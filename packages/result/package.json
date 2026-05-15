@@ -49,7 +49,7 @@
     "typescript",
     "node"
   ],
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/result#readme",
+  "homepage": "https://backendkitlabs.dev/docs/result/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",

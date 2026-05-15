@@ -1,8 +1,11 @@
 node_modules/
 dist/
 .turbo/
+.next/
+out/
 *.tsbuildinfo
 coverage/
+
 
 # Environment
 .env
@@ -27,6 +30,9 @@ yarn-error.log*
 
 # AI agent config
 AGENT.md
+QA-AUDIT.md
+SECURITY-REPORT.md
+informacion.md
 .deepseek-code/
 
 # Internal working notes

@@ -49,7 +49,7 @@
     "node",
     "pattern"
   ],
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/pipeline#readme",
+  "homepage": "https://backendkitlabs.dev/docs/pipeline/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",

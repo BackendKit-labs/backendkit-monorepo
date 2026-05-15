@@ -4,6 +4,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/npm/l/@backendkit-labs/pipeline?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/pipeline?style=flat-square)](package.json)
+[![Docs](https://img.shields.io/badge/docs-backendkitlabs.dev-4f7eff?style=flat-square)](https://backendkitlabs.dev/docs/pipeline/)
 
 > Type-safe async pipeline for Node.js — Chain of Responsibility pattern with stop-on-first / collect-all modes, conditional steps, observability hooks, and optional NestJS integration.
 
