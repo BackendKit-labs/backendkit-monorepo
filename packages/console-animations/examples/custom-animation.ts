@@ -39,7 +39,7 @@ const manager = new AnimationManager();
 
 // Usamos el builder para configurar
 const config = new AnimationBuilder()
-  .setType(AnimationType.SPINNER) // type placeholder, lo reemplazamos abajo
+  .setType(AnimationType.FUTURISTA) // type placeholder, lo reemplazamos abajo
   .setColor('cyan')
   .setSpeed(200)
   .setMultiline(true)

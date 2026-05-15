@@ -517,4 +517,88 @@ export class ApiController {
       },
     ],
   },
+  {
+    slug: 'console-animations',
+    name: 'console-animations',
+    npmName: '@backendkit-labs/console-animations',
+    version: '0.1.3',
+    icon: 'AN',
+    color: '#ec4899',
+    tagline: 'Enterprise-grade terminal animations for Node.js CLI tools.',
+    description:
+      '17 built-in animation presets — spinners, progress bars, matrix, fire, particle effects, and more. Fluent AnimationBuilder API, named instance registry, and full lifecycle control. Designed for production CLI tools that need clear operator feedback during long-running async operations.',
+    highlights: [
+      '17 built-in animation presets',
+      'Fluent AnimationBuilder API',
+      'Named registry for multi-animation workflows',
+      'Lifecycle hooks — start, stop, destroyAll',
+    ],
+    examples: [
+      {
+        label: 'Basic',
+        filename: 'spinner.ts',
+        code: `import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
+
+const manager = new AnimationManager();
+
+const spinner = manager.start({
+  type: AnimationType.SPINNER,
+  text: 'Fetching data...',
+  color: 'cyan',
+  speed: 80,
+});
+
+await fetchData();
+
+manager.stop(spinner.id);
+console.log('Done.');`,
+      },
+      {
+        label: 'Builder',
+        filename: 'custom.ts',
+        code: `import { AnimationBuilder, AnimationType } from '@backendkit-labs/console-animations';
+
+const anim = new AnimationBuilder()
+  .withType(AnimationType.DOTS)
+  .withText('Processing records')
+  .withColor('yellow')
+  .withSpeed(120)
+  .build();
+
+anim.start();
+await processRecords();
+anim.stop();`,
+      },
+      {
+        label: 'Multi-phase',
+        filename: 'deploy.ts',
+        code: `import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
+
+const manager = new AnimationManager();
+
+// Phase 1 — indeterminate trigger
+const build = manager.start({ type: AnimationType.SPINNER, text: 'Building', color: 'cyan' });
+await triggerBuild();
+manager.stop(build.id);
+
+// Phase 2 — open-ended polling
+const poll = manager.start({ type: AnimationType.DOTS, text: 'Waiting for CI', color: 'yellow' });
+await pollBuildStatus();
+manager.stop(poll.id);
+
+// Phase 3 — bounded promotion
+const deploy = manager.start({
+  type: AnimationType.PROGRESS_BAR,
+  text: 'Promoting to production',
+  color: 'green',
+  width: 30,
+});
+await promote();
+manager.stop(deploy.id);
+
+manager.destroyAll();
+console.log('\\nDeployed successfully.');`,
+      },
+    ],
+  },
 ];

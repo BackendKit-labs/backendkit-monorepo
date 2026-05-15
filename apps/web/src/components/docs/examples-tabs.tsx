@@ -17,6 +17,7 @@ interface ExamplesTabsProps {
 
 export function ExamplesTabs({ examples, color = '#4f7eff' }: ExamplesTabsProps) {
   const [active, setActive] = useState(0);
+  if (examples.length === 0) return null;
   const ex = examples[active];
 
   return (

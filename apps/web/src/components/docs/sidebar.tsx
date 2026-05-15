@@ -7,10 +7,16 @@ import PackageIcon from '@/components/package-icon';
 
 // Sub-sections for the examples page
 const examplesSections = [
-  { label: 'Checkout Pipeline',     href: '#checkout-pipeline' },
-  { label: 'Dashboard Aggregator',  href: '#dashboard-aggregator' },
-  { label: 'CSV Batch Import',      href: '#batch-import' },
-  { label: 'Secure Search',         href: '#secure-search' },
+  { label: 'Checkout Pipeline',         href: '#checkout-pipeline' },
+  { label: 'Dashboard Aggregator',      href: '#dashboard-aggregator' },
+  { label: 'CSV Batch Import',          href: '#batch-import' },
+  { label: 'Secure Search',             href: '#secure-search' },
+  { label: 'CLI Deployment Tool',       href: '#cli-deploy' },
+  { label: 'Webhook Delivery',          href: '#webhook-delivery' },
+  { label: 'Batch Enrichment',          href: '#batch-enrichment' },
+  { label: 'Multi-provider Failover',   href: '#multi-provider-failover' },
+  { label: 'Validation Pipeline',       href: '#validation-pipeline' },
+  { label: 'Price Aggregation',         href: '#price-aggregation' },
 ];
 
 // Sub-sections shown inside the sidebar when that package is active
@@ -73,6 +79,13 @@ const packageSections: Record<string, { label: string; href: string }[]> = {
     { label: 'NestJS Guard',      href: '#nestjs' },
     { label: 'Examples',          href: '#examples' },
     { label: 'vs. Alternatives',  href: '#comparison' },
+  ],
+  'console-animations': [
+    { label: 'Overview',          href: '#overview' },
+    { label: 'Animation Types',   href: '#types' },
+    { label: 'Manager API',       href: '#manager' },
+    { label: 'Builder API',       href: '#builder' },
+    { label: 'Examples',          href: '#examples' },
   ],
 };
 

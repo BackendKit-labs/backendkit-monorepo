@@ -1005,6 +1005,795 @@ export class SearchController {
   }
 }`;
 
+// ── Example 8: Multi-provider Payment Failover ────────────────────────────────
+
+const ex8Types = `// payment/payment.types.ts
+
+import type { Result } from '@backendkit-labs/result';
+
+/**
+ * The error union distinguishes PERMANENT failures from infrastructure failures.
+ *
+ * 'all_providers_failed' — every provider had its circuit open or returned 5xx.
+ *                          The caller may retry after a cooling period.
+ * 'card_declined'        — the card itself rejected the charge. No point trying
+ *                          other providers — they see the same card and decline too.
+ * 'invalid_card'         — structurally invalid card number / expiry / CVV.
+ *
+ * Infrastructure failures (network, 5xx, circuit open) are NOT in this union —
+ * they trigger the next provider in the failover chain, invisible to the caller.
+ */
+export type PaymentError =
+  | { type: 'all_providers_failed'; tried: PaymentProvider[] }
+  | { type: 'card_declined'; provider: PaymentProvider; code: string }
+  | { type: 'invalid_card' };
+
+export type PaymentProvider = 'stripe' | 'paypal' | 'braintree';
+
+export interface ChargeResult {
+  provider: PaymentProvider;
+  transactionId: string;
+  receiptUrl: string;
+}
+
+export type PaymentResult = Result<ChargeResult, PaymentError>;`;
+
+const ex8Service = `// payment/payment.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { ok, fail } from '@backendkit-labs/result';
+import { CircuitBreakerRegistry } from '@backendkit-labs/circuit-breaker';
+import { BulkheadRegistry } from '@backendkit-labs/bulkhead';
+import type { PaymentProvider, PaymentResult } from './payment.types';
+
+/**
+ * Sequential failover across three payment providers.
+ *
+ * Provider ordering is deliberate:
+ *   Stripe first    — best developer experience, lowest decline rates.
+ *   PayPal second   — broad consumer acceptance, separate infrastructure.
+ *   Braintree third — owned by PayPal but independent stack, useful when
+ *                     PayPal's primary stack is degraded.
+ *
+ * Each provider gets its own CircuitBreaker and Bulkhead:
+ *
+ * CircuitBreaker — isFailure MUST return false for 4xx responses.
+ *   A declined card is a business event, not an infrastructure failure.
+ *   If 4xx opened the breaker, a wave of declined cards (e.g. a bot attack)
+ *   would block the next legitimate customer whose card is perfectly valid.
+ *
+ * Bulkhead — prevents one slow provider from blocking calls to the others.
+ *   If Stripe is slow, its queue fills and new calls are rejected fast —
+ *   they failover to PayPal rather than waiting in Stripe's queue.
+ */
+@Injectable()
+export class PaymentService {
+  private readonly order: PaymentProvider[] = ['stripe', 'paypal', 'braintree'];
+  private readonly cb = new CircuitBreakerRegistry();
+  private readonly bh = new BulkheadRegistry();
+
+  constructor(
+    private readonly stripeClient: StripeHttpClient,
+    private readonly paypalClient: PayPalHttpClient,
+    private readonly braintreeClient: BraintreeHttpClient,
+    private readonly logger: LoggerService,
+    private readonly metrics: MetricsService,
+  ) {}
+
+  async charge(dto: ChargeDto, correlationId: string): Promise<PaymentResult> {
+    const tried: PaymentProvider[] = [];
+
+    for (const provider of this.order) {
+      const breaker = this.cb.getOrCreate(provider, {
+        failureThreshold: 5,
+        // 4xx = business event, not infrastructure failure — never opens the breaker
+        isFailure: (err) => err.type !== 'client_error',
+      });
+      const bulkhead = this.bh.getForHttpExternal(provider);
+
+      const result = await bulkhead.execute(() =>
+        breaker.execute(() => this.callProvider(provider, dto)),
+      );
+
+      if (result.ok) {
+        this.metrics.increment('payments.success', { provider });
+        return ok(result.value);
+      }
+
+      // Permanent business failure — other providers see the same card.
+      // Short-circuit: no point trying the remaining providers.
+      if (result.error.type === 'card_declined' || result.error.type === 'invalid_card') {
+        this.metrics.increment('payments.declined', { provider });
+        return fail(result.error);
+      }
+
+      // Infrastructure failure (circuit open, 5xx, timeout) → try next provider
+      tried.push(provider);
+      this.logger.warn('Provider unavailable, failing over', { provider, reason: result.error.type, correlationId });
+      this.metrics.increment('payments.failover', { from: provider });
+    }
+
+    this.logger.error('All payment providers failed', { tried, correlationId });
+    this.metrics.increment('payments.all_failed');
+    return fail({ type: 'all_providers_failed', tried });
+  }
+
+  private async callProvider(provider: PaymentProvider, dto: ChargeDto): Promise<PaymentResult> {
+    const client = { stripe: this.stripeClient, paypal: this.paypalClient, braintree: this.braintreeClient }[provider];
+    const r = await client.post<ProviderResponse>('/charge', dto);
+
+    if (!r.ok) {
+      if (r.error.type === 'client_error' && r.error.status === 402) {
+        return fail({ type: 'card_declined', provider, code: r.error.body?.decline_code ?? 'generic' });
+      }
+      if (r.error.type === 'client_error' && r.error.status === 422) {
+        return fail({ type: 'invalid_card' });
+      }
+      return fail(r.error as any);
+    }
+
+    return ok({ provider, transactionId: r.value.id, receiptUrl: r.value.receipt_url });
+  }
+}`;
+
+// ── Example 9: Validation Pipeline with Early-exit ────────────────────────────
+
+const ex9Types = `// transfer/transfer.types.ts
+
+import type { Result } from '@backendkit-labs/result';
+
+/**
+ * TransferContext flows through each validation handler.
+ * Fields are set progressively as each step succeeds.
+ * 'readonly' on the input DTO prevents accidental mutation by any handler.
+ */
+export interface TransferContext {
+  readonly dto: TransferDto;
+  readonly correlationId: string;
+  scanned?: true;
+  sender?: Account;
+  recipient?: Account;
+}
+
+/**
+ * Each error type corresponds to exactly one handler.
+ * The discriminated union forces every caller to handle every case.
+ *
+ * 'injection_detected'  — WAF blocked input before any business logic ran
+ * 'sender_not_found'    — sending account does not exist
+ * 'recipient_blocked'   — recipient's account is flagged or frozen
+ * 'insufficient_funds'  — sender balance below the transfer amount
+ */
+export type TransferError =
+  | { type: 'injection_detected'; category: string; ruleId: string }
+  | { type: 'sender_not_found' }
+  | { type: 'recipient_blocked'; reason: string }
+  | { type: 'insufficient_funds'; available: number; requested: number };
+
+export type TransferResult = Result<TransferContext, TransferError>;`;
+
+const ex9Handlers = `// transfer/handlers/scan.handler.ts
+
+import { PipelineHandler } from '@backendkit-labs/pipeline';
+import { RequestScanner } from '@backendkit-labs/request-scanner';
+import { ok, fail } from '@backendkit-labs/result';
+import type { TransferContext, TransferError, TransferResult } from '../transfer.types';
+
+/**
+ * Handler 1 — WAF scan. Runs FIRST, before any database call.
+ * A query built from injected input could expose other accounts' data.
+ * Placing this handler first guarantees no DB query ever runs with malicious input.
+ */
+export class ScanHandler extends PipelineHandler<TransferContext, TransferError> {
+  private readonly scanner = new RequestScanner({ level: 'strict' });
+
+  async handle(ctx: TransferContext): Promise<TransferResult> {
+    const threats = this.scanner.scan({ body: ctx.dto });
+
+    if (threats.length > 0) {
+      return fail({ type: 'injection_detected', category: threats[0].category, ruleId: threats[0].ruleId });
+    }
+
+    return ok({ ...ctx, scanned: true });
+  }
+}
+
+// transfer/handlers/load-accounts.handler.ts
+
+/**
+ * Handler 2 — Load sender and recipient accounts in parallel.
+ * Latency = max(senderLatency, recipientLatency), not their sum.
+ * Only runs after ScanHandler passes — inputs are safe to query.
+ */
+export class LoadAccountsHandler extends PipelineHandler<TransferContext, TransferError> {
+  constructor(private readonly accounts: AccountRepository) { super(); }
+
+  async handle(ctx: TransferContext): Promise<TransferResult> {
+    const [sender, recipient] = await Promise.all([
+      this.accounts.findById(ctx.dto.senderId),
+      this.accounts.findById(ctx.dto.recipientId),
+    ]);
+
+    if (!sender) return fail({ type: 'sender_not_found' });
+
+    if (!recipient || recipient.status === 'frozen' || recipient.status === 'blocked') {
+      return fail({ type: 'recipient_blocked', reason: recipient?.blockReason ?? 'Account not found' });
+    }
+
+    return ok({ ...ctx, sender, recipient });
+  }
+}
+
+// transfer/handlers/check-balance.handler.ts
+
+/**
+ * Handler 3 — Verify sufficient funds. Runs LAST.
+ * This is the most expensive check (real-time ledger query) and would be
+ * wasted if the recipient check had already failed.
+ * Pipeline's stop-on-first mode guarantees this handler never runs after
+ * a ScanHandler or LoadAccountsHandler failure.
+ */
+export class CheckBalanceHandler extends PipelineHandler<TransferContext, TransferError> {
+  constructor(private readonly ledger: LedgerService) { super(); }
+
+  async handle(ctx: TransferContext): Promise<TransferResult> {
+    const available = await this.ledger.getBalance(ctx.sender!.id);
+
+    if (available < ctx.dto.amountCents) {
+      return fail({ type: 'insufficient_funds', available, requested: ctx.dto.amountCents });
+    }
+
+    return ok(ctx);
+  }
+}`;
+
+const ex9Service = `// transfer/transfer.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { Pipeline } from '@backendkit-labs/pipeline';
+import type { TransferContext, TransferError, TransferResult } from './transfer.types';
+
+/**
+ * Pipeline in stop-on-first mode — the order is intentional:
+ *
+ * 1. ScanHandler      — security check, no I/O, eliminates malicious input immediately
+ * 2. LoadAccounts     — I/O but necessary before the balance check
+ * 3. CheckBalance     — most expensive (real-time ledger); only runs if steps 1+2 pass
+ *
+ * Running cheapest-first minimises total I/O when validation fails.
+ * Each handler is independently unit-testable by calling handle() with a plain object.
+ */
+@Injectable()
+export class TransferService {
+  private readonly pipeline: Pipeline<TransferContext, TransferError>;
+
+  constructor(accounts: AccountRepository, ledger: LedgerService) {
+    this.pipeline = new Pipeline<TransferContext, TransferError>({ mode: 'stop-on-first' })
+      .pipe(new ScanHandler())
+      .pipe(new LoadAccountsHandler(accounts))
+      .pipe(new CheckBalanceHandler(ledger));
+  }
+
+  async validate(dto: TransferDto, correlationId: string): Promise<TransferResult> {
+    return this.pipeline.run({ dto, correlationId });
+  }
+}
+
+// transfer/transfer.controller.ts
+
+@Controller('transfers')
+export class TransferController {
+  constructor(private readonly transfer: TransferService) {}
+
+  @Post('validate')
+  async validate(@Body() dto: TransferDto, @Req() req: Request) {
+    const result = await this.transfer.validate(dto, req.headers['x-correlation-id'] as string);
+
+    if (result.ok) return { valid: true };
+
+    switch (result.error.type) {
+      case 'injection_detected':  throw new ForbiddenException('Request blocked by security policy');
+      case 'sender_not_found':    throw new NotFoundException('Sender account not found');
+      case 'recipient_blocked':   throw new UnprocessableEntityException(result.error.reason);
+      case 'insufficient_funds':  throw new UnprocessableEntityException({
+                                    message: 'Insufficient funds',
+                                    available: result.error.available,
+                                    requested: result.error.requested,
+                                  });
+    }
+  }
+}`;
+
+// ── Example 10: Real-time Price Aggregation ────────────────────────────────────
+
+const ex10Types = `// pricing/pricing.types.ts
+
+import type { Result } from '@backendkit-labs/result';
+
+/**
+ * A normalised quote from a single pricing provider.
+ * Each provider returns prices in different formats and currencies —
+ * all are converted to USD cents here so comparisons are straightforward.
+ */
+export interface PriceQuote {
+  provider: string;
+  amountUsd: number;
+  expiresAt: Date;
+  quoteId: string;
+}
+
+export type PricingError =
+  | { type: 'no_providers_available' };
+
+/**
+ * The aggregated response carries the best quote AND all alternatives.
+ *
+ * Why return alternatives instead of just the best?
+ * — The best quote may expire before the user acts. Alternatives are fallbacks.
+ * — The UI can show "Best: $42.00 from Acme. Also: $44.50 from Beta (5 min)."
+ * — Callers can apply their own ranking (prefer a specific provider, for example).
+ */
+export interface AggregatedQuote {
+  best: PriceQuote;
+  alternatives: PriceQuote[];
+  failedProviders: string[];
+}
+
+export type QuoteResult = Result<AggregatedQuote, PricingError>;`;
+
+const ex10Service = `// pricing/pricing.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { parallel, partition, ok, fail, type Result } from '@backendkit-labs/result';
+import { BulkheadRegistry } from '@backendkit-labs/bulkhead';
+import type { PriceQuote, PricingError, QuoteResult } from './pricing.types';
+
+/**
+ * Queries N pricing providers simultaneously and returns the cheapest valid quote.
+ *
+ * Why parallel() instead of Promise.all directly?
+ * — result.parallel adds a concurrency cap. If the provider list grows to 20+,
+ *   we do not fire 20 simultaneous calls and hit every provider's rate limit at once.
+ *
+ * Why NOT use result.any (first success)?
+ * — result.any races and returns the FIRST to succeed — not the CHEAPEST.
+ *   Provider A may respond quickly with $60 while Provider B takes 300 ms but quotes $42.
+ *   We need to wait for ALL responses (or a shared timeout) to find the best price.
+ *
+ * Why return alternatives alongside the best quote?
+ * — Quote expiry is short (minutes). If the user delays, the best quote may expire
+ *   and the client can fall back to the next alternative without a second API round-trip.
+ */
+@Injectable()
+export class PricingService {
+  private readonly bulkheads = new BulkheadRegistry();
+
+  constructor(
+    private readonly clients: Map<string, PricingHttpClient>,
+    private readonly logger: LoggerService,
+    private readonly metrics: MetricsService,
+  ) {}
+
+  async getBestQuote(productId: string, correlationId: string): Promise<QuoteResult> {
+    const providers = [...this.clients.entries()];
+
+    // Fan out to all providers simultaneously — each in its own bulkhead
+    const results = await parallel(
+      providers.map(([name, client]) => () =>
+        this.bulkheads
+          .getForHttpExternal(name)
+          .execute(() => this.fetchQuote(name, client, productId)),
+      ),
+      { concurrency: 10 },
+    );
+
+    const { successes, failures } = partition(results);
+
+    if (failures.length > 0) {
+      const failedNames = providers.filter((_, i) => !results[i].ok).map(([name]) => name);
+      this.logger.warn('Some pricing providers unavailable', { failed: failedNames, correlationId });
+      this.metrics.increment('pricing.provider_failures', { count: String(failures.length) });
+    }
+
+    if (successes.length === 0) {
+      return fail({ type: 'no_providers_available' });
+    }
+
+    // Sort ascending by price — index 0 is cheapest
+    const quotes = successes.map((r) => r.value).sort((a, b) => a.amountUsd - b.amountUsd);
+    const failedProviders = providers.filter((_, i) => !results[i].ok).map(([name]) => name);
+
+    return ok({ best: quotes[0], alternatives: quotes.slice(1), failedProviders });
+  }
+
+  private async fetchQuote(
+    name: string,
+    client: PricingHttpClient,
+    productId: string,
+  ): Promise<Result<PriceQuote, { type: string }>> {
+    const r = await client.get<ProviderQuoteResponse>(\`/quotes/\${productId}\`);
+
+    if (!r.ok) return fail({ type: r.error.type });
+
+    const expiresAt = new Date(r.value.expires_at);
+    if (expiresAt <= new Date()) return fail({ type: 'quote_expired' });
+
+    return ok({
+      provider:  name,
+      amountUsd: Math.round(r.value.price_usd * 100) / 100,
+      expiresAt,
+      quoteId:   r.value.quote_id,
+    });
+  }
+}`;
+
+// ── Example 5: CLI Deployment Tool ───────────────────────────────────────────
+
+const ex5Script = `// deploy.ts — npx tsx deploy.ts <app> <version>
+
+import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
+import { HttpClient } from '@backendkit-labs/http-client';
+import { retryWithBackoff, match } from '@backendkit-labs/result';
+
+/**
+ * Animation is not cosmetic here — it is the operator's feedback loop while
+ * waiting for async operations (build: 30–120 s, promotion: 10–30 s).
+ * Without visible feedback, a working process looks identical to a hung one.
+ *
+ * Each phase maps to a semantically distinct animation:
+ *   SPINNER      — indeterminate wait (triggering an async job, unknown end)
+ *   DOTS         — polling with unknown end time (build in progress)
+ *   PROGRESS_BAR — bounded operation with a visible advancing bar
+ */
+const manager = new AnimationManager();
+const api = new HttpClient({
+  baseUrl: process.env.DEPLOY_API_URL ?? 'https://api.deploy.example.com',
+  timeout: 10_000,
+});
+
+async function deploy(app: string, version: string): Promise<void> {
+  console.log(\`\\nDeploying \${app}@\${version}\\n\`);
+
+  // ── Phase 1: Trigger build ────────────────────────────────────────────────
+  const buildAnim = manager.start({
+    type: AnimationType.SPINNER,
+    text: 'Triggering build',
+    color: 'cyan',
+  });
+
+  const buildResult = await api.post<{ buildId: string }>('/builds', { app, version });
+  manager.stop(buildAnim.id);
+
+  if (!buildResult.ok) {
+    console.error(\`\\n  ✗  Could not trigger build (\${buildResult.error.type})\`);
+    process.exit(1);
+  }
+
+  const { buildId } = buildResult.value;
+
+  // ── Phase 2: Poll build status ────────────────────────────────────────────
+  // retryWithBackoff is used as a poller, not just for error recovery.
+  // Returning non-ok when status is 'pending' triggers the next poll interval.
+  // maxAttempts × maxMs bounds the worst-case wait to ~5 minutes.
+  const pollAnim = manager.start({
+    type: AnimationType.DOTS,
+    text: \`Build \${buildId} running\`,
+    color: 'yellow',
+  });
+
+  const statusResult = await retryWithBackoff(
+    async () => {
+      const r = await api.get<{ status: string; logs?: string }>(
+        \`/builds/\${buildId}\`,
+      );
+      if (!r.ok)                        return r;
+      if (r.value.status === 'pending') return { ok: false, error: { type: 'still_running' } };
+      if (r.value.status === 'failed')  return { ok: false, error: { type: 'build_failed', logs: r.value.logs ?? '' } };
+      return r; // status === 'succeeded'
+    },
+    { maxAttempts: 30, baseMs: 3_000, maxMs: 10_000, jitter: 'equal' },
+  );
+
+  manager.stop(pollAnim.id);
+
+  if (!statusResult.ok) {
+    const e = statusResult.error as { type: string; logs?: string };
+    console.error(e.type === 'build_failed'
+      ? \`\\n  ✗  Build failed:\\n\${e.logs}\`
+      : '\\n  ✗  Build timed out — check the dashboard');
+    manager.destroyAll();
+    process.exit(1);
+  }
+
+  // ── Phase 3: Promote to production ────────────────────────────────────────
+  const deployAnim = manager.start({
+    type: AnimationType.PROGRESS_BAR,
+    text: 'Promoting to production',
+    color: 'green',
+    width: 32,
+  });
+
+  const deployResult = await api.post<{ id: string; url: string }>(
+    '/deployments',
+    { buildId, environment: 'production' },
+  );
+
+  manager.stop(deployAnim.id);
+  manager.destroyAll();
+
+  match(deployResult, {
+    ok:  (d) => console.log(\`\\n  ✓  \${app}@\${version} is live → \${d.url}\\n\`),
+    err: (e) => { console.error(\`\\n  ✗  Promotion failed (\${e.type})\\n\`); process.exit(1); },
+  });
+}
+
+deploy(process.argv[2] ?? 'my-api', process.argv[3] ?? '1.0.0');`;
+
+// ── Example 6: Webhook Delivery ───────────────────────────────────────────────
+
+const ex6Types = `// webhooks/webhook.types.ts
+
+import type { Result } from '@backendkit-labs/result';
+
+/**
+ * WebhookError models only PERMANENT failures — states where no further retry
+ * makes sense. Transient failures (network blip, 503) are absorbed internally
+ * by retryWithBackoff and never surface to the caller.
+ *
+ * 'delivery_failed'  — exhausted all retry attempts with no success
+ * 'target_rejected'  — endpoint returned 4xx; retrying would change nothing
+ * 'queue_full'       — bulkhead rejected the call before the first attempt
+ */
+export type WebhookError =
+  | { type: 'delivery_failed'; attempts: number }
+  | { type: 'target_rejected'; status: number; body: unknown }
+  | { type: 'queue_full' };
+
+export interface Webhook {
+  id: string;
+  targetUrl: string;
+  payload: Record<string, unknown>;
+  correlationId: string;
+}
+
+export type WebhookResult = Result<{ deliveredAt: Date }, WebhookError>;`;
+
+const ex6Service = `// webhooks/webhook.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { retryWithBackoff, withTimeout, ok, fail } from '@backendkit-labs/result';
+import { Bulkhead, BulkheadRegistry } from '@backendkit-labs/bulkhead';
+import type { Webhook, WebhookResult } from './webhook.types';
+
+/**
+ * Three reliability layers, each solving a different failure scenario:
+ *
+ * Bulkhead (outer)
+ *   — Caps concurrent delivery sequences. A backlog of 10,000 pending webhooks
+ *     must not spawn 10,000 simultaneous HTTP connections when processing restarts.
+ *     One slot per webhook for the full retry lifetime, not per individual attempt.
+ *
+ * withTimeout (per attempt)
+ *   — Bounds a single HTTP call to 8 s. A hanging connection does not hold a
+ *     bulkhead slot for the entire retry window (potentially minutes).
+ *
+ * retryWithBackoff with full jitter (core)
+ *   — If 1,000 webhooks all fail at the same moment, their retries must NOT
+ *     fire simultaneously — that would reproduce the original overload.
+ *     Full jitter spreads retry times across a random window [0, baseMs × 2^n].
+ */
+@Injectable()
+export class WebhookDeliveryService {
+  private readonly bulkhead: Bulkhead;
+
+  constructor(
+    private readonly http: WebhookHttpClient,
+    private readonly db: WebhookRepository,
+    private readonly logger: LoggerService,
+    private readonly metrics: MetricsService,
+  ) {
+    this.bulkhead = new BulkheadRegistry().getOrCreate('webhook-delivery', {
+      maxConcurrentCalls: 20,
+      maxQueueSize: 200,
+      queueTimeoutMs: 5_000,
+    });
+  }
+
+  async deliver(webhook: Webhook): Promise<WebhookResult> {
+    // One bulkhead slot per delivery sequence — not per attempt.
+    // 20 concurrent sequences, each possibly retrying 5 times internally.
+    const result = await this.bulkhead.execute(() => this.deliverWithRetry(webhook));
+
+    if (!result.ok && result.error.type === 'queue_full') {
+      this.logger.warn('Webhook delivery queue saturated', { webhookId: webhook.id });
+      this.metrics.increment('webhooks.queue_full');
+    }
+
+    return result as WebhookResult;
+  }
+
+  private async deliverWithRetry(webhook: Webhook): Promise<WebhookResult> {
+    const attempt = () =>
+      withTimeout(
+        () => this.http.post(webhook.targetUrl, webhook.payload),
+        { ms: 8_000 },
+      );
+
+    const result = await retryWithBackoff(attempt, {
+      maxAttempts: 5,
+      baseMs: 500,
+      maxMs: 30_000,
+      jitter: 'full',
+      // 4xx = the target explicitly rejected the payload — retrying won't help.
+      // Only retry network errors, timeouts, and 5xx responses.
+      shouldRetry: (err) => err.type !== 'client_error',
+      onRetry: (attempt, err) => {
+        this.logger.debug('Webhook retry', { webhookId: webhook.id, attempt, reason: err.type });
+        this.metrics.increment('webhooks.retried', { attempt: String(attempt) });
+      },
+    });
+
+    if (!result.ok) {
+      await this.db.markFailed(webhook.id);
+      this.metrics.increment('webhooks.failed');
+      if (result.error.type === 'client_error') {
+        return fail({ type: 'target_rejected', status: result.error.status, body: result.error.body });
+      }
+      return fail({ type: 'delivery_failed', attempts: 5 });
+    }
+
+    const deliveredAt = new Date();
+    await this.db.markDelivered(webhook.id, deliveredAt);
+    this.metrics.increment('webhooks.delivered');
+    return ok({ deliveredAt });
+  }
+}`;
+
+// ── Example 7: Batch Enrichment ───────────────────────────────────────────────
+
+const ex7Types = `// enrichment/enrichment.types.ts
+
+import type { Result } from '@backendkit-labs/result';
+
+/**
+ * Each order is enriched with two data points fetched from separate APIs:
+ *   UserProfile — determines the user's tier and billing region.
+ *   FX rate     — converts the order amount from its currency to USD.
+ *
+ * Both are fetched in parallel per order via Promise.all.
+ * The number of concurrently enriched orders is bounded by result.parallel.
+ *
+ * Concurrency math:
+ *   parallel concurrency (10) × sub-requests per order (2) = max 20 simultaneous
+ *   external calls. Both numbers are visible and adjustable in one place.
+ */
+export interface EnrichedOrder {
+  orderId: string;
+  userId: string;
+  amountUsd: number;
+  userTier: 'standard' | 'premium' | 'enterprise';
+  userRegion: string;
+}
+
+export type EnrichmentError =
+  | { type: 'profile_not_found'; userId: string }
+  | { type: 'exchange_rate_unavailable'; currency: string }
+  | { type: 'enrichment_timeout' };
+
+export interface EnrichmentReport {
+  enriched: EnrichedOrder[];
+  failed: Array<{ orderId: string; error: EnrichmentError }>;
+  durationMs: number;
+}`;
+
+const ex7Service = `// enrichment/enrichment.service.ts
+
+import { Injectable } from '@nestjs/common';
+import { parallel, partition, track, ok, fail } from '@backendkit-labs/result';
+import { BulkheadRegistry } from '@backendkit-labs/bulkhead';
+import type { Order, EnrichedOrder, EnrichmentError, EnrichmentReport } from './enrichment.types';
+
+/**
+ * Three concurrency controls compose to make this safe at scale:
+ *
+ * result.parallel(tasks, { concurrency: 10 })
+ *   — Fans out across all orders but keeps at most 10 in-flight at once.
+ *     1,000 orders do not trigger 2,000 simultaneous API calls.
+ *
+ * profileBulkhead / fxBulkhead (independent bulkheads)
+ *   — If the Profile API slows down, its bulkhead queue fills and rejects
+ *     excess calls — but the FX Rate bulkhead is completely unaffected.
+ *     Two slow services cannot compound each other's latency.
+ *
+ * result.partition({ successes, failures })
+ *   — Splits Result[] into typed arrays in one call. No filter().map() chains,
+ *     no loss of the error type on the failures side.
+ */
+@Injectable()
+export class OrderEnrichmentService {
+  private readonly profileBulkhead = new BulkheadRegistry().getForHttpExternal('user-profile-api');
+  private readonly fxBulkhead      = new BulkheadRegistry().getForHttpExternal('fx-rate-api');
+
+  constructor(
+    private readonly profileClient: UserProfileHttpClient,
+    private readonly fxClient: FxRateHttpClient,
+    private readonly logger: LoggerService,
+    private readonly metrics: MetricsService,
+  ) {}
+
+  async enrichBatch(orders: Order[]): Promise<EnrichmentReport> {
+    const start = Date.now();
+
+    const results = await parallel(
+      orders.map((order) => () => this.enrichOne(order)),
+      { concurrency: 10 },
+    );
+
+    // partition() returns { successes: Result<EnrichedOrder>[], failures: Result<_, EnrichmentError>[] }
+    // Both arrays carry the full Result type — no casting needed.
+    const { successes, failures } = partition(results);
+
+    if (failures.length > 0) {
+      this.logger.warn('Batch enrichment partial failure', {
+        total: orders.length,
+        succeeded: successes.length,
+        failed: failures.length,
+        errorTypes: [...new Set(failures.map((f) => f.error.type))],
+      });
+      this.metrics.histogram('enrichment.failure_rate', failures.length / orders.length);
+    }
+
+    return {
+      enriched:   successes.map((r) => r.value),
+      failed:     failures.map((f) => ({ orderId: (f.context as Order).id, error: f.error })),
+      durationMs: Date.now() - start,
+    };
+  }
+
+  private async enrichOne(order: Order): Promise<Result<EnrichedOrder, EnrichmentError>> {
+    // track() records per-order duration and an OTel span automatically.
+    // No manual Date.now() at the start + metrics call at every return path.
+    // Three return paths = three places to forget — track() makes it impossible to miss.
+    return track(
+      async () => {
+        // Both APIs fire simultaneously — enrichment latency is
+        // max(profileLatency, fxLatency), not their sum.
+        const [profileResult, fxResult] = await Promise.all([
+          this.profileBulkhead.execute(() =>
+            this.profileClient.get<UserProfile>(\`/users/\${order.userId}\`),
+          ),
+          this.fxBulkhead.execute(() =>
+            this.fxClient.get<FxRate>(\`/rates/\${order.currency}/USD\`),
+          ),
+        ]);
+
+        if (!profileResult.ok) {
+          return profileResult.error.type === 'not_found'
+            ? fail({ type: 'profile_not_found', userId: order.userId })
+            : fail({ type: 'enrichment_timeout' });
+        }
+
+        if (!fxResult.ok) {
+          return fail({ type: 'exchange_rate_unavailable', currency: order.currency });
+        }
+
+        return ok({
+          orderId:    order.id,
+          userId:     order.userId,
+          amountUsd:  Math.round(order.amountCents * fxResult.value.rate) / 100,
+          userTier:   profileResult.value.tier,
+          userRegion: profileResult.value.region,
+        });
+      },
+      {
+        operation:     'order.enrich',
+        correlationId: order.correlationId,
+        tags:          { orderId: order.id, currency: order.currency },
+      },
+    );
+  }
+}`;
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ExamplesPage() {
@@ -1220,6 +2009,274 @@ export default function ExamplesPage() {
           cache 404 responses differently from 200s.
         </Callout>
         <CodeBlock filename="search/search.controller.ts" code={ex4Controller} />
+      </section>
+
+      <Divider />
+
+      {/* ── Example 5 ───────────────────────────────────────────────────────── */}
+      <section id="cli-deploy">
+        <SectionHeading id="cli-deploy">
+          5 — CLI Deployment Tool
+        </SectionHeading>
+        <BadgeList
+          items={[
+            { label: '@backendkit-labs/console-animations', color: '#ec4899' },
+            { label: '@backendkit-labs/http-client',        color: '#f59e0b' },
+            { label: '@backendkit-labs/result',             color: '#4f7eff' },
+          ]}
+        />
+        <P>
+          A CLI tool that deploys an application through a remote build-and-promote API.
+          The challenge: each phase takes 30–120 seconds and the operator needs continuous
+          visual feedback to distinguish a working process from a hung one.
+        </P>
+        <P>
+          Each phase maps to a semantically correct animation: <C>SPINNER</C> for a
+          one-shot async trigger, <C>DOTS</C> for open-ended polling, and <C>PROGRESS_BAR</C> for
+          a bounded promotion step. <C>retryWithBackoff</C> doubles as a polling primitive —
+          returning non-ok when build status is <C>'pending'</C> triggers the next interval
+          without a custom polling loop.
+        </P>
+
+        <SubHeading>Runnable script</SubHeading>
+        <Callout type="why">
+          <C>retryWithBackoff</C> is used as a poller here, not just for error recovery.
+          The build status endpoint returns <C>'pending'</C> while the build runs — mapping
+          that to a non-ok result instructs the retry engine to wait and poll again,
+          reusing the backoff logic without writing a custom interval loop.
+        </Callout>
+        <CodeBlock filename="deploy.ts" comment="npx tsx deploy.ts my-api 2.4.1" code={ex5Script} />
+      </section>
+
+      <Divider />
+
+      {/* ── Example 6 ───────────────────────────────────────────────────────── */}
+      <section id="webhook-delivery">
+        <SectionHeading id="webhook-delivery">
+          6 — Webhook Delivery with Retry and Backoff
+        </SectionHeading>
+        <BadgeList
+          items={[
+            { label: '@backendkit-labs/result',       color: '#4f7eff' },
+            { label: '@backendkit-labs/bulkhead',     color: '#10b981' },
+            { label: '@backendkit-labs/observability', color: '#8b5cf6' },
+          ]}
+        />
+        <P>
+          Reliable webhook delivery requires handling three distinct failure scenarios with
+          different responses: transient errors (network blips, 503s) should be retried;
+          permanent rejections (4xx) should not; overload (too many pending deliveries)
+          should fail fast rather than queue indefinitely.
+        </P>
+        <P>
+          <C>retryWithBackoff</C> with full jitter absorbs transients without producing
+          synchronized retry storms. <C>withTimeout</C> bounds each individual HTTP
+          attempt so a hanging connection does not hold a <C>Bulkhead</C> slot for the
+          full retry window. The bulkhead limits concurrent delivery sequences — not
+          individual HTTP calls — so one slot covers all five attempts of a single webhook.
+        </P>
+
+        <SubHeading>Types</SubHeading>
+        <Callout type="why">
+          The error union models only permanent failures. Transient errors are absorbed by
+          <C>retryWithBackoff</C> and never surface to the caller — the union stays minimal
+          and every case in a downstream switch is load-bearing with no dead branches.
+        </Callout>
+        <CodeBlock filename="webhooks/webhook.types.ts" code={ex6Types} />
+
+        <SubHeading>Delivery service</SubHeading>
+        <Callout type="tip">
+          Full jitter (<C>jitter: 'full'</C>) randomises each wait in{' '}
+          <C>[0, baseMs × 2^attempt]</C>. Equal jitter spreads half the range.
+          Full jitter is the right choice when many callers can fail simultaneously —
+          it prevents the synchronized retry wave that would reproduce the original overload.
+        </Callout>
+        <CodeBlock filename="webhooks/webhook.service.ts" code={ex6Service} />
+      </section>
+
+      <Divider />
+
+      {/* ── Example 7 ───────────────────────────────────────────────────────── */}
+      <section id="batch-enrichment">
+        <SectionHeading id="batch-enrichment">
+          7 — Batch Order Enrichment with Controlled Concurrency
+        </SectionHeading>
+        <BadgeList
+          items={[
+            { label: '@backendkit-labs/result',       color: '#4f7eff' },
+            { label: '@backendkit-labs/bulkhead',     color: '#10b981' },
+            { label: '@backendkit-labs/observability', color: '#8b5cf6' },
+          ]}
+        />
+        <P>
+          Enriching a batch of orders with external API data is a two-dimensional
+          concurrency problem: how many orders to process simultaneously, and how many
+          requests to send to each upstream service. Both need independent controls —
+          a slow Profile API must not starve the FX Rate API.
+        </P>
+        <P>
+          <C>parallel()</C> fans out the batch with a configurable cap. Inside each order,
+          both APIs are called via <C>Promise.all</C> for minimum latency. Independent
+          bulkheads isolate the two upstreams from each other. <C>partition()</C> splits
+          the final <C>Result[]</C> into typed success and failure arrays in one call —
+          no filter/map chains, no loss of the error type.
+        </P>
+
+        <SubHeading>Types</SubHeading>
+        <Callout type="info">
+          Concurrency math: <C>parallel</C> concurrency of 10 × 2 sub-requests per order
+          = worst-case 20 simultaneous external calls. Both numbers are in one place —
+          no need to audit <C>Promise.all</C> chains spread across the codebase to
+          understand the load profile.
+        </Callout>
+        <CodeBlock filename="enrichment/enrichment.types.ts" code={ex7Types} />
+
+        <SubHeading>Enrichment service</SubHeading>
+        <Callout type="why">
+          <C>track()</C> records per-order duration and an OTel span automatically.
+          Without it, you need <C>Date.now()</C> at the start and a metrics call at
+          every return path — three return paths means three places to forget.
+          <C>track()</C> makes it structurally impossible to miss an observation point.
+        </Callout>
+        <CodeBlock filename="enrichment/enrichment.service.ts" code={ex7Service} />
+      </section>
+
+      <Divider />
+
+      {/* ── Example 8 ───────────────────────────────────────────────────────── */}
+      <section id="multi-provider-failover">
+        <SectionHeading id="multi-provider-failover">
+          8 — Multi-provider Payment Failover
+        </SectionHeading>
+        <BadgeList
+          items={[
+            { label: '@backendkit-labs/circuit-breaker', color: '#f97316' },
+            { label: '@backendkit-labs/bulkhead',        color: '#10b981' },
+            { label: '@backendkit-labs/http-client',     color: '#f59e0b' },
+            { label: '@backendkit-labs/result',          color: '#4f7eff' },
+          ]}
+        />
+        <P>
+          Charging a card through a single provider is a single point of failure. This example
+          implements sequential failover across Stripe → PayPal → Braintree, where infrastructure
+          failures (circuit open, 5xx, timeout) silently move to the next provider, while permanent
+          business failures (card declined, invalid card) short-circuit immediately — no other
+          provider would succeed with the same card.
+        </P>
+        <P>
+          Each provider has its own <C>CircuitBreaker</C> and <C>Bulkhead</C>. The critical detail:
+          the circuit breaker's <C>isFailure</C> must return <C>false</C> for 4xx responses — a
+          wave of declined cards must not open the breaker and block the next legitimate customer.
+        </P>
+
+        <SubHeading>Types</SubHeading>
+        <Callout type="why">
+          Infrastructure failures are absent from the error union — they trigger the next
+          provider and never surface to the caller. The union stays minimal: every case a caller
+          switches on is truly load-bearing.
+        </Callout>
+        <CodeBlock filename="payment/payment.types.ts" code={ex8Types} />
+
+        <SubHeading>Payment service</SubHeading>
+        <Callout type="tip">
+          The bulkhead here prevents a slow provider from blocking calls to the others. If
+          Stripe is slow and its queue fills, new calls are rejected fast and fail over to PayPal
+          — rather than waiting in Stripe's queue while PayPal sits idle.
+        </Callout>
+        <CodeBlock filename="payment/payment.service.ts" code={ex8Service} />
+      </section>
+
+      <Divider />
+
+      {/* ── Example 9 ───────────────────────────────────────────────────────── */}
+      <section id="validation-pipeline">
+        <SectionHeading id="validation-pipeline">
+          9 — Validation Pipeline with Early-exit
+        </SectionHeading>
+        <BadgeList
+          items={[
+            { label: '@backendkit-labs/pipeline',        color: '#06b6d4' },
+            { label: '@backendkit-labs/request-scanner', color: '#ef4444' },
+            { label: '@backendkit-labs/result',          color: '#4f7eff' },
+          ]}
+        />
+        <P>
+          Validating a transfer request requires multiple sequential checks where order matters:
+          a security scan must run before any database query (to avoid querying with injected
+          input), account loads must succeed before the balance check (no point querying
+          the ledger for a non-existent account), and the balance check is the most expensive so
+          it runs last.
+        </P>
+        <P>
+          <C>Pipeline</C> in <C>stop-on-first</C> mode models this exactly: each step has a
+          specific error type in the union, the pipeline aborts on the first failure, and the
+          controller maps the union to HTTP without any try/catch. <C>RequestScanner</C> is
+          embedded as the first handler — not as a guard — so it shares the same typed Result
+          and error union as the business logic.
+        </P>
+
+        <SubHeading>Types</SubHeading>
+        <Callout type="why">
+          Placing <C>RequestScanner</C> as a pipeline handler (not a NestJS guard) means the
+          injection detection error is part of the same discriminated union as the business errors.
+          The controller has one switch for all failure cases — no separate guard error path.
+        </Callout>
+        <CodeBlock filename="transfer/transfer.types.ts" code={ex9Types} />
+
+        <SubHeading>Handlers</SubHeading>
+        <Callout type="tip">
+          Handler ordering is cheapest-first: the WAF scan has no I/O, account loads are
+          parallelised, and the ledger query (most expensive, real-time) only runs if both
+          earlier steps pass.
+        </Callout>
+        <CodeBlock filename="transfer/handlers/*.handler.ts" code={ex9Handlers} />
+
+        <SubHeading>Service and controller</SubHeading>
+        <CodeBlock filename="transfer/transfer.service.ts" code={ex9Service} />
+      </section>
+
+      <Divider />
+
+      {/* ── Example 10 ──────────────────────────────────────────────────────── */}
+      <section id="price-aggregation">
+        <SectionHeading id="price-aggregation">
+          10 — Real-time Price Aggregation
+        </SectionHeading>
+        <BadgeList
+          items={[
+            { label: '@backendkit-labs/result',   color: '#4f7eff' },
+            { label: '@backendkit-labs/bulkhead', color: '#10b981' },
+            { label: '@backendkit-labs/observability', color: '#8b5cf6' },
+          ]}
+        />
+        <P>
+          Fetching the best price for a product requires querying multiple providers simultaneously
+          and comparing their responses — you cannot use the first response that arrives because a
+          fast provider is not necessarily the cheapest. All must be collected, then sorted.
+        </P>
+        <P>
+          <C>parallel()</C> fans out with a concurrency cap so a large provider list does not
+          fire unbound simultaneous calls. <C>partition()</C> separates usable quotes from
+          unavailable providers in one call. The result returns both the best quote AND the
+          alternatives so the client can fall back without a second round-trip if the best
+          quote expires before the user acts.
+        </P>
+
+        <SubHeading>Types</SubHeading>
+        <Callout type="why">
+          Returning <C>alternatives[]</C> alongside <C>best</C> is a deliberate API decision.
+          Quotes expire in minutes. If the client makes a second request after expiry, it re-pays
+          the latency cost of querying every provider again. Alternatives amortise that cost.
+        </Callout>
+        <CodeBlock filename="pricing/pricing.types.ts" code={ex10Types} />
+
+        <SubHeading>Aggregation service</SubHeading>
+        <Callout type="tip">
+          This example uses <C>parallel</C> + <C>partition</C> rather than <C>result.any</C>.
+          <C>any</C> races and returns the first success — fast but not cheapest.
+          Here we wait for all responses, then sort: correctness over raw speed.
+        </Callout>
+        <CodeBlock filename="pricing/pricing.service.ts" code={ex10Service} />
       </section>
 
       {/* Footer */}

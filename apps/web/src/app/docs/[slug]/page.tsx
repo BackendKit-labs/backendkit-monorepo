@@ -1552,6 +1552,165 @@ async search(@Body() dto: SearchDto) { ... }`}
       );
     },
   },
+
+  'console-animations': {
+    examples: [
+      {
+        label: 'Basic',
+        filename: 'spinner.ts',
+        code: `import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
+
+const manager = new AnimationManager();
+
+const spinner = manager.start({
+  type: AnimationType.SPINNER,
+  text: 'Fetching data...',
+  color: 'cyan',
+  speed: 80,
+});
+
+await fetchData();
+
+manager.stop(spinner.id);
+console.log('Done.');`,
+      },
+      {
+        label: 'Builder',
+        filename: 'custom.ts',
+        code: `import { AnimationBuilder, AnimationType } from '@backendkit-labs/console-animations';
+
+const anim = new AnimationBuilder()
+  .withType(AnimationType.DOTS)
+  .withText('Processing records')
+  .withColor('yellow')
+  .withSpeed(120)
+  .build();
+
+anim.start();
+await processRecords();
+anim.stop();`,
+      },
+      {
+        label: 'Multi-phase',
+        filename: 'deploy.ts',
+        code: `import { AnimationManager, AnimationType } from '@backendkit-labs/console-animations';
+
+const manager = new AnimationManager();
+
+const build = manager.start({ type: AnimationType.SPINNER, text: 'Building', color: 'cyan' });
+await triggerBuild();
+manager.stop(build.id);
+
+const poll = manager.start({ type: AnimationType.DOTS, text: 'Waiting for CI', color: 'yellow' });
+await pollBuildStatus();
+manager.stop(poll.id);
+
+const deploy = manager.start({ type: AnimationType.PROGRESS_BAR, text: 'Promoting', color: 'green', width: 30 });
+await promote();
+manager.stop(deploy.id);
+
+manager.destroyAll();`,
+      },
+    ],
+    content: function ConsoleAnimationsContent({ color }: { color: string }) {
+      return (
+        <>
+          <section id="overview">
+            <SectionHeading id="overview">Overview</SectionHeading>
+            <P>
+              CLI tools that run async operations — builds, deployments, migrations — leave operators
+              staring at a blank terminal for 30–120 seconds with no indication that the process is
+              still alive. Without feedback, a working process looks identical to a hung one, and
+              operators kill it prematurely.
+            </P>
+            <P>
+              <C>@backendkit-labs/console-animations</C> provides 17 production-grade animation
+              presets with a consistent lifecycle API: <C>start()</C>, <C>stop(id)</C>, and{' '}
+              <C>destroyAll()</C>. No raw terminal control codes, no TTY handling — just clean
+              primitives that compose with any async workflow.
+            </P>
+          </section>
+
+          <section id="types">
+            <SectionHeading id="types">Animation Types</SectionHeading>
+            <P>17 built-in presets across four semantic categories:</P>
+            <div className="grid sm:grid-cols-2 gap-3 my-5">
+              {([
+                { category: 'Indeterminate', accent: '#06b6d4', types: ['SPINNER', 'DOTS', 'WORM', 'SNAKE'],                                   desc: 'Best for operations with unknown duration — async triggers, network calls, polling.' },
+                { category: 'Bounded',       accent: '#10b981', types: ['PROGRESS_BAR', 'PULSE'],                                              desc: 'Best for operations with known or estimated progress — file uploads, batch processing.' },
+                { category: 'Thematic',      accent: '#8b5cf6', types: ['MATRIX', 'HACKER', 'CYBERPUNK', 'FIRE'],                             desc: 'High-visual-impact presets for branded or security-themed CLI tools.' },
+                { category: 'Ambient',       accent: '#f59e0b', types: ['RAIN', 'STARS', 'PARTICLES', 'WAVES', 'TYPING', 'BOUNCING_BALL', 'FUTURISTA'], desc: 'Background atmosphere for long idle periods or splash screens.' },
+              ] as const).map(({ category, accent, types, desc }) => (
+                <div
+                  key={category}
+                  className="rounded-xl border border-gray-200 dark:border-white/[0.06] p-4"
+                  style={{ background: `${accent}06` }}
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: accent }}>
+                    {category}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {types.map((t) => (
+                      <span
+                        key={t}
+                        className="font-mono text-[11px] px-1.5 py-0.5 rounded"
+                        style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}30` }}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[13px] text-slate-500 dark:text-[#64748b] leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="manager">
+            <SectionHeading id="manager">AnimationManager</SectionHeading>
+            <P>
+              <C>AnimationManager</C> is the primary entry point. It manages the full lifecycle of
+              one or more concurrent animations and provides id-based tracking so you can stop the
+              right animation in multi-phase flows without keeping track of references manually.
+            </P>
+            <PropsTable
+              rows={[
+                { prop: 'start(options)', type: 'Animation', description: 'Starts an animation and returns a handle with an id for later stop/query.' },
+                { prop: 'stop(id)',       type: 'void',      description: 'Stops a specific animation by id. Clears the terminal line.' },
+                { prop: 'stopAll()',      type: 'void',      description: 'Stops all currently running animations.' },
+                { prop: 'destroyAll()',   type: 'void',      description: 'Stops and frees all resources. Call at process exit or after the final phase.' },
+                { prop: 'getRunning()',   type: 'Animation[]', description: 'Returns all currently active animation handles.' },
+              ]}
+            />
+          </section>
+
+          <section id="builder">
+            <SectionHeading id="builder">AnimationBuilder</SectionHeading>
+            <P>
+              <C>AnimationBuilder</C> provides a fluent interface for constructing animations
+              programmatically — useful when animation config is computed at runtime or when you want
+              to pass pre-built animations as arguments to higher-order functions.
+            </P>
+            <CodeBlock
+              filename="custom-animation.ts"
+              code={`import { AnimationBuilder, AnimationType } from '@backendkit-labs/console-animations';
+
+const anim = new AnimationBuilder()
+  .withType(AnimationType.MATRIX)
+  .withText('Establishing secure connection')
+  .withColor('green')
+  .withSpeed(50)
+  .build();
+
+anim.start();
+await connect();
+anim.stop();`}
+            />
+          </section>
+        </>
+      );
+    },
+  },
 };
 
 // ── Comparison tables data ───────────────────────────────────────────────────
