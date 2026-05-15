@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
-    "email": "backendkit.dev@gmail.com"
+    "email": "hello@backendkitlabs.dev"
   },
   "description": "Type-safe async pipeline â€” Chain of Responsibility with stop-on-first / collect-all modes, conditional steps, observability hooks, and optional NestJS integration",
   "type": "module",

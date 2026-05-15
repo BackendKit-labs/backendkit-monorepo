@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
-    "email": "backendkit.dev@gmail.com"
+    "email": "hello@backendkitlabs.dev"
   },
   "description": "Production-grade HTTP client for Node.js â€” built on axios with circuit breaker, retry with backoff, request cancellation, typed Result responses, pipeline middleware, and optional NestJS integration",
   "type": "module",

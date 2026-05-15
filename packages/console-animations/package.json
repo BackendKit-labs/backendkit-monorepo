@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
-    "email": "backendkit.dev@gmail.com"
+    "email": "hello@backendkitlabs.dev"
   },
   "description": "Enterprise-grade terminal animations library for Node.js CLI applications",
   "type": "module",

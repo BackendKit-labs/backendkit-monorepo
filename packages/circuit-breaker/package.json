@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
-    "email": "backendkit.dev@gmail.com"
+    "email": "hello@backendkitlabs.dev"
   },
   "description": "Circuit Breaker pattern for Node.js â€” fail-fast with business vs infrastructure error classification, optional NestJS integration",
   "type": "module",

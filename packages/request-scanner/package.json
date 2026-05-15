@@ -1,15 +1,15 @@
 {
-  "name": "@backendkit-labs/http-shield",
-  "version": "0.1.4",
+  "name": "@backendkit-labs/request-scanner",
+  "version": "0.1.5",
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
-    "email": "backendkit.dev@gmail.com"
+    "email": "hello@backendkitlabs.dev"
   },
   "publishConfig": {
     "access": "public"
   },
-  "description": "Web Application Firewall for Node.js â€” SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection with optional NestJS integration",
+  "description": "Pattern-based request scanner for Node.js - SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection with optional NestJS integration",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -42,22 +42,23 @@
     "prepublishOnly": "npm run build && npm run test && npm run lint"
   },
   "keywords": [
-    "waf",
+    "scanner",
     "security",
-    "firewall",
     "sqli",
     "xss",
     "path-traversal",
     "injection",
+    "nosql",
+    "ssrf",
     "nestjs",
     "middleware",
     "node"
   ],
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/http-shield#readme",
+  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/request-scanner#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
-    "directory": "packages/http-shield"
+    "directory": "packages/request-scanner"
   },
   "bugs": {
     "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"

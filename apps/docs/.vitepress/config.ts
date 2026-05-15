@@ -1,4 +1,4 @@
-﻿import { defineConfig } from 'vitepress'
+import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title:       'BackendKit Labs',
@@ -25,7 +25,7 @@ export default defineConfig({
           { text: 'Observability',      link: '/packages/observability' },
           { text: 'Pipeline',           link: '/packages/pipeline' },
           { text: 'HTTP Client',        link: '/packages/http-client' },
-          { text: 'HTTP Shield',        link: '/packages/http-shield' },
+          { text: 'Request Scanner',        link: '/packages/request-scanner' },
           { text: 'Console Animations', link: '/packages/console-animations' },
         ],
       },
@@ -50,7 +50,7 @@ export default defineConfig({
             { text: 'Observability',      link: '/packages/observability' },
             { text: 'Pipeline',           link: '/packages/pipeline' },
             { text: 'HTTP Client',        link: '/packages/http-client' },
-            { text: 'HTTP Shield',        link: '/packages/http-shield' },
+            { text: 'Request Scanner',        link: '/packages/request-scanner' },
             { text: 'Console Animations', link: '/packages/console-animations' },
           ],
         },

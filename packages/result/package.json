@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
-    "email": "backendkit.dev@gmail.com"
+    "email": "hello@backendkitlabs.dev"
   },
   "description": "Type-safe Result monad for Node.js â€” generic error types, observability, resilience, and optional NestJS integration",
   "type": "module",

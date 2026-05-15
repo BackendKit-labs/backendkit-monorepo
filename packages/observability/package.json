@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
-    "email": "backendkit.dev@gmail.com"
+    "email": "hello@backendkitlabs.dev"
   },
   "description": "Structured logging, metrics, correlation ID propagation, and exception handling for NestJS â€” no OTel SDK required",
   "type": "module",

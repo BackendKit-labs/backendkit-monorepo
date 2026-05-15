@@ -1,4 +1,4 @@
-﻿---
+---
 title: Getting Started
 description: Introduction to BackendKit Labs — reusable, enterprise-grade Node.js libraries.
 ---
@@ -25,7 +25,7 @@ BackendKit Labs is a monorepo of production-ready Node.js libraries. Every packa
 | [`@backendkit-labs/observability`](/packages/observability) | `0.1.0` | Structured logging, metrics, correlation ID propagation, OTel support for NestJS |
 | [`@backendkit-labs/pipeline`](/packages/pipeline) | `0.1.0` | Type-safe async pipeline (Chain of Responsibility) — stop-on-first / collect-all, conditional steps, NestJS integration |
 | [`@backendkit-labs/http-client`](/packages/http-client) | `0.1.0` | Production-grade HTTP client — axios + circuit breaker + retry + Result responses + pipeline middleware + NestJS integration |
-| [`@backendkit-labs/http-shield`](/packages/http-shield) | `0.1.4` | Web Application Firewall — 23 built-in rules, SQLi / XSS / Path Traversal / NoSQL / SSRF + NestJS integration |
+| [`@backendkit-labs/request-scanner`](/packages/request-scanner) | `0.1.5` | Web Application Firewall — 23 built-in rules, SQLi / XSS / Path Traversal / NoSQL / SSRF + NestJS integration |
 | [`@backendkit-labs/console-animations`](/packages/console-animations) | `0.1.2` | Terminal animations for Node.js CLI applications |
 
 ## Choosing a package
@@ -42,7 +42,7 @@ BackendKit Labs is a monorepo of production-ready Node.js libraries. Every packa
 
 **Add `http-client` if** you make outbound HTTP calls and want circuit breaker, retry, and typed errors without try/catch.
 
-**Add `http-shield` if** you need WAF-level protection against SQLi, XSS, and other injection attacks at the request boundary.
+**Add `request-scanner` if** you need WAF-level protection against SQLi, XSS, and other injection attacks at the request boundary.
 
 **Add `console-animations` if** you're building a CLI tool and want professional terminal animations with CI detection baked in.
 
@@ -61,7 +61,7 @@ npm install @backendkit-labs/pipeline
 npm install @backendkit-labs/http-client axios
 
 # Security
-npm install @backendkit-labs/http-shield
+npm install @backendkit-labs/request-scanner
 
 # NestJS observability stack
 npm install @backendkit-labs/observability
@@ -133,7 +133,7 @@ backendkit-monorepo/
 │   ├── observability/
 │   ├── pipeline/
 │   ├── http-client/
-│   ├── http-shield/
+│   ├── request-scanner/
 │   └── console-animations/
 └── apps/
     └── docs/          ← you are here
