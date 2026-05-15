@@ -214,20 +214,20 @@ new WafScanner({
 | Rule ID | Pattern | Severity |
 |---------|---------|---------|
 | `sqli-001` | Tautology / boolean bypass (`' OR 1=1`) | critical |
-| `sqli-002` | UNION SELECT | critical |
+| `sqli-002` | UNION-based SELECT \| critical |
 | `sqli-003` | DDL attack (DROP, TRUNCATE, ALTER) | critical |
 | `sqli-004` | Stacked queries via `;` | critical |
 | `sqli-005` | Time-based blind (SLEEP, WAITFOR, BENCHMARK) | high |
-| `sqli-006` | System catalog / information_schema access | high |
+| `sqli-006` | System catalog / schema table enumeration | high |
 | `sqli-007` | Inline SQL comment to bypass WHERE (`'--`) | medium |
 
 ### XSS
 
 | Rule ID | Pattern | Severity |
 |---------|---------|---------|
-| `xss-001` | `<script>` tag injection | critical |
+| `xss-001` | Script tag injection | critical |
 | `xss-002` | Inline event handler (`onerror=`, `onclick=`, …) | high |
-| `xss-003` | `javascript:` / `vbscript:` protocol | critical |
+| `xss-003` | Dangerous URI scheme (js-colon, vbs-colon) | critical |
 | `xss-004` | `document.cookie` / `document.write` | high |
 | `xss-005` | `eval()` call | high |
 | `xss-006` | CSS `expression()` / `behavior:` | medium |
@@ -239,14 +239,14 @@ new WafScanner({
 |---------|---------|---------|
 | `pt-001` | `../` or `..\` sequences | high |
 | `pt-002` | URL-encoded traversal (`%2e%2e%2f`, `%252e%252e`) | high |
-| `pt-003` | Sensitive file access (`/etc/passwd`, `win.ini`) | critical |
+| `pt-003` | Sensitive file access (`/etc/pa…`, `win.ini`) | critical |
 | `pt-004` | Null byte injection (`%00`) | medium |
 
 ### Command Injection
 
 | Rule ID | Pattern | Severity |
 |---------|---------|---------|
-| `cmd-001` | Shell operator + system command (`; cat`, `\|\| whoami`) | critical |
+| `cmd-001` | Shell operator + system command chaining | critical |
 | `cmd-002` | Command substitution (`` `...` `` or `$(...)`) | critical |
 | `cmd-003` | Pipe to shell interpreter (`\| bash`) | high |
 
@@ -264,7 +264,7 @@ new WafScanner({
 |---------|---------|---------|
 | `ssrf-001` | RFC-1918 private IP in URL (`10.x`, `192.168.x`, …) | high |
 | `ssrf-002` | Localhost / `0.0.0.0` in URL | high |
-| `ssrf-003` | AWS EC2 metadata endpoint (`169.254.169.254`) | critical |
+| `ssrf-003` | Cloud metadata endpoint (link-local address) | critical |
 
 ---
 
@@ -375,9 +375,9 @@ export class UsersController {
 
 ```typescript
 const pattern = /UNION\s+SELECT/gi; // ← has `g`
-pattern.test("UNION SELECT null"); // true  (lastIndex = 16)
-pattern.test("UNION SELECT null"); // false (starts from lastIndex 16, no match)
-pattern.test("UNION SELECT null"); // true  (lastIndex reset after miss)
+pattern.test("input-string-to-scan"); // true  (lastIndex = 16)
+pattern.test("input-string-to-scan"); // false (starts from lastIndex 16, no match)
+pattern.test("input-string-to-scan"); // true  (lastIndex reset after miss)
 ```
 
 All built-in rules use the `i` flag only. If you write custom rules, never use `g` or `gi`.
