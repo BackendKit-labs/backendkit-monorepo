@@ -7,11 +7,9 @@ import { StorageAdapter } from '../persistence/storage-adapter.js';
 import { ObservabilityAdapter } from '../observability/observability-adapter.js';
 
 const DEFAULT_CONFIG: TunableConfig = {
-  timeoutMs: 10000,
-  maxRetries: 3,
-  circuitBreakerThreshold: 0.5,
-  circuitBreakerHalfOpenAfterMs: 30000,
-  bulkheadMaxConcurrent: 10,
+  circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+  bulkhead: { maxConcurrentCalls: 10 },
+  httpClient: { timeoutMs: 10000, maxRetries: 3 },
 };
 
 export class ConfigTuner implements IConfigTuner {
@@ -34,7 +32,11 @@ export class ConfigTuner implements IConfigTuner {
   }
 
   getCurrentConfig(): TunableConfig {
-    return { ...this.currentConfig };
+    return {
+      circuitBreaker: { ...this.currentConfig.circuitBreaker },
+      bulkhead: { ...this.currentConfig.bulkhead },
+      httpClient: { ...this.currentConfig.httpClient },
+    };
   }
 
   tune(
@@ -45,57 +47,58 @@ export class ConfigTuner implements IConfigTuner {
       return ok(this.getCurrentConfig());
     }
 
-    const newConfig = { ...this.currentConfig };
-    const changes: Partial<Record<string, unknown>> = {};
+    const newConfig: TunableConfig = {
+      circuitBreaker: { ...this.currentConfig.circuitBreaker },
+      bulkhead: { ...this.currentConfig.bulkhead },
+      httpClient: { ...this.currentConfig.httpClient },
+    };
+    const changedSections = new Set<keyof TunableConfig>();
 
-    // Tune timeout based on p95 latency
+    // Tune httpClient.timeoutMs based on p95 latency
     const maxP95 = Math.max(...aggregates.map((a) => a.p95Ms));
     const targetTimeout = Math.min(
       Math.max(maxP95 * 2, this.config.minTimeoutMs),
       this.config.maxTimeoutMs,
     );
 
-    if (Math.abs(targetTimeout - newConfig.timeoutMs) > this.config.adjustmentStepMs) {
-      newConfig.timeoutMs = this.smoothValue(
-        newConfig.timeoutMs,
-        targetTimeout,
-      );
-      changes.timeoutMs = newConfig.timeoutMs;
+    if (Math.abs(targetTimeout - newConfig.httpClient.timeoutMs) > this.config.adjustmentStepMs) {
+      newConfig.httpClient.timeoutMs = this.smoothValue(newConfig.httpClient.timeoutMs, targetTimeout);
+      changedSections.add('httpClient');
     }
 
-    // Tune maxRetries based on error rate
+    // Tune httpClient.maxRetries based on error rate
     const avgErrorRate =
       aggregates.reduce((sum, a) => sum + a.errorRate, 0) / aggregates.length;
 
     if (avgErrorRate > 0.1) {
-      newConfig.maxRetries = Math.min(newConfig.maxRetries + 1, 5);
-      changes.maxRetries = newConfig.maxRetries;
-    } else if (avgErrorRate < 0.01 && newConfig.maxRetries > 1) {
-      newConfig.maxRetries = Math.max(newConfig.maxRetries - 1, 0);
-      changes.maxRetries = newConfig.maxRetries;
+      newConfig.httpClient.maxRetries = Math.min(newConfig.httpClient.maxRetries + 1, 5);
+      changedSections.add('httpClient');
+    } else if (avgErrorRate < 0.01 && newConfig.httpClient.maxRetries > 1) {
+      newConfig.httpClient.maxRetries = Math.max(newConfig.httpClient.maxRetries - 1, 0);
+      changedSections.add('httpClient');
     }
 
-    // Tune circuit breaker threshold based on anomalies
+    // Tune circuitBreaker.failureThreshold based on anomalies (0–100 scale)
     const criticalAnomalies = anomalies.filter(
       (a) => a.severity === 'critical' || a.severity === 'high',
     ).length;
 
     if (criticalAnomalies > 0) {
-      newConfig.circuitBreakerThreshold = Math.max(
-        this.currentConfig.circuitBreakerThreshold - 0.1 * criticalAnomalies,
-        0.1,
+      newConfig.circuitBreaker.failureThreshold = Math.max(
+        this.currentConfig.circuitBreaker.failureThreshold - 10 * criticalAnomalies,
+        10,
       );
-      changes.circuitBreakerThreshold = newConfig.circuitBreakerThreshold;
+      changedSections.add('circuitBreaker');
     } else if (anomalies.length === 0) {
-      newConfig.circuitBreakerThreshold = Math.min(
-        this.currentConfig.circuitBreakerThreshold + 0.05,
-        0.8,
+      newConfig.circuitBreaker.failureThreshold = Math.min(
+        this.currentConfig.circuitBreaker.failureThreshold + 5,
+        80,
       );
-      changes.circuitBreakerThreshold = newConfig.circuitBreakerThreshold;
+      changedSections.add('circuitBreaker');
     }
 
     // Apply changes if any
-    if (Object.keys(changes).length > 0) {
+    if (changedSections.size > 0) {
       const now = Date.now();
       if (now - this.lastChangeAt > 60_000) {
         this.currentConfig = newConfig;
@@ -106,6 +109,9 @@ export class ConfigTuner implements IConfigTuner {
           return fail(storageError('Failed to save config', saveResult.error));
         }
 
+        const changes = Object.fromEntries(
+          [...changedSections].map((s) => [s, newConfig[s]]),
+        );
         this.observability.info('Config tuned', { changes });
         this.observability.incrementMetric('config.changes', 1);
 
@@ -119,7 +125,11 @@ export class ConfigTuner implements IConfigTuner {
   }
 
   reset(): Result<TunableConfig, LearningError> {
-    this.currentConfig = { ...DEFAULT_CONFIG };
+    this.currentConfig = {
+      circuitBreaker: { ...DEFAULT_CONFIG.circuitBreaker },
+      bulkhead: { ...DEFAULT_CONFIG.bulkhead },
+      httpClient: { ...DEFAULT_CONFIG.httpClient },
+    };
     const saveResult = this.storage.saveConfig(this.currentConfig);
     if (!saveResult.ok) {
       return fail(storageError('Failed to reset config', saveResult.error));

@@ -140,12 +140,12 @@ export class FeedbackLoop implements IFeedbackLoop {
     const newConfig = tuneResult.value;
     const previousConfig = this.configTuner.getCurrentConfig();
 
-    // Compute config changes
-    const configChanges: Record<string, unknown> = {};
-    const configKeys = Object.keys(newConfig) as Array<keyof typeof newConfig>;
-    for (const key of configKeys) {
-      if (newConfig[key] !== previousConfig[key]) {
-        configChanges[key] = newConfig[key];
+    // Compute config changes (section-level comparison)
+    const configChanges: Partial<TunableConfig> = {};
+    const sections = Object.keys(newConfig) as Array<keyof TunableConfig>;
+    for (const section of sections) {
+      if (JSON.stringify(newConfig[section]) !== JSON.stringify(previousConfig[section])) {
+        (configChanges as Record<string, unknown>)[section] = newConfig[section];
       }
     }
 
