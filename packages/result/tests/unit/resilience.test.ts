@@ -2,6 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { ok, fail, isOk, isFail, run, retry, retryWithBackoff, withTimeout } from '../../src/index.js';
 
 describe('retry', () => {
+  it('throws when attempts is less than 1', async () => {
+    await expect(retry(async () => ok(1), { attempts: 0 })).rejects.toThrow(
+      'retry() attempts must be at least 1',
+    );
+  });
+
   it('returns ok on first success', async () => {
     const fn = vi.fn().mockResolvedValue(ok(42));
     const r = await retry(fn, { attempts: 3 });
@@ -60,6 +66,12 @@ describe('retry', () => {
 });
 
 describe('retryWithBackoff', () => {
+  it('throws when attempts is less than 1', async () => {
+    await expect(retryWithBackoff(async () => ok(1), { attempts: 0 })).rejects.toThrow(
+      'retryWithBackoff() attempts must be at least 1',
+    );
+  });
+
   it('returns ok eventually', async () => {
     let calls = 0;
     const r = await retryWithBackoff(
@@ -151,4 +163,18 @@ describe('withTimeout', () => {
     expect(isFail(r)).toBe(true);
     expect((r as { error: string }).error).toBe('timed-out');
   }, 10_000);
+
+  it('clears the internal timer when fn resolves first (no timer leak)', async () => {
+    vi.useFakeTimers();
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    // fn resolves immediately; the 5s timer should be cleared before it fires
+    const r = await withTimeout(async () => ok('fast'), 5_000, 'timed-out');
+
+    expect(isOk(r)).toBe(true);
+    expect(clearSpy).toHaveBeenCalled();
+
+    clearSpy.mockRestore();
+    vi.useRealTimers();
+  });
 });

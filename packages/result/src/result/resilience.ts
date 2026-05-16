@@ -42,6 +42,7 @@ export async function retry<T, E = Error>(
   fn: () => Promise<Result<T, E>>,
   options: RetryOptions<E>,
 ): Promise<Result<T, E>> {
+  if (options.attempts < 1) throw new Error('retry() attempts must be at least 1');
   let last!: Result<T, E>;
 
   for (let attempt = 1; attempt <= options.attempts; attempt++) {
@@ -71,6 +72,7 @@ export async function retryWithBackoff<T, E = Error>(
   fn: () => Promise<Result<T, E>>,
   options: BackoffOptions<E>,
 ): Promise<Result<T, E>> {
+  if (options.attempts < 1) throw new Error('retryWithBackoff() attempts must be at least 1');
   let last!: Result<T, E>;
 
   for (let attempt = 1; attempt <= options.attempts; attempt++) {
@@ -101,10 +103,15 @@ export async function withTimeout<T, E>(
   ms: number,
   timeoutError: E,
 ): Promise<Result<T, E>> {
-  const timer = new Promise<Result<T, E>>(resolve =>
-    setTimeout(() => resolve(fail<T, E>(timeoutError)), ms),
-  );
-  return Promise.race([fn(), timer]);
+  let timerId!: ReturnType<typeof setTimeout>;
+  const timer = new Promise<Result<T, E>>(resolve => {
+    timerId = setTimeout(() => resolve(fail<T, E>(timeoutError)), ms);
+  });
+  try {
+    return await Promise.race([fn(), timer]);
+  } finally {
+    clearTimeout(timerId);
+  }
 }
 
 function computeBackoffDelay<E>(attempt: number, options: BackoffOptions<E>): number {

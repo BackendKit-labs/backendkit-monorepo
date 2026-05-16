@@ -30,6 +30,7 @@ export function all<T, E>(results: Result<T, E>[]): Result<T[], E> {
 export async function any<T, E>(
   operations: (() => Promise<Result<T, E>>)[],
 ): Promise<Result<T, E>> {
+  if (operations.length === 0) throw new Error('any() requires at least one operation');
   let last!: Result<T, E>;
   for (const op of operations) {
     last = await op();
@@ -57,7 +58,10 @@ export async function parallel<T, E>(
   operations: (() => Promise<Result<T, E>>)[],
   options?: ParallelOptions,
 ): Promise<Result<T[], E>> {
-  const concurrency = options?.concurrency ?? operations.length;
+  if (options?.concurrency !== undefined && options.concurrency < 1) {
+    throw new Error('parallel() concurrency must be at least 1');
+  }
+  const concurrency = options?.concurrency ?? (operations.length || 1);
   const results: Result<T, E>[] = [];
 
   for (let i = 0; i < operations.length; i += concurrency) {

@@ -49,6 +49,10 @@ describe('any', () => {
     await any([async () => ok(0), spy]);
     expect(spy).not.toHaveBeenCalled();
   });
+
+  it('throws when called with an empty array', async () => {
+    await expect(any([])).rejects.toThrow('any() requires at least one operation');
+  });
 });
 
 describe('parallel', () => {
@@ -68,6 +72,12 @@ describe('parallel', () => {
       async () => fail('boom'),
     ]);
     expect(isFail(r)).toBe(true);
+  });
+
+  it('throws when concurrency is less than 1', async () => {
+    await expect(parallel([async () => ok(1)], { concurrency: 0 })).rejects.toThrow(
+      'parallel() concurrency must be at least 1',
+    );
   });
 
   it('respects concurrency limit', async () => {
