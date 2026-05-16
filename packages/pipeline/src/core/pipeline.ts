@@ -46,13 +46,13 @@ export class Pipeline<TContext, TError = unknown> {
     for (const { instance, name, condition } of this.entries) {
       if (condition && !condition(ctx)) continue;
 
-      await onStep?.(name, ctx);
+      try { await onStep?.(name, ctx); } catch {}
       const stepStart  = Date.now();
       const stepResult = await instance.handle(ctx);
       const stepMs     = Date.now() - stepStart;
 
       if (!stepResult.ok) {
-        await onError?.(name, stepResult.error);
+        try { await onError?.(name, stepResult.error); } catch {}
         failures.push({ step: name, cause: stepResult.error });
 
         if (mode === 'stop-on-first') {
@@ -76,7 +76,7 @@ export class Pipeline<TContext, TError = unknown> {
 
       ctx = stepResult.value;
       executedSteps.push(name);
-      await onStepComplete?.(name, ctx, stepMs);
+      try { await onStepComplete?.(name, ctx, stepMs); } catch {}
     }
 
     if (failures.length > 0) {
@@ -94,7 +94,7 @@ export class Pipeline<TContext, TError = unknown> {
     }
 
     const durationMs = Date.now() - start;
-    await onComplete?.(ctx, durationMs);
+    try { await onComplete?.(ctx, durationMs); } catch {}
     return { ok: true, value: ctx, executedSteps: [...executedSteps], durationMs };
   }
 }

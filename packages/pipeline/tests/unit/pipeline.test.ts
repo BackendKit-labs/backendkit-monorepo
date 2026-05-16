@@ -190,6 +190,32 @@ describe('hooks', () => {
 
     expect(onComplete).not.toHaveBeenCalled();
   });
+
+  it('does not propagate exceptions thrown by hooks', async () => {
+    const result = await pipeline<Ctx, TestErr>({
+      onStep:         () => { throw new Error('onStep exploded'); },
+      onStepComplete: () => { throw new Error('onStepComplete exploded'); },
+      onComplete:     () => { throw new Error('onComplete exploded'); },
+    })
+      .pipe(pass('A'))
+      .run(init);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.executedSteps).toEqual(['A']);
+  });
+
+  it('does not propagate onError hook exceptions and still returns pipeline error', async () => {
+    const result = await pipeline<Ctx, TestErr>({
+      onError: () => { throw new Error('onError exploded'); },
+    })
+      .pipe(fail('A'))
+      .run(init);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.failedStep).toBe('A');
+  });
 });
 
 // ── context flow ──────────────────────────────────────────────────────────────
