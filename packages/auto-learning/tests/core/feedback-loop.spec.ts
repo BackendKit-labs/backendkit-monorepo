@@ -68,7 +68,7 @@ const makeStorageMock = () => {
     loadConfig: vi.fn<() => ReturnType<StorageAdapter['loadConfig']>>().mockReturnValue(ok(null)),
     saveCycleEvent: vi.fn<() => ReturnType<StorageAdapter['saveCycleEvent']>>().mockReturnValue(ok(undefined)),
     getLastCycleTime: vi.fn(),
-    prune: vi.fn(),
+    prune: vi.fn<() => ReturnType<StorageAdapter['prune']>>().mockReturnValue(ok(0)),
   } as vi.Mocked<StorageAdapter>;
 };
 
@@ -339,13 +339,26 @@ describe('FeedbackLoop', () => {
       );
     });
 
-    it('should run cycles on each interval tick', () => {
+    it('should run cycles on each interval tick', async () => {
       loop.start(1000);
 
-      vi.advanceTimersByTime(3000);
+      // advanceTimersByTimeAsync drains microtasks between ticks, so isProcessing
+      // resets to false before each subsequent tick and all 3 run.
+      await vi.advanceTimersByTimeAsync(3000);
 
-      // Should have run 3 times (at 0, 1000, 2000)
+      // Should have run 3 times (at 1000ms, 2000ms, 3000ms)
       expect(storage.getPatterns).toHaveBeenCalledTimes(3);
+    });
+
+    it('should skip a tick when the previous cycle is still running', () => {
+      const runOnce = vi.spyOn(loop, 'runOnce').mockReturnValue(new Promise(() => {}));
+
+      loop.start(1000);
+      vi.advanceTimersByTime(2500); // 2 ticks: 1000ms and 2000ms
+
+      // First tick started runOnce; second tick found isProcessing=true and skipped
+      expect(runOnce).toHaveBeenCalledTimes(1);
+      expect(observability.warn).toHaveBeenCalledWith('Skipping cycle: previous cycle still running');
     });
   });
 

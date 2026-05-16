@@ -84,13 +84,21 @@ export class PatternRegistry implements IPatternRegistry {
     }
 
     const uniqueEndpoints = new Set(all.map((p: EndpointPattern) => `${p.method}:${p.path}`));
-    const timestamps = all.map((p: EndpointPattern) => p.timestamp.getTime());
+
+    // Avoid Math.min/max spread — throws RangeError on large arrays.
+    let oldest = all[0].timestamp.getTime();
+    let newest = oldest;
+    for (const p of all) {
+      const t = p.timestamp.getTime();
+      if (t < oldest) oldest = t;
+      if (t > newest) newest = t;
+    }
 
     return ok({
       totalPatterns: all.length,
       uniqueEndpoints: uniqueEndpoints.size,
-      oldestPattern: new Date(Math.min(...timestamps)),
-      newestPattern: new Date(Math.max(...timestamps)),
+      oldestPattern: new Date(oldest),
+      newestPattern: new Date(newest),
     });
   }
 }

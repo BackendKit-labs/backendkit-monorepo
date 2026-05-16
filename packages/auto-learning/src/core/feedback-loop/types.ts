@@ -15,6 +15,8 @@ export type FeedbackLoopConfig = {
   windowSizeMinutes: number;
   minSamplesBeforeTuning: number;
   cooldownBetweenChangesMs: number;
+  /** Hours to retain patterns and anomalies. Records older than this are pruned after each cycle. Default: 24 */
+  pruneTtlHours: number;
 };
 
 export const DEFAULT_LOOP_CONFIG: FeedbackLoopConfig = {
@@ -22,4 +24,5 @@ export const DEFAULT_LOOP_CONFIG: FeedbackLoopConfig = {
   windowSizeMinutes: 5,
   minSamplesBeforeTuning: 10,
   cooldownBetweenChangesMs: 120_000,
+  pruneTtlHours: 24,
 };

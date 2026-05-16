@@ -65,7 +65,8 @@ export class AutoLearningInterceptor implements NestInterceptor {
 
   private extractRequestInfo(req: any): { method: string; path: string } {
     const method = req.method ?? 'UNKNOWN';
-    const path = req.route?.path ?? req.path ?? req.url ?? '/';
+    const raw = req.route?.path ?? req.path ?? req.url ?? '/';
+    const path = raw.split('?')[0];
     return { method, path };
   }
 }

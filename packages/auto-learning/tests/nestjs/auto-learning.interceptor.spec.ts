@@ -140,6 +140,26 @@ describe('AutoLearningInterceptor', () => {
       );
     });
 
+    it('should strip query string from req.url when route is not available', () => {
+      const req = { method: 'GET', url: '/api/users?page=1&limit=10' }; // no req.route
+      const res = { statusCode: 200 };
+      const context = {
+        getType: vi.fn(() => 'http'),
+        getHandler: vi.fn(() => ({})),
+        switchToHttp: vi.fn(() => ({
+          getRequest: vi.fn(() => req),
+          getResponse: vi.fn(() => res),
+        })),
+      } as unknown as ExecutionContext;
+      const handler = makeHandler();
+
+      interceptor.intercept(context, handler).subscribe();
+
+      expect(core.recordPattern).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/api/users' }),
+      );
+    });
+
     it('should record durationMs as a non-negative number', () => {
       const context = makeHttpContext();
       const handler = makeHandler();

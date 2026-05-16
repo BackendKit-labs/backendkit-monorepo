@@ -96,6 +96,72 @@ describe('InMemoryStorage', () => {
     });
   });
 
+  // ---- bounds (FIFO cap) ----
+
+  describe('bounded storage', () => {
+    it('should drop oldest patterns when maxPatterns is exceeded', () => {
+      const storage = new InMemoryStorage({ maxPatterns: 3 });
+      const t = (offset: number) => new Date(Date.now() - offset);
+
+      storage.savePattern(makePattern({ durationMs: 1, timestamp: t(4000) })); // oldest
+      storage.savePattern(makePattern({ durationMs: 2, timestamp: t(3000) }));
+      storage.savePattern(makePattern({ durationMs: 3, timestamp: t(2000) }));
+      storage.savePattern(makePattern({ durationMs: 4, timestamp: t(1000) })); // triggers eviction
+
+      const result = storage.getPatterns(new Date(0), new Date());
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(3);
+        // Oldest (durationMs=1) was dropped, remaining are 2, 3, 4
+        const durations = result.value.map((p) => p.durationMs).sort();
+        expect(durations).toEqual([2, 3, 4]);
+      }
+    });
+
+    it('should drop oldest anomalies when maxAnomalies is exceeded', () => {
+      const storage = new InMemoryStorage({ maxAnomalies: 2 });
+
+      storage.saveAnomaly(makeAnomaly({ id: 'a1' }));
+      storage.saveAnomaly(makeAnomaly({ id: 'a2' }));
+      storage.saveAnomaly(makeAnomaly({ id: 'a3' })); // triggers eviction of a1
+
+      const result = storage.getRecentAnomalies(10);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(2);
+        const ids = result.value.map((a) => a.id);
+        expect(ids).not.toContain('a1');
+        expect(ids).toContain('a2');
+        expect(ids).toContain('a3');
+      }
+    });
+
+    it('should drop oldest cycle events when maxCycles is exceeded', () => {
+      const storage = new InMemoryStorage({ maxCycles: 2 });
+
+      storage.saveCycleEvent(makeCycleEvent({ cycleId: 'c1', timestamp: new Date('2025-01-01') }));
+      storage.saveCycleEvent(makeCycleEvent({ cycleId: 'c2', timestamp: new Date('2025-06-01') }));
+      storage.saveCycleEvent(makeCycleEvent({ cycleId: 'c3', timestamp: new Date('2025-12-01') }));
+
+      const result = storage.getLastCycleTime();
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual(new Date('2025-12-01'));
+      }
+      // c1 was dropped; last cycle is c3
+    });
+
+    it('should not drop entries when count is within limits', () => {
+      const storage = new InMemoryStorage({ maxPatterns: 5 });
+
+      for (let i = 0; i < 5; i++) storage.savePattern(makePattern({ durationMs: i + 1 }));
+
+      const result = storage.getPatterns(new Date(0), new Date());
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value).toHaveLength(5);
+    });
+  });
+
   // ---- getAggregates ----
 
   describe('getAggregates', () => {
@@ -158,6 +224,37 @@ describe('InMemoryStorage', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toHaveLength(3);
+      }
+    });
+
+    it('should preserve parameterized paths like /users/:id without truncation', () => {
+      const now = new Date();
+      storage.savePattern(makePattern({ method: 'GET', path: '/api/users/:id', timestamp: now }));
+      storage.savePattern(makePattern({ method: 'GET', path: '/api/users/:id', timestamp: now }));
+
+      const result = storage.getAggregates(60);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].path).toBe('/api/users/:id');
+        expect(result.value[0].method).toBe('GET');
+        expect(result.value[0].count).toBe(2);
+      }
+    });
+
+    it('should keep /users/:id and /users/:id/orders as separate endpoints', () => {
+      const now = new Date();
+      storage.savePattern(makePattern({ method: 'GET', path: '/users/:id', timestamp: now }));
+      storage.savePattern(makePattern({ method: 'GET', path: '/users/:id/orders', timestamp: now }));
+
+      const result = storage.getAggregates(60);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(2);
+        const paths = result.value.map((a) => a.path).sort();
+        expect(paths).toEqual(['/users/:id', '/users/:id/orders']);
       }
     });
   });

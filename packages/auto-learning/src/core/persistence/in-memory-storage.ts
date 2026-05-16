@@ -16,6 +16,21 @@ const DEFAULT_CONFIG: TunableConfig = {
   httpClient: { timeoutMs: 10000, maxRetries: 3 },
 };
 
+export type InMemoryStorageLimits = {
+  /** Max patterns kept in memory. Oldest dropped when exceeded (FIFO). Default: 10_000 */
+  maxPatterns: number;
+  /** Max anomaly reports kept. Oldest dropped when exceeded. Default: 1_000 */
+  maxAnomalies: number;
+  /** Max cycle events kept. Oldest dropped when exceeded. Default: 1_000 */
+  maxCycles: number;
+};
+
+const DEFAULT_LIMITS: InMemoryStorageLimits = {
+  maxPatterns: 10_000,
+  maxAnomalies: 1_000,
+  maxCycles: 1_000,
+};
+
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const index = Math.ceil((p / 100) * sorted.length) - 1;
@@ -27,10 +42,18 @@ export class InMemoryStorage implements StorageAdapter {
   private anomalies: AnomalyReport[] = [];
   private config: TunableConfig = { ...DEFAULT_CONFIG };
   private cycles: LearningCycleEvent[] = [];
+  private readonly limits: InMemoryStorageLimits;
+
+  constructor(limits?: Partial<InMemoryStorageLimits>) {
+    this.limits = { ...DEFAULT_LIMITS, ...limits };
+  }
 
   savePattern(pattern: EndpointPattern): Result<void, LearningError> {
     try {
       this.patterns.push(pattern);
+      if (this.patterns.length > this.limits.maxPatterns) {
+        this.patterns.shift();
+      }
       return ok(undefined);
     } catch (e) {
       return fail(storageError('Failed to save pattern', e));
@@ -54,16 +77,18 @@ export class InMemoryStorage implements StorageAdapter {
       const cutoff = new Date(Date.now() - windowMinutes * 60_000);
       const recent = this.patterns.filter((p) => p.timestamp >= cutoff);
 
-      const groups = new Map<string, EndpointPattern[]>();
+      // Use \x00 as separator so parameterized paths like /users/:id are preserved.
+      type GroupEntry = { method: string; path: string; items: EndpointPattern[] };
+      const groups = new Map<string, GroupEntry>();
       for (const p of recent) {
-        const key = `${p.method}:${p.path}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(p);
+        const key = `${p.method}\x00${p.path}`;
+        let g = groups.get(key);
+        if (!g) { g = { method: p.method, path: p.path, items: [] }; groups.set(key, g); }
+        g.items.push(p);
       }
 
       const aggregates: AggregatePattern[] = [];
-      for (const [key, items] of groups) {
-        const [method, path] = key.split(':');
+      for (const { method, path, items } of groups.values()) {
         const durations = items.map((i) => i.durationMs).sort((a, b) => a - b);
         const errors = items.filter((i) => i.statusCode >= 500).length;
 
@@ -73,8 +98,7 @@ export class InMemoryStorage implements StorageAdapter {
           windowStart: cutoff,
           windowEnd: new Date(),
           count: items.length,
-          avgDurationMs:
-            durations.reduce((a, b) => a + b, 0) / durations.length,
+          avgDurationMs: durations.reduce((a, b) => a + b, 0) / durations.length,
           p50Ms: percentile(durations, 50),
           p95Ms: percentile(durations, 95),
           p99Ms: percentile(durations, 99),
@@ -92,6 +116,9 @@ export class InMemoryStorage implements StorageAdapter {
   saveAnomaly(report: AnomalyReport): Result<void, LearningError> {
     try {
       this.anomalies.push(report);
+      if (this.anomalies.length > this.limits.maxAnomalies) {
+        this.anomalies.shift();
+      }
       return ok(undefined);
     } catch (e) {
       return fail(storageError('Failed to save anomaly', e));
@@ -134,6 +161,9 @@ export class InMemoryStorage implements StorageAdapter {
   saveCycleEvent(event: LearningCycleEvent): Result<void, LearningError> {
     try {
       this.cycles.push(event);
+      if (this.cycles.length > this.limits.maxCycles) {
+        this.cycles.shift();
+      }
       return ok(undefined);
     } catch (e) {
       return fail(storageError('Failed to save cycle event', e));

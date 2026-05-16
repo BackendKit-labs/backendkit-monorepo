@@ -12,6 +12,7 @@ import { ObservabilityAdapter } from '../observability/observability-adapter.js'
 
 export class FeedbackLoop implements IFeedbackLoop {
   private timerId: ReturnType<typeof setInterval> | null = null;
+  private isProcessing = false;
   private readonly config: FeedbackLoopConfig;
   private cycleListeners: Array<(event: LearningCycleEvent) => void> = [];
 
@@ -35,14 +36,20 @@ export class FeedbackLoop implements IFeedbackLoop {
     const interval = intervalMs ?? this.config.defaultIntervalMs;
     this.observability.info('Feedback loop started', { intervalMs: interval });
 
-    this.timerId = setInterval(() => {
-      this.runOnce().then((result) => {
+    this.timerId = setInterval(async () => {
+      if (this.isProcessing) {
+        this.observability.warn('Skipping cycle: previous cycle still running');
+        return;
+      }
+      this.isProcessing = true;
+      try {
+        const result = await this.runOnce();
         if (!result.ok) {
-          this.observability.error('Feedback loop cycle failed', {
-            error: result.error,
-          });
+          this.observability.error('Feedback loop cycle failed', { error: result.error });
         }
-      });
+      } finally {
+        this.isProcessing = false;
+      }
     }, interval);
   }
 
@@ -167,6 +174,13 @@ export class FeedbackLoop implements IFeedbackLoop {
     // Emit to listeners
     for (const listener of this.cycleListeners) {
       listener(cycleEvent);
+    }
+
+    // Step 6: Prune records older than the configured TTL
+    const pruneCutoff = new Date(Date.now() - this.config.pruneTtlHours * 3_600_000);
+    const pruneResult = this.storage.prune(pruneCutoff);
+    if (pruneResult.ok && pruneResult.value > 0) {
+      this.observability.debug('Pruned old records', { count: pruneResult.value });
     }
 
     this.observability.info('Feedback cycle completed', {

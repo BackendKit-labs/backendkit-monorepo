@@ -254,5 +254,23 @@ describe('PatternRegistry', () => {
         expect(result.error.tag).toBe('STORAGE_ERROR');
       }
     });
+
+    it('should not throw RangeError with very large pattern arrays (was: Math.min/max spread)', () => {
+      const t0 = new Date('2024-01-01').getTime();
+      const patterns = Array.from({ length: 50_000 }, (_, i) =>
+        makePattern({ timestamp: new Date(t0 + i * 1000) }),
+      );
+      storage.getPatterns.mockReturnValue(ok(patterns));
+
+      expect(() => registry.getStats()).not.toThrow();
+
+      const result = registry.getStats();
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.totalPatterns).toBe(50_000);
+        expect(result.value.oldestPattern).toEqual(new Date(t0));
+        expect(result.value.newestPattern).toEqual(new Date(t0 + 49_999 * 1000));
+      }
+    });
   });
 });
