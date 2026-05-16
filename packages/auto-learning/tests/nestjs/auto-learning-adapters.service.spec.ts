@@ -13,11 +13,9 @@ import type { ModuleRef } from '@nestjs/core';
 // ---------------------------------------------------------------------------
 
 const BASE_CONFIG: TunableConfig = {
-  timeoutMs: 5000,
-  maxRetries: 3,
-  circuitBreakerThreshold: 0.4,
-  circuitBreakerHalfOpenAfterMs: 20000,
-  bulkheadMaxConcurrent: 8,
+  circuitBreaker: { failureThreshold: 40, openTimeoutMs: 20000 },
+  bulkhead: { maxConcurrentCalls: 8 },
+  httpClient: { timeoutMs: 5000, maxRetries: 3 },
 };
 
 function makeMockCore() {
@@ -160,7 +158,7 @@ describe('AutoLearningAdaptersService', () => {
       expect(cbInstance.updateConfig).toHaveBeenCalledTimes(2);
     });
 
-    it('should map circuitBreakerThreshold (0–1) to failureThreshold (0–100)', async () => {
+    it('should pass circuitBreaker.failureThreshold directly (0–100)', async () => {
       const { registry, cbInstance } = makeCBRegistryMock();
       const service = makeService(
         { adapters: { circuitBreaker: true } },
@@ -169,14 +167,14 @@ describe('AutoLearningAdaptersService', () => {
       );
 
       await service.onModuleInit();
-      core._fire({ ...BASE_CONFIG, circuitBreakerThreshold: 0.4 });
+      core._fire({ ...BASE_CONFIG, circuitBreaker: { failureThreshold: 40, openTimeoutMs: 20000 } });
 
       expect(cbInstance.updateConfig).toHaveBeenCalledWith(
         expect.objectContaining({ failureThreshold: 40 }),
       );
     });
 
-    it('should map circuitBreakerHalfOpenAfterMs to openTimeoutMs', async () => {
+    it('should pass circuitBreaker.openTimeoutMs directly', async () => {
       const { registry, cbInstance } = makeCBRegistryMock();
       const service = makeService(
         { adapters: { circuitBreaker: true } },
@@ -185,26 +183,10 @@ describe('AutoLearningAdaptersService', () => {
       );
 
       await service.onModuleInit();
-      core._fire({ ...BASE_CONFIG, circuitBreakerHalfOpenAfterMs: 20000 });
+      core._fire({ ...BASE_CONFIG, circuitBreaker: { failureThreshold: 40, openTimeoutMs: 20000 } });
 
       expect(cbInstance.updateConfig).toHaveBeenCalledWith(
         expect.objectContaining({ openTimeoutMs: 20000 }),
-      );
-    });
-
-    it('should round fractional threshold values', async () => {
-      const { registry, cbInstance } = makeCBRegistryMock();
-      const service = makeService(
-        { adapters: { circuitBreaker: true } },
-        core,
-        makeModuleRef({ cb: registry }),
-      );
-
-      await service.onModuleInit();
-      core._fire({ ...BASE_CONFIG, circuitBreakerThreshold: 0.456 });
-
-      expect(cbInstance.updateConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ failureThreshold: 46 }), // Math.round(45.6)
       );
     });
 
@@ -260,7 +242,7 @@ describe('AutoLearningAdaptersService', () => {
       expect(core.onConfigChange).not.toHaveBeenCalled();
     });
 
-    it('should map bulkheadMaxConcurrent to maxConcurrentCalls', async () => {
+    it('should pass bulkhead.maxConcurrentCalls directly', async () => {
       const { registry, bhInstance } = makeBHRegistryMock();
       const service = makeService(
         { adapters: { bulkhead: true } },
@@ -269,7 +251,7 @@ describe('AutoLearningAdaptersService', () => {
       );
 
       await service.onModuleInit();
-      core._fire({ ...BASE_CONFIG, bulkheadMaxConcurrent: 8 });
+      core._fire({ ...BASE_CONFIG, bulkhead: { maxConcurrentCalls: 8 } });
 
       expect(bhInstance.updateConfig).toHaveBeenCalledWith({ maxConcurrentCalls: 8 });
     });
@@ -380,15 +362,15 @@ describe('AutoLearningAdaptersService', () => {
 
       await service.onModuleInit();
 
-      core._fire({ ...BASE_CONFIG, circuitBreakerThreshold: 0.3 });
-      core._fire({ ...BASE_CONFIG, circuitBreakerThreshold: 0.6 });
+      core._fire({ ...BASE_CONFIG, circuitBreaker: { failureThreshold: 30, openTimeoutMs: 20000 } });
+      core._fire({ ...BASE_CONFIG, circuitBreaker: { failureThreshold: 60, openTimeoutMs: 20000 } });
 
       expect(cbInstance.updateConfig).toHaveBeenNthCalledWith(
-        2, // first call on first CB from first fire
+        2,
         expect.objectContaining({ failureThreshold: 30 }),
       );
       expect(cbInstance.updateConfig).toHaveBeenNthCalledWith(
-        4, // second CB (second fire, second CB name)
+        4,
         expect.objectContaining({ failureThreshold: 60 }),
       );
     });

@@ -58,13 +58,12 @@ export class AutoLearningAdaptersService implements OnModuleInit {
       for (const name of Object.keys(allMetrics)) {
         const cb = this.cbRegistry.getOrCreate({ name });
         cb.updateConfig({
-          failureThreshold: Math.round(config.circuitBreakerThreshold * 100),
-          openTimeoutMs: config.circuitBreakerHalfOpenAfterMs,
+          failureThreshold: config.circuitBreaker.failureThreshold,
+          openTimeoutMs: config.circuitBreaker.openTimeoutMs,
         });
       }
       this.core.observability.debug('Circuit breaker config updated', {
-        failureThreshold: Math.round(config.circuitBreakerThreshold * 100),
-        openTimeoutMs: config.circuitBreakerHalfOpenAfterMs,
+        ...config.circuitBreaker,
         affected: Object.keys(allMetrics).length,
       });
     }
@@ -73,10 +72,10 @@ export class AutoLearningAdaptersService implements OnModuleInit {
       const allMetrics = this.bhRegistry.getAllMetrics();
       for (const name of Object.keys(allMetrics)) {
         const bh = this.bhRegistry.getOrCreate({ name });
-        bh.updateConfig({ maxConcurrentCalls: config.bulkheadMaxConcurrent });
+        bh.updateConfig({ maxConcurrentCalls: config.bulkhead.maxConcurrentCalls });
       }
       this.core.observability.debug('Bulkhead config updated', {
-        maxConcurrentCalls: config.bulkheadMaxConcurrent,
+        ...config.bulkhead,
         affected: Object.keys(allMetrics).length,
       });
     }

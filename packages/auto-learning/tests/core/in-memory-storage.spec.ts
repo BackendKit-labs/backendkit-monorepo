@@ -207,11 +207,9 @@ describe('InMemoryStorage', () => {
   describe('saveConfig and loadConfig', () => {
     it('should save and load config', () => {
       const config: TunableConfig = {
-        timeoutMs: 5000,
-        maxRetries: 2,
-        circuitBreakerThreshold: 0.3,
-        circuitBreakerHalfOpenAfterMs: 15000,
-        bulkheadMaxConcurrent: 5,
+        circuitBreaker: { failureThreshold: 30, openTimeoutMs: 15000 },
+        bulkhead: { maxConcurrentCalls: 5 },
+        httpClient: { timeoutMs: 5000, maxRetries: 2 },
       };
 
       const saveResult = storage.saveConfig(config);
@@ -229,19 +227,23 @@ describe('InMemoryStorage', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok && result.value) {
-        expect(result.value.timeoutMs).toBe(10000);
-        expect(result.value.maxRetries).toBe(3);
+        expect(result.value.httpClient.timeoutMs).toBe(10000);
+        expect(result.value.httpClient.maxRetries).toBe(3);
       }
     });
 
     it('should overwrite previous config on save', () => {
-      storage.saveConfig({ timeoutMs: 1000, maxRetries: 1, circuitBreakerThreshold: 0.1, circuitBreakerHalfOpenAfterMs: 5000, bulkheadMaxConcurrent: 2 });
+      storage.saveConfig({
+        circuitBreaker: { failureThreshold: 10, openTimeoutMs: 5000 },
+        bulkhead: { maxConcurrentCalls: 2 },
+        httpClient: { timeoutMs: 1000, maxRetries: 1 },
+      });
 
       const result = storage.loadConfig();
       expect(result.ok).toBe(true);
       if (result.ok && result.value) {
-        expect(result.value.timeoutMs).toBe(1000);
-        expect(result.value.maxRetries).toBe(1);
+        expect(result.value.httpClient.timeoutMs).toBe(1000);
+        expect(result.value.httpClient.maxRetries).toBe(1);
       }
     });
   });

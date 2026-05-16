@@ -40,11 +40,9 @@ const makeAnomaly = (overrides: Partial<AnomalyReport> = {}): AnomalyReport => (
 
 const makeStorageMock = () => {
   const defaults: TunableConfig = {
-    timeoutMs: 10000,
-    maxRetries: 3,
-    circuitBreakerThreshold: 0.5,
-    circuitBreakerHalfOpenAfterMs: 30000,
-    bulkheadMaxConcurrent: 10,
+    circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+    bulkhead: { maxConcurrentCalls: 10 },
+    httpClient: { timeoutMs: 10000, maxRetries: 3 },
   };
   return {
     savePattern: vi.fn(),
@@ -97,8 +95,8 @@ describe('ConfigTuner', () => {
       const t = new ConfigTuner(storage, observability);
 
       const config = t.getCurrentConfig();
-      expect(config.timeoutMs).toBe(10000);
-      expect(config.maxRetries).toBe(3);
+      expect(config.httpClient.timeoutMs).toBe(10000);
+      expect(config.httpClient.maxRetries).toBe(3);
     });
 
     it('should use default config when storage fails', () => {
@@ -106,7 +104,7 @@ describe('ConfigTuner', () => {
       const t = new ConfigTuner(storage, observability);
 
       const config = t.getCurrentConfig();
-      expect(config.timeoutMs).toBe(10000);
+      expect(config.httpClient.timeoutMs).toBe(10000);
     });
   });
 
@@ -115,10 +113,10 @@ describe('ConfigTuner', () => {
   describe('getCurrentConfig', () => {
     it('should return a copy of the current config', () => {
       const config = tuner.getCurrentConfig();
-      expect(config.timeoutMs).toBe(10000);
-      config.timeoutMs = 999;
+      expect(config.httpClient.timeoutMs).toBe(10000);
+      config.httpClient.timeoutMs = 999;
       // original should be unchanged
-      expect(tuner.getCurrentConfig().timeoutMs).toBe(10000);
+      expect(tuner.getCurrentConfig().httpClient.timeoutMs).toBe(10000);
     });
   });
 
@@ -130,7 +128,7 @@ describe('ConfigTuner', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.timeoutMs).toBe(10000);
+        expect(result.value.httpClient.timeoutMs).toBe(10000);
       }
     });
 
@@ -142,8 +140,8 @@ describe('ConfigTuner', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         // target = 8000 * 2 = 16000, smoothed: 10000 + (16000-10000)*0.3 = 11800
-        expect(result.value.timeoutMs).toBeGreaterThan(10000);
-        expect(result.value.timeoutMs).toBeLessThan(16000);
+        expect(result.value.httpClient.timeoutMs).toBeGreaterThan(10000);
+        expect(result.value.httpClient.timeoutMs).toBeLessThan(16000);
       }
     });
 
@@ -155,14 +153,11 @@ describe('ConfigTuner', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.timeoutMs).toBeGreaterThanOrEqual(1000);
+        expect(result.value.httpClient.timeoutMs).toBeGreaterThanOrEqual(1000);
       }
     });
 
     it('should not increase timeout above maxTimeoutMs', () => {
-      // target = min(10000*2, 5000) = 5000
-      // smoothed = 10000 + (5000-10000)*0.3 = 8500
-      // The implementation clamps the target, not the final smoothed value
       const tunerWithMax = new ConfigTuner(storage, observability, { maxTimeoutMs: 5000 });
       const aggregates = [makeAggregate({ p95Ms: 10000 })];
 
@@ -171,7 +166,7 @@ describe('ConfigTuner', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         // smoothed value: 10000 + (5000-10000)*0.3 = 8500
-        expect(result.value.timeoutMs).toBe(8500);
+        expect(result.value.httpClient.timeoutMs).toBe(8500);
       }
     });
 
@@ -182,105 +177,81 @@ describe('ConfigTuner', () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.maxRetries).toBe(4);
+        expect(result.value.httpClient.maxRetries).toBe(4);
       }
     });
 
     it('should decrease maxRetries when error rate is low', () => {
-      // Use a tuner that starts with maxRetries=4 so we can decrease it
       const customStorage = makeStorageMock();
       customStorage.loadConfig.mockReturnValue(ok({
-        timeoutMs: 10000,
-        maxRetries: 4,
-        circuitBreakerThreshold: 0.5,
-        circuitBreakerHalfOpenAfterMs: 30000,
-        bulkheadMaxConcurrent: 10,
+        circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+        bulkhead: { maxConcurrentCalls: 10 },
+        httpClient: { timeoutMs: 10000, maxRetries: 4 },
       }));
       const t = new ConfigTuner(customStorage, observability);
 
-      const lowError = [makeAggregate({ errorRate: 0.005 })];
-      const result = t.tune(lowError, []);
+      const result = t.tune([makeAggregate({ errorRate: 0.005 })], []);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.maxRetries).toBe(3);
+        expect(result.value.httpClient.maxRetries).toBe(3);
       }
     });
 
     it('should not decrease maxRetries below 0', () => {
-      // Create a tuner with maxRetries = 0
       const customStorage = makeStorageMock();
       customStorage.loadConfig.mockReturnValue(ok({
-        timeoutMs: 10000,
-        maxRetries: 0,
-        circuitBreakerThreshold: 0.5,
-        circuitBreakerHalfOpenAfterMs: 30000,
-        bulkheadMaxConcurrent: 10,
+        circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+        bulkhead: { maxConcurrentCalls: 10 },
+        httpClient: { timeoutMs: 10000, maxRetries: 0 },
       }));
       const t = new ConfigTuner(customStorage, observability);
 
-      const aggregates = [makeAggregate({ errorRate: 0.005 })];
-      const result = t.tune(aggregates, []);
+      const result = t.tune([makeAggregate({ errorRate: 0.005 })], []);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.maxRetries).toBe(0);
+        expect(result.value.httpClient.maxRetries).toBe(0);
       }
     });
 
-    it('should decrease circuit breaker threshold when critical anomalies exist', () => {
-      const aggregates = [makeAggregate()];
-      const anomalies = [makeAnomaly({ severity: 'critical' })];
-
-      const result = tuner.tune(aggregates, anomalies);
+    it('should decrease circuit breaker failureThreshold when critical anomalies exist', () => {
+      const result = tuner.tune([makeAggregate()], [makeAnomaly({ severity: 'critical' })]);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.circuitBreakerThreshold).toBeLessThan(0.5);
+        expect(result.value.circuitBreaker.failureThreshold).toBeLessThan(50);
       }
     });
 
-    it('should increase circuit breaker threshold when no anomalies', () => {
-      const aggregates = [makeAggregate()];
-
-      const result = tuner.tune(aggregates, []);
+    it('should increase circuit breaker failureThreshold when no anomalies', () => {
+      const result = tuner.tune([makeAggregate()], []);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.circuitBreakerThreshold).toBeGreaterThan(0.5);
+        expect(result.value.circuitBreaker.failureThreshold).toBeGreaterThan(50);
       }
     });
 
-    it('should not decrease circuit breaker threshold below 0.1', () => {
-      const aggregates = [makeAggregate()];
-      const anomalies = [
-        makeAnomaly({ severity: 'critical' }),
-        makeAnomaly({ severity: 'critical' }),
-        makeAnomaly({ severity: 'critical' }),
-        makeAnomaly({ severity: 'critical' }),
-      ];
+    it('should not decrease circuit breaker failureThreshold below 10', () => {
+      const anomalies = Array.from({ length: 4 }, () => makeAnomaly({ severity: 'critical' }));
 
-      const result = tuner.tune(aggregates, anomalies);
+      const result = tuner.tune([makeAggregate()], anomalies);
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.circuitBreakerThreshold).toBeGreaterThanOrEqual(0.1);
+        expect(result.value.circuitBreaker.failureThreshold).toBeGreaterThanOrEqual(10);
       }
     });
 
-    it('should not increase circuit breaker threshold above 0.8', () => {
-      // First decrease to have room
-      const aggregates = [makeAggregate()];
-      const anomalies = [makeAnomaly({ severity: 'critical' })];
-      tuner.tune(aggregates, anomalies);
+    it('should not increase circuit breaker failureThreshold above 80', () => {
+      tuner.tune([makeAggregate()], [makeAnomaly({ severity: 'critical' })]);
 
-      // Then increase many times
       for (let i = 0; i < 20; i++) {
-        tuner.tune(aggregates, []);
+        tuner.tune([makeAggregate()], []);
       }
 
-      const config = tuner.getCurrentConfig();
-      expect(config.circuitBreakerThreshold).toBeLessThanOrEqual(0.8);
+      expect(tuner.getCurrentConfig().circuitBreaker.failureThreshold).toBeLessThanOrEqual(80);
     });
 
     it('should save config and notify listeners when changes occur', () => {
@@ -312,16 +283,15 @@ describe('ConfigTuner', () => {
 
   describe('reset', () => {
     it('should reset config to defaults', () => {
-      // First change something
       tuner.tune([makeAggregate({ p95Ms: 8000 })], []);
 
       const result = tuner.reset();
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.timeoutMs).toBe(10000);
-        expect(result.value.maxRetries).toBe(3);
-        expect(result.value.circuitBreakerThreshold).toBe(0.5);
+        expect(result.value.httpClient.timeoutMs).toBe(10000);
+        expect(result.value.httpClient.maxRetries).toBe(3);
+        expect(result.value.circuitBreaker.failureThreshold).toBe(50);
       }
     });
 
