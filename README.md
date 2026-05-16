@@ -2,18 +2,40 @@
 
 Reusable, enterprise-grade Node.js libraries by [BackendKit Labs](https://github.com/BackendKit-labs).
 
+---
+
 ## Packages
+
+### Resilience
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| [`@backendkit-labs/console-animations`](./packages/console-animations) | 0.1.2 | Terminal animations for Node.js CLI applications |
-| [`@backendkit-labs/bulkhead`](./packages/bulkhead) | 0.1.0 | Bulkhead concurrency limiting — framework-agnostic core + NestJS integration |
-| [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | 0.1.0 | Circuit Breaker with business vs infrastructure error classification + NestJS integration |
-| [`@backendkit-labs/result`](./packages/result) | 0.1.1 | Type-safe Result monad — generic errors, observability, resilience, Flow pipeline + NestJS integration |
-| [`@backendkit-labs/observability`](./packages/observability) | 0.1.0 | Structured logging, metrics, correlation ID propagation, performance interceptors, and exception handling for NestJS — optional OTel support |
-| [`@backendkit-labs/request-scanner`](./packages/request-scanner) | 0.1.5 | Web Application Firewall — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection + NestJS integration |
-| [`@backendkit-labs/pipeline`](./packages/pipeline) | 0.1.0 | Type-safe async pipeline (Chain of Responsibility) — stop-on-first / collect-all modes, conditional steps, observability hooks + NestJS integration |
-| [`@backendkit-labs/http-client`](./packages/http-client) | 0.1.0 | Production-grade HTTP client — axios + circuit breaker + retry + Result responses + cancellation + pipeline middleware + NestJS integration |
+| [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker) | Circuit Breaker — fail-fast with business vs infrastructure error classification, optional NestJS integration |
+| [`@backendkit-labs/bulkhead`](./packages/bulkhead) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/bulkhead?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/bulkhead) | Bulkhead concurrency limiting — queue-based, optional NestJS integration |
+| [`@backendkit-labs/auto-learning`](./packages/auto-learning) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/auto-learning?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/auto-learning) | Adaptive resilience — automatically tunes circuit breakers, bulkheads, and HTTP clients based on real traffic patterns |
+
+### HTTP & Networking
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@backendkit-labs/http-client`](./packages/http-client) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/http-client?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/http-client) | Production-grade HTTP client — axios + circuit breaker + retry + Result responses + cancellation + NestJS integration |
+| [`@backendkit-labs/request-scanner`](./packages/request-scanner) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/request-scanner?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/request-scanner) | Web Application Firewall — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection + NestJS integration |
+
+### Observability
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@backendkit-labs/observability`](./packages/observability) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/observability?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/observability) | Structured logging, metrics, correlation ID propagation, performance interceptors, and exception handling for NestJS — optional OTel support |
+
+### Utilities
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| [`@backendkit-labs/result`](./packages/result) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/result?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/result) | Type-safe Result monad — generic errors, observability, resilience, Flow pipeline + NestJS integration |
+| [`@backendkit-labs/pipeline`](./packages/pipeline) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/pipeline?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/pipeline) | Type-safe async pipeline (Chain of Responsibility) — stop-on-first / collect-all modes, conditional steps, observability hooks + NestJS integration |
+| [`@backendkit-labs/console-animations`](./packages/console-animations) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/console-animations?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/console-animations) | Terminal animations for Node.js CLI applications |
+
+---
 
 ## Development
 
@@ -34,6 +56,8 @@ npm run typecheck
 npm run lint
 ```
 
+---
+
 ## License
 
-Apache-2.0
+Apache-2.0 — [BackendKit Labs](https://github.com/BackendKit-labs)
