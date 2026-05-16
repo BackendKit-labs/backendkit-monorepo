@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   Bulkhead,
   BulkheadRejectedError,
@@ -125,5 +125,52 @@ describe('Bulkhead', () => {
     expect(m.name).toBe('test');
     expect(m.maxConcurrentCalls).toBe(2);
     expect(m.maxQueueSize).toBe(2);
+  });
+
+  it('does not spuriously reject a queued task when the timeout fires after dequeue', async () => {
+    vi.useFakeTimers();
+
+    // First task runs for 60ms; second task is queued with a 70ms timeout.
+    // At 60ms the first task completes → processQueue dequeues the second task.
+    // Without the fix the original 70ms timer fires at t=70ms and spuriously rejects
+    // the second task even though it is already running.
+    bh = new Bulkhead(makeConfig({ maxConcurrentCalls: 1, maxQueueSize: 1, queueTimeoutMs: 70 }));
+
+    const firstTask = bh.execute(() => new Promise<void>(r => setTimeout(r, 60)));
+    const secondTask = bh.execute(() => new Promise<string>(r => setTimeout(() => r('done'), 20)));
+
+    // advance to 60ms: first task completes, second task dequeued and started
+    await vi.advanceTimersByTimeAsync(60);
+    // advance to 70ms: original timer would fire here (spuriously without the fix)
+    await vi.advanceTimersByTimeAsync(10);
+    // advance to 80ms: second task finishes
+    await vi.advanceTimersByTimeAsync(10);
+
+    await expect(secondTask).resolves.toBe('done');
+    await firstTask;
+
+    expect(bh.getMetrics().timedOutCalls).toBe(0);
+    expect(bh.getMetrics().successfulCalls).toBe(2);
+
+    vi.useRealTimers();
+  });
+
+  it('does not increment timedOutCalls when the timeout timer finds the item already dequeued', async () => {
+    vi.useFakeTimers();
+
+    bh = new Bulkhead(makeConfig({ maxConcurrentCalls: 1, maxQueueSize: 1, queueTimeoutMs: 50 }));
+
+    const firstTask = bh.execute(() => new Promise<void>(r => setTimeout(r, 40)));
+    bh.execute(async () => 'queued'); // queued, timeout in 50ms
+
+    // first task completes at 40ms → processQueue dequeues second task immediately
+    await vi.advanceTimersByTimeAsync(40);
+    // original 50ms timer fires here — should be a no-op (item not in queue)
+    await vi.advanceTimersByTimeAsync(20);
+
+    await firstTask;
+    expect(bh.getMetrics().timedOutCalls).toBe(0);
+
+    vi.useRealTimers();
   });
 });

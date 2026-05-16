@@ -19,14 +19,13 @@ export class HttpBulkheadMiddleware implements NestMiddleware {
   private readonly bulkhead: Bulkhead;
 
   constructor() {
-    const concurrency = parseInt(
-      process.env['HTTP_BULKHEAD_CONCURRENCY'] ?? String(DEFAULT_CONCURRENCY),
-      10,
-    );
-    const maxQueueSize = parseInt(
-      process.env['HTTP_BULKHEAD_MAX_QUEUE'] ?? String(DEFAULT_MAX_QUEUE),
-      10,
-    );
+    const rawConcurrency = parseInt(process.env['HTTP_BULKHEAD_CONCURRENCY'] ?? '', 10);
+    const concurrency =
+      Number.isNaN(rawConcurrency) || rawConcurrency < 1 ? DEFAULT_CONCURRENCY : rawConcurrency;
+
+    const rawMaxQueue = parseInt(process.env['HTTP_BULKHEAD_MAX_QUEUE'] ?? '', 10);
+    const maxQueueSize =
+      Number.isNaN(rawMaxQueue) || rawMaxQueue < 0 ? DEFAULT_MAX_QUEUE : rawMaxQueue;
 
     this.bulkhead = new Bulkhead({
       name: 'http:global',

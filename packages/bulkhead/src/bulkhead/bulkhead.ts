@@ -44,6 +44,7 @@ export class Bulkhead {
   private nextId = 0;
   private queue: Array<{
     id: number;
+    timeoutId: ReturnType<typeof setTimeout>;
     task: () => Promise<unknown>;
     resolve: (value: unknown) => void;
     reject: (reason: unknown) => void;
@@ -86,17 +87,20 @@ export class Bulkhead {
     return new Promise<T>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         const index = this.queue.findIndex(item => item.id === entryId);
-        if (index !== -1) this.queue.splice(index, 1);
-        this.timedOutCalls++;
-        reject(
-          new BulkheadTimeoutError(
-            `Bulkhead '${this.config.name}' timeout after ${this.config.queueTimeoutMs}ms`,
-          ),
-        );
+        if (index !== -1) {
+          this.queue.splice(index, 1);
+          this.timedOutCalls++;
+          reject(
+            new BulkheadTimeoutError(
+              `Bulkhead '${this.config.name}' timeout after ${this.config.queueTimeoutMs}ms`,
+            ),
+          );
+        }
       }, this.config.queueTimeoutMs);
 
       this.queue.push({
         id: entryId,
+        timeoutId,
         task: task as () => Promise<unknown>,
         resolve: value => {
           clearTimeout(timeoutId);
@@ -150,6 +154,8 @@ export class Bulkhead {
     while (this.activeCalls < this.config.maxConcurrentCalls && this.queue.length > 0) {
       const next = this.queue.shift();
       if (!next) break;
+
+      clearTimeout(next.timeoutId);
 
       const waitTime = Date.now() - next.queuedAt;
       if (waitTime > this.config.queueTimeoutMs) {
