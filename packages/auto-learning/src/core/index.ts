@@ -11,6 +11,6 @@ export { DEFAULT_TUNER_CONFIG, ConfigTuner } from './config-tuner/index.js';
 export type { IFeedbackLoop, FeedbackLoopConfig } from './feedback-loop/index.js';
 export { DEFAULT_LOOP_CONFIG, FeedbackLoop } from './feedback-loop/index.js';
 export type { StorageAdapter } from './persistence/index.js';
-export { InMemoryStorage } from './persistence/index.js';
+export { InMemoryStorage, FileStorageAdapter } from './persistence/index.js';
 export type { ObservabilityAdapter } from './observability/index.js';
 export { NoopObservabilityAdapter } from './observability/index.js';

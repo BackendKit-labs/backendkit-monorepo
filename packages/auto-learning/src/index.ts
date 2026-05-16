@@ -1,5 +1,5 @@
 // Core (framework-agnostic)
-export { AutoLearningCore, PatternRegistry, AnomalyDetector, ConfigTuner, FeedbackLoop, InMemoryStorage, NoopObservabilityAdapter } from './core/index.js';
+export { AutoLearningCore, PatternRegistry, AnomalyDetector, ConfigTuner, FeedbackLoop, InMemoryStorage, FileStorageAdapter, NoopObservabilityAdapter } from './core/index.js';
 export type { AutoLearningCoreOptions, EndpointPattern, AggregatePattern, AnomalySeverity, AnomalyReport, TunableConfig, LearningCycleEvent, LearningError, IPatternRegistry, RegistryStats, IAnomalyDetector, AnomalyDetectorConfig, IConfigTuner, ConfigTunerConfig, IFeedbackLoop, FeedbackLoopConfig, StorageAdapter, ObservabilityAdapter } from './core/index.js';
 export { DEFAULT_ANOMALY_CONFIG, DEFAULT_TUNER_CONFIG, DEFAULT_LOOP_CONFIG } from './core/index.js';
 
