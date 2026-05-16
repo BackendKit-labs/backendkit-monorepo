@@ -1,4 +1,4 @@
-﻿---
+---
 title: Pipeline
 description: Type-safe async pipeline implementing Chain of Responsibility — conditional steps, two error modes, observability hooks, and NestJS DI integration.
 ---

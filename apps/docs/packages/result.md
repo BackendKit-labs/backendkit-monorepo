@@ -1,4 +1,4 @@
-﻿---
+---
 title: Result
 description: Type-safe Result monad for Node.js — generic errors, composable transformations, resilience, and NestJS integration.
 ---

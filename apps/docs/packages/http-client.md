@@ -1,4 +1,4 @@
-﻿---
+---
 title: HTTP Client
 description: Production-grade HTTP client built on axios — Result-based API, circuit breaker, retry with backoff, request cancellation, and pipeline middleware.
 ---

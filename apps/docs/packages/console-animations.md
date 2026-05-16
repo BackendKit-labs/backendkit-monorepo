@@ -1,4 +1,4 @@
-﻿---
+---
 title: Console Animations
 description: Enterprise-grade terminal animations for Node.js CLI applications — 17 built-in animations, CI detection, zero runtime dependencies.
 ---

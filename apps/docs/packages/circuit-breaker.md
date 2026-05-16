@@ -1,4 +1,4 @@
-﻿---
+---
 title: Circuit Breaker
 description: Sliding-window circuit breaker for Node.js with business vs infrastructure error classification and optional NestJS integration.
 ---

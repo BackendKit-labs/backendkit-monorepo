@@ -1,4 +1,4 @@
-﻿---
+---
 title: Getting Started
 description: Introduction to BackendKit Labs — reusable, enterprise-grade Node.js libraries.
 ---

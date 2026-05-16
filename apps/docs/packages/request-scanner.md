@@ -1,4 +1,4 @@
-﻿---
+---
 title: Request Firewall
 description: Web Application Firewall for Node.js — 23 built-in threat-detection rules across 6 attack categories, framework-agnostic core, and optional NestJS integration.
 ---

@@ -1,4 +1,4 @@
-﻿---
+---
 title: Bulkhead
 description: Concurrency limiting for Node.js — isolate failures and protect shared resources from overload.
 ---

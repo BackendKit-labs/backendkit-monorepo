@@ -1,4 +1,4 @@
-﻿import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Module } from '@nestjs/common';
 import { WafScanner } from '../core/scanner.js';
 import { SanitizePipe } from './sanitize.pipe.js';
 import { WafMiddleware } from './waf.middleware.js';

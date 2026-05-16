@@ -1,4 +1,4 @@
-﻿---
+---
 title: Observability
 description: Structured logging, metrics, correlation ID propagation, and optional OpenTelemetry support for NestJS.
 ---

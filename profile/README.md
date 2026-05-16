@@ -1,4 +1,4 @@
-﻿# BackendKit Labs
+# BackendKit Labs
 
 > Open-source utilities for Node.js CLI applications and backend services.
 

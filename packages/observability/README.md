@@ -1,4 +1,4 @@
-﻿# @backendkit-labs/observability
+# @backendkit-labs/observability
 
 [![Docs](https://img.shields.io/badge/docs-backendkitlabs.dev-4f7eff?style=flat-square)](https://backendkitlabs.dev/docs/observability/)
 

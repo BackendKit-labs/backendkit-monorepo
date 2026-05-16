@@ -1,4 +1,4 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import { packages } from '@/lib/packages';
 import type { Metadata } from 'next';
 import { highlight } from '@/lib/highlight';
