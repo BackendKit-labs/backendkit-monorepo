@@ -266,6 +266,52 @@ describe('CircuitBreaker — fallback', () => {
   });
 });
 
+describe('CircuitBreaker — config validation', () => {
+  it('throws RangeError when failureThreshold is out of 0–100 range', () => {
+    expect(() => new CircuitBreaker(makeConfig({ failureThreshold: -1 }))).toThrow(RangeError);
+    expect(() => new CircuitBreaker(makeConfig({ failureThreshold: 101 }))).toThrow(RangeError);
+  });
+
+  it('throws RangeError when slowCallThreshold is out of 0–100 range', () => {
+    expect(() => new CircuitBreaker(makeConfig({ slowCallThreshold: -1 }))).toThrow(RangeError);
+    expect(() => new CircuitBreaker(makeConfig({ slowCallThreshold: 101 }))).toThrow(RangeError);
+  });
+
+  it('throws RangeError when slidingWindowSize is less than 1', () => {
+    expect(() => new CircuitBreaker(makeConfig({ slidingWindowSize: 0 }))).toThrow(RangeError);
+  });
+
+  it('throws RangeError when minimumCalls is less than 1', () => {
+    expect(() => new CircuitBreaker(makeConfig({ minimumCalls: 0 }))).toThrow(RangeError);
+  });
+
+  it('throws RangeError when halfOpenMaxCalls is less than 1', () => {
+    expect(() => new CircuitBreaker(makeConfig({ halfOpenMaxCalls: 0 }))).toThrow(RangeError);
+  });
+
+  it('throws RangeError when openTimeoutMs is less than 1', () => {
+    expect(() => new CircuitBreaker(makeConfig({ openTimeoutMs: 0 }))).toThrow(RangeError);
+  });
+
+  it('throws RangeError when slowCallDurationMs is less than 1', () => {
+    expect(() => new CircuitBreaker(makeConfig({ slowCallDurationMs: 0 }))).toThrow(RangeError);
+  });
+
+  it('validates on updateConfig and throws before applying the change', () => {
+    const cb = new CircuitBreaker(makeConfig());
+    expect(() => cb.updateConfig({ failureThreshold: 110 })).toThrow(RangeError);
+    // original config unchanged
+    expect(cb.getMetrics().failureRate).toBeDefined();
+  });
+
+  it('accepts valid boundary values without throwing', () => {
+    expect(() => new CircuitBreaker(makeConfig({ failureThreshold: 0 }))).not.toThrow();
+    expect(() => new CircuitBreaker(makeConfig({ failureThreshold: 100 }))).not.toThrow();
+    expect(() => new CircuitBreaker(makeConfig({ slidingWindowSize: 1 }))).not.toThrow();
+    expect(() => new CircuitBreaker(makeConfig({ minimumCalls: 1 }))).not.toThrow();
+  });
+});
+
 describe('CircuitBreaker — canAttempt', () => {
   it('returns true when CLOSED', () => {
     expect(new CircuitBreaker(makeConfig()).canAttempt()).toBe(true);

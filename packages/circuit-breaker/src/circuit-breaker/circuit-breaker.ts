@@ -106,10 +106,38 @@ export class CircuitBreaker {
   private slowCalls = 0;
   private notPermittedCalls = 0;
 
-  constructor(private config: CircuitBreakerConfig) {}
+  constructor(private config: CircuitBreakerConfig) {
+    this.validateConfig(config);
+  }
 
   updateConfig(partial: Partial<Omit<CircuitBreakerConfig, 'name'>>): void {
-    this.config = { ...this.config, ...partial };
+    const merged = { ...this.config, ...partial };
+    this.validateConfig(merged);
+    this.config = merged;
+  }
+
+  private validateConfig(config: CircuitBreakerConfig): void {
+    if (config.failureThreshold < 0 || config.failureThreshold > 100) {
+      throw new RangeError(`CircuitBreaker '${config.name}': failureThreshold must be 0–100, got ${config.failureThreshold}`);
+    }
+    if (config.slowCallThreshold < 0 || config.slowCallThreshold > 100) {
+      throw new RangeError(`CircuitBreaker '${config.name}': slowCallThreshold must be 0–100, got ${config.slowCallThreshold}`);
+    }
+    if (config.slidingWindowSize < 1) {
+      throw new RangeError(`CircuitBreaker '${config.name}': slidingWindowSize must be ≥ 1, got ${config.slidingWindowSize}`);
+    }
+    if (config.minimumCalls < 1) {
+      throw new RangeError(`CircuitBreaker '${config.name}': minimumCalls must be ≥ 1, got ${config.minimumCalls}`);
+    }
+    if (config.halfOpenMaxCalls < 1) {
+      throw new RangeError(`CircuitBreaker '${config.name}': halfOpenMaxCalls must be ≥ 1, got ${config.halfOpenMaxCalls}`);
+    }
+    if (config.openTimeoutMs < 1) {
+      throw new RangeError(`CircuitBreaker '${config.name}': openTimeoutMs must be ≥ 1, got ${config.openTimeoutMs}`);
+    }
+    if (config.slowCallDurationMs < 1) {
+      throw new RangeError(`CircuitBreaker '${config.name}': slowCallDurationMs must be ≥ 1, got ${config.slowCallDurationMs}`);
+    }
   }
 
   /**
@@ -134,8 +162,6 @@ export class CircuitBreaker {
     task: () => Promise<T>,
     fallback?: (error: unknown) => T | Promise<T>,
   ): Promise<T> {
-    this.syncState();
-
     if (!this.canAttempt()) {
       this.notPermittedCalls++;
       const openError = new CircuitBreakerOpenError(this.config.name);
