@@ -28,21 +28,20 @@ export class HttpClientModule {
   static forRootAsync(options: HttpClientModuleAsyncOptions): DynamicModule {
     const asyncProvider = HttpClientModule._asyncOptionsProvider(options);
 
-    const clientsProvider: Provider = {
-      provide:    'HTTP_CLIENT_INSTANCES',
+    const clientProviders: Provider[] = options.clients.map(token => ({
+      provide:    token.symbol,
       useFactory: (opts: HttpClientModuleOptions) => {
-        return opts.clients.map(({ token, config }) => ({
-          token,
-          instance: new HttpClient(config),
-        }));
+        const def = opts.clients.find(c => c.token.symbol === token.symbol);
+        if (!def) throw new Error(
+          `HttpClient config not found for '${token.description}'. ` +
+          `The factory must return a config entry for every token declared in 'clients'.`,
+        );
+        return new HttpClient(def.config);
       },
       inject: [HTTP_CLIENT_MODULE_OPTIONS],
-    };
+    }));
 
-    const allProviders: Provider[] = [
-      asyncProvider,
-      clientsProvider,
-    ];
+    const allProviders: Provider[] = [asyncProvider, ...clientProviders];
 
     return {
       module:   HttpClientModule,

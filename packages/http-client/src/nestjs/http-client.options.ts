@@ -16,6 +16,12 @@ export interface HttpClientOptionsFactory {
 }
 
 export interface HttpClientModuleAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
+  /**
+   * Declare the client tokens that the factory will configure.
+   * Each token listed here gets its own provider, so `@InjectHttpClient(token)` works.
+   * The factory must return a config entry for every token declared here.
+   */
+  clients: HttpClientToken[];
   useFactory?: (...args: unknown[]) => Promise<HttpClientModuleOptions> | HttpClientModuleOptions;
   useClass?:   Type<HttpClientOptionsFactory>;
   useExisting?: Type<HttpClientOptionsFactory>;
