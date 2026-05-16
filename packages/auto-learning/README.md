@@ -10,6 +10,8 @@
 
 Static resilience configuration is a guess. `@backendkit-labs/auto-learning` observes your actual traffic, detects anomalies, and adjusts thresholds continuously — so your circuit breaker opens at the right rate, your bulkhead concurrency matches real load, and your HTTP timeouts reflect actual p95 latency rather than a number someone typed four years ago.
 
+> **Not machine learning.** This library uses descriptive statistics (averages, percentiles, standard deviation) and deterministic rules with exponential smoothing. There are no models, no training data, and no weights. The name reflects the *behavior* — the system learns what "normal" looks like for your traffic — not the technique.
+
 Optional NestJS integration included — global interceptor that records patterns automatically, and adapters that push config changes directly to `CircuitBreakerRegistry` and `BulkheadRegistry`.
 
 ---
@@ -175,6 +177,21 @@ That's it. Every request to `GET /orders` is recorded automatically. The feedbac
 ---
 
 ## Core Concepts
+
+### How it actually works (no ML)
+
+Despite the name, this library does not use machine learning. The techniques are deliberate:
+
+| Technique | Where it's used |
+|-----------|----------------|
+| Descriptive statistics (avg, p50/p95/p99, error rate) | Aggregating patterns per endpoint |
+| Threshold comparison against a rolling baseline | Anomaly detection |
+| Exponential smoothing: `current + (target − current) × factor` | Gradual timeout adjustment |
+| Deterministic step rules (+1/−1, ±10×n) | Retry and circuit breaker tuning |
+
+**Why not ML?** Statistical rules are transparent, deterministic, and need no training data. You can read the tuning logic, predict its output, and reason about its behavior in production. A neural network that adjusts your circuit breaker threshold is a black box with no explanation for why it opened your circuit at 3 AM.
+
+The trade-off is that the rules are hand-crafted and may not fit every traffic pattern perfectly. The configuration knobs (`smoothingFactor`, `errorRateThreshold`, `latencyStdDevThreshold`) let you adapt the behavior to your system without touching the code.
 
 ### Pattern Recording
 
