@@ -71,11 +71,19 @@
     "uuid": "^14.0.0"
   },
   "peerDependencies": {
+    "@backendkit-labs/circuit-breaker": "*",
+    "@backendkit-labs/bulkhead": "*",
     "@nestjs/common": ">=10.0.0",
     "@nestjs/core": ">=10.0.0",
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
+    "@backendkit-labs/circuit-breaker": {
+      "optional": true
+    },
+    "@backendkit-labs/bulkhead": {
+      "optional": true
+    },
     "@nestjs/common": {
       "optional": true
     },
