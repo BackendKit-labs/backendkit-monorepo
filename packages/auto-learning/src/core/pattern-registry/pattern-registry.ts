@@ -35,8 +35,8 @@ export class PatternRegistry implements IPatternRegistry {
     return ok(undefined);
   }
 
-  getAggregates(windowMinutes: number): Result<AggregatePattern[], LearningError> {
-    const result = this.storage.getAggregates(windowMinutes);
+  getAggregates(windowMinutes: number, windowEnd?: Date): Result<AggregatePattern[], LearningError> {
+    const result = this.storage.getAggregates(windowMinutes, windowEnd);
     if (!result.ok) {
       this.observability.error('Failed to get aggregates', { error: result.error });
       return fail(storageError('Failed to get aggregates', result.error));

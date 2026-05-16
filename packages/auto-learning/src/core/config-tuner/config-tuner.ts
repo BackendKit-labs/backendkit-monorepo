@@ -47,60 +47,12 @@ export class ConfigTuner implements IConfigTuner {
       return ok(this.getCurrentConfig());
     }
 
-    const newConfig: TunableConfig = {
-      circuitBreaker: { ...this.currentConfig.circuitBreaker },
-      bulkhead: { ...this.currentConfig.bulkhead },
-      httpClient: { ...this.currentConfig.httpClient },
-    };
-    const changedSections = new Set<keyof TunableConfig>();
+    const newConfig = this.computeNext(aggregates, anomalies);
+    const changedSections = this.diffSections(this.currentConfig, newConfig);
 
-    // Tune httpClient.timeoutMs based on p95 latency
-    const maxP95 = Math.max(...aggregates.map((a) => a.p95Ms));
-    const targetTimeout = Math.min(
-      Math.max(maxP95 * 2, this.config.minTimeoutMs),
-      this.config.maxTimeoutMs,
-    );
-
-    if (Math.abs(targetTimeout - newConfig.httpClient.timeoutMs) > this.config.adjustmentStepMs) {
-      newConfig.httpClient.timeoutMs = this.smoothValue(newConfig.httpClient.timeoutMs, targetTimeout);
-      changedSections.add('httpClient');
-    }
-
-    // Tune httpClient.maxRetries based on error rate
-    const avgErrorRate =
-      aggregates.reduce((sum, a) => sum + a.errorRate, 0) / aggregates.length;
-
-    if (avgErrorRate > 0.1) {
-      newConfig.httpClient.maxRetries = Math.min(newConfig.httpClient.maxRetries + 1, 5);
-      changedSections.add('httpClient');
-    } else if (avgErrorRate < 0.01 && newConfig.httpClient.maxRetries > 1) {
-      newConfig.httpClient.maxRetries = Math.max(newConfig.httpClient.maxRetries - 1, 0);
-      changedSections.add('httpClient');
-    }
-
-    // Tune circuitBreaker.failureThreshold based on anomalies (0–100 scale)
-    const criticalAnomalies = anomalies.filter(
-      (a) => a.severity === 'critical' || a.severity === 'high',
-    ).length;
-
-    if (criticalAnomalies > 0) {
-      newConfig.circuitBreaker.failureThreshold = Math.max(
-        this.currentConfig.circuitBreaker.failureThreshold - 10 * criticalAnomalies,
-        10,
-      );
-      changedSections.add('circuitBreaker');
-    } else if (anomalies.length === 0) {
-      newConfig.circuitBreaker.failureThreshold = Math.min(
-        this.currentConfig.circuitBreaker.failureThreshold + 5,
-        80,
-      );
-      changedSections.add('circuitBreaker');
-    }
-
-    // Apply changes if any
     if (changedSections.size > 0) {
       const now = Date.now();
-      if (now - this.lastChangeAt > 60_000) {
+      if (now - this.lastChangeAt > this.config.cooldownMs) {
         this.currentConfig = newConfig;
         this.lastChangeAt = now;
 
@@ -143,8 +95,75 @@ export class ConfigTuner implements IConfigTuner {
     return ok(this.getCurrentConfig());
   }
 
-  onConfigChange(callback: (config: TunableConfig) => void): void {
+  onConfigChange(callback: (config: TunableConfig) => void): () => void {
     this.listeners.push(callback);
+    return () => {
+      const idx = this.listeners.indexOf(callback);
+      if (idx >= 0) this.listeners.splice(idx, 1);
+    };
+  }
+
+  // Pure computation — derives the next config from aggregates and anomalies
+  // without mutating any state or applying cooldown checks.
+  private computeNext(
+    aggregates: AggregatePattern[],
+    anomalies: AnomalyReport[],
+  ): TunableConfig {
+    const next: TunableConfig = {
+      circuitBreaker: { ...this.currentConfig.circuitBreaker },
+      bulkhead: { ...this.currentConfig.bulkhead },
+      httpClient: { ...this.currentConfig.httpClient },
+    };
+
+    // Tune httpClient.timeoutMs based on p95 latency
+    const maxP95 = Math.max(...aggregates.map((a) => a.p95Ms));
+    const targetTimeout = Math.min(
+      Math.max(maxP95 * 2, this.config.minTimeoutMs),
+      this.config.maxTimeoutMs,
+    );
+
+    if (Math.abs(targetTimeout - next.httpClient.timeoutMs) > this.config.adjustmentStepMs) {
+      next.httpClient.timeoutMs = this.smoothValue(next.httpClient.timeoutMs, targetTimeout);
+    }
+
+    // Tune httpClient.maxRetries based on error rate
+    const avgErrorRate =
+      aggregates.reduce((sum, a) => sum + a.errorRate, 0) / aggregates.length;
+
+    if (avgErrorRate > 0.1) {
+      next.httpClient.maxRetries = Math.min(next.httpClient.maxRetries + 1, 5);
+    } else if (avgErrorRate < 0.01 && next.httpClient.maxRetries > 1) {
+      next.httpClient.maxRetries = Math.max(next.httpClient.maxRetries - 1, 0);
+    }
+
+    // Tune circuitBreaker.failureThreshold based on anomalies (0–100 scale)
+    const criticalAnomalies = anomalies.filter(
+      (a) => a.severity === 'critical' || a.severity === 'high',
+    ).length;
+
+    if (criticalAnomalies > 0) {
+      next.circuitBreaker.failureThreshold = Math.max(
+        this.currentConfig.circuitBreaker.failureThreshold - 10 * criticalAnomalies,
+        10,
+      );
+    } else if (anomalies.length === 0) {
+      next.circuitBreaker.failureThreshold = Math.min(
+        this.currentConfig.circuitBreaker.failureThreshold + 5,
+        80,
+      );
+    }
+
+    return next;
+  }
+
+  private diffSections(prev: TunableConfig, next: TunableConfig): Set<keyof TunableConfig> {
+    const changed = new Set<keyof TunableConfig>();
+    for (const key of Object.keys(next) as Array<keyof TunableConfig>) {
+      if (JSON.stringify(next[key]) !== JSON.stringify(prev[key])) {
+        changed.add(key);
+      }
+    }
+    return changed;
   }
 
   private smoothValue(current: number, target: number): number {

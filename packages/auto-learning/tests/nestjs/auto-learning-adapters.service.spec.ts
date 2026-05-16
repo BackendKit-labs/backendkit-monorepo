@@ -25,10 +25,19 @@ function makeMockCore() {
   vi.spyOn(observability, 'warn');
   vi.spyOn(observability, 'debug');
 
+  let loopRunning = false;
+
   return {
     onConfigChange: vi.fn((cb: (config: TunableConfig) => void) => {
       listeners.push(cb);
+      return () => {
+        const idx = listeners.indexOf(cb);
+        if (idx >= 0) listeners.splice(idx, 1);
+      };
     }),
+    startFeedbackLoop: vi.fn(() => { loopRunning = true; }),
+    stopFeedbackLoop: vi.fn(() => { loopRunning = false; }),
+    isFeedbackLoopRunning: vi.fn(() => loopRunning),
     observability,
     _fire: (config: TunableConfig) => listeners.forEach((cb) => cb(config)),
   };
@@ -373,6 +382,75 @@ describe('AutoLearningAdaptersService', () => {
         4,
         expect.objectContaining({ failureThreshold: 60 }),
       );
+    });
+  });
+
+  // ---- bootstrap lifecycle ----
+
+  describe('onApplicationBootstrap', () => {
+    it('should start the feedback loop by default', () => {
+      const service = makeService({}, core, makeModuleRef());
+
+      service.onApplicationBootstrap();
+
+      expect(core.startFeedbackLoop).toHaveBeenCalledTimes(1);
+      expect(core.startFeedbackLoop).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should start with the configured intervalMs', () => {
+      const service = makeService({ intervalMs: 30_000 }, core, makeModuleRef());
+
+      service.onApplicationBootstrap();
+
+      expect(core.startFeedbackLoop).toHaveBeenCalledWith(30_000);
+    });
+
+    it('should not start the loop when autoStart is false', () => {
+      const service = makeService({ autoStart: false }, core, makeModuleRef());
+
+      service.onApplicationBootstrap();
+
+      expect(core.startFeedbackLoop).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---- destroy lifecycle ----
+
+  describe('onModuleDestroy', () => {
+    it('should stop the feedback loop if it is running', () => {
+      const service = makeService({}, core, makeModuleRef());
+
+      service.onApplicationBootstrap(); // starts loop
+      service.onModuleDestroy();
+
+      expect(core.stopFeedbackLoop).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not stop the loop if it was never started', () => {
+      const service = makeService({ autoStart: false }, core, makeModuleRef());
+
+      service.onModuleDestroy(); // loop never started
+
+      expect(core.stopFeedbackLoop).not.toHaveBeenCalled();
+    });
+
+    it('should unsubscribe the config change listener on destroy', async () => {
+      const { registry } = makeCBRegistryMock();
+      const service = makeService(
+        { adapters: { circuitBreaker: true } },
+        core,
+        makeModuleRef({ cb: registry }),
+      );
+
+      await service.onModuleInit();
+      service.onModuleDestroy();
+
+      // After destroy, firing a config change should not invoke applyConfig
+      const cbSpyUpdate = vi.fn();
+      (registry.getOrCreate as ReturnType<typeof vi.fn>).mockReturnValue({ updateConfig: cbSpyUpdate });
+      core._fire(BASE_CONFIG);
+
+      expect(cbSpyUpdate).not.toHaveBeenCalled();
     });
   });
 });

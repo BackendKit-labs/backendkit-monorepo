@@ -277,6 +277,27 @@ describe('ConfigTuner', () => {
         expect(result.error.tag).toBe('STORAGE_ERROR');
       }
     });
+
+    describe('cooldown', () => {
+      beforeEach(() => vi.useFakeTimers());
+      afterEach(() => vi.useRealTimers());
+
+      it('should not apply a second change within the cooldown period', () => {
+        const t = new ConfigTuner(storage, observability, { cooldownMs: 5000 });
+        const aggregates = [makeAggregate({ p95Ms: 8000 })];
+
+        t.tune(aggregates, []);
+        expect(storage.saveConfig).toHaveBeenCalledTimes(1);
+
+        vi.advanceTimersByTime(3000); // still within 5s cooldown
+        t.tune(aggregates, []);
+        expect(storage.saveConfig).toHaveBeenCalledTimes(1); // not applied
+
+        vi.advanceTimersByTime(3000); // 6s total — past cooldown
+        t.tune(aggregates, []);
+        expect(storage.saveConfig).toHaveBeenCalledTimes(2); // applied
+      });
+    });
   });
 
   // ---- reset ----
@@ -343,6 +364,18 @@ describe('ConfigTuner', () => {
 
       tuner.reset();
 
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return an unsubscribe function that stops future notifications', () => {
+      const listener = vi.fn();
+      const unsub = tuner.onConfigChange(listener);
+
+      tuner.tune([makeAggregate({ p95Ms: 8000 })], []);
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsub();
+      tuner.reset(); // fires listeners — but listener was unsubscribed
       expect(listener).toHaveBeenCalledTimes(1);
     });
   });

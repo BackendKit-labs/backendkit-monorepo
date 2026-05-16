@@ -62,11 +62,11 @@ export class AutoLearningCore {
     return this.feedbackLoop.runOnce();
   }
 
-  onConfigChange(callback: (config: TunableConfig) => void): void {
-    this.configTuner.onConfigChange(callback);
+  onConfigChange(callback: (config: TunableConfig) => void): () => void {
+    return this.configTuner.onConfigChange(callback);
   }
 
-  onCycle(callback: (event: LearningCycleEvent) => void): void {
-    this.feedbackLoop.onCycle(callback);
+  onCycle(callback: (event: LearningCycleEvent) => void): () => void {
+    return this.feedbackLoop.onCycle(callback);
   }
 }

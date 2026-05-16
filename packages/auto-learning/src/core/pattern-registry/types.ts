@@ -4,7 +4,7 @@ import { LearningError } from '../errors.js';
 
 export interface IPatternRegistry {
   record(pattern: EndpointPattern): Result<void, LearningError>;
-  getAggregates(windowMinutes: number): Result<AggregatePattern[], LearningError>;
+  getAggregates(windowMinutes: number, windowEnd?: Date): Result<AggregatePattern[], LearningError>;
   getHistory(
     endpoint: string,
     method: string,

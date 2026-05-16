@@ -61,7 +61,7 @@ const makeStorageMock = () => {
   return {
     savePattern: vi.fn(),
     getPatterns: vi.fn<() => ReturnType<StorageAdapter['getPatterns']>>().mockReturnValue(ok(patterns)),
-    getAggregates: vi.fn(),
+    getAggregates: vi.fn<() => ReturnType<StorageAdapter['getAggregates']>>().mockReturnValue(ok([])),
     saveAnomaly: vi.fn<() => ReturnType<StorageAdapter['saveAnomaly']>>().mockReturnValue(ok(undefined)),
     getRecentAnomalies: vi.fn(),
     saveConfig: vi.fn<() => ReturnType<StorageAdapter['saveConfig']>>().mockReturnValue(ok(undefined)),
@@ -233,6 +233,26 @@ describe('FeedbackLoop', () => {
       await loop.runOnce();
 
       expect(storage.saveAnomaly).toHaveBeenCalledWith(anomaly);
+    });
+
+    it('should log a warning when saveAnomaly fails instead of silently discarding', async () => {
+      anomalyDetector.batchAnalyze.mockReturnValue(ok([makeAnomaly()]));
+      storage.saveAnomaly.mockReturnValue(fail(storageError('disk full')));
+
+      await loop.runOnce();
+
+      expect(observability.warn).toHaveBeenCalledWith(
+        'Failed to persist anomaly',
+        expect.objectContaining({ error: expect.objectContaining({ tag: 'STORAGE_ERROR' }) }),
+      );
+    });
+
+    it('should pass the same windowEnd to getPatterns and getAggregates', async () => {
+      await loop.runOnce();
+
+      const [, windowEnd] = storage.getPatterns.mock.calls[0];
+      const [, aggWindowEnd] = patternRegistry.getAggregates.mock.calls[0];
+      expect(windowEnd).toEqual(aggWindowEnd);
     });
 
     it('should report configChanges when tune returns a different config', async () => {
@@ -437,6 +457,18 @@ describe('FeedbackLoop', () => {
 
       expect(listener1).toHaveBeenCalledTimes(1);
       expect(listener2).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return an unsubscribe function that stops future notifications', async () => {
+      const listener = vi.fn();
+      const unsub = loop.onCycle(listener);
+
+      await loop.runOnce();
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsub();
+      await loop.runOnce();
+      expect(listener).toHaveBeenCalledTimes(1); // not called again
     });
   });
 });

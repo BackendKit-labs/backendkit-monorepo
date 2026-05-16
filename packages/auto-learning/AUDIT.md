@@ -2,7 +2,7 @@
 
 > Trazabilidad de los hallazgos de auditoría de `@backendkit-labs/auto-learning` y su integración con `circuit-breaker` / `bulkhead`. Fecha de auditoría: **2026-05-16**.
 
-**Estado global:** 4/19 resueltos · 4/7 críticos · 0/9 logica/diseño · 0/3 minores priorizados
+**Estado global:** 13/19 resueltos · 7/7 críticos · 6/9 logica/diseño · 0/3 minores priorizados
 
 Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT-FIX`
 
@@ -89,7 +89,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #5 — Memory leak: `InMemoryStorage` crece sin límite
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — FIFO caps + periodic prune from FeedbackLoop (Sprint 2)
 - **Archivo:** `src/core/persistence/in-memory-storage.ts:26-29`
 - **Problema:** `patterns`, `anomalies`, `cycles` son arrays push-only. `prune()` existe pero nadie lo llama. En producción el heap crece monotónicamente.
 - **Fix propuesto:**
@@ -104,7 +104,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #5b — `PatternRegistry.getStats` crashea con muchos patterns
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — loop-based min/max, no spread (Sprint 2)
 - **Archivo:** `src/core/pattern-registry/pattern-registry.ts:92-93`
 - **Problema:** `Math.min(...timestamps)` con arrays grandes lanza `RangeError: Maximum call stack size exceeded`.
 - **Fix propuesto:**
@@ -124,7 +124,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #6 — `key.split(':')` rompe rutas parametrizadas
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `\x00` separator in getAggregates (Sprint 2)
 - **Archivo:** `src/core/persistence/in-memory-storage.ts:65-66`
 - **Problema:** Path `/users/:id` produce key `GET:/users/:id` → `split(':')` devuelve `['GET', '/users/', 'id']` → `path = '/users/'`. Las rutas parametrizadas se reagrupan/pierden.
 - **Fix propuesto:** No usar string keys. Cambiar el agrupado a una key estructurada:
@@ -144,7 +144,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #7 — `setInterval` permite ciclos solapados
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `isProcessing` mutex (Sprint 2)
 - **Archivo:** `src/core/feedback-loop/feedback-loop.ts:38-46`
 - **Problema:** Si un ciclo dura más que el interval, arranca otro encima — sin mutex.
 - **Fix propuesto:**
@@ -174,7 +174,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ## 🟡 Problemas de Lógica / Diseño
 
 ### #8 — Ventana de Step 1 y Step 2 no atómica
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — single `windowEnd` captured once in `runOnce()`, propagated to both getPatterns and getAggregates (Sprint 3)
 - **Archivo:** `src/core/feedback-loop/feedback-loop.ts:71-108`
 - **Problema:** `getPatterns(now - 5min, now)` y `getAggregates(5)` recalculan `Date.now()` por separado. Patterns que llegan entre ambas llamadas aparecen en agregados pero no en `patterns.length`.
 - **Fix propuesto:** capturar `windowEnd = new Date()` una sola vez y pasarla a ambos.
@@ -184,7 +184,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #9 — `ConfigTuner.tune` mezcla cómputo + aplicación, miente al caller
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — extracted private `computeNext()` + `diffSections()` helpers (Sprint 3)
 - **Archivo:** `src/core/config-tuner/config-tuner.ts:101-124`
 - **Problema:** Cuando el cooldown está activo, `tune` descarta el `newConfig` y devuelve `getCurrentConfig()` igual que en éxito. El caller no puede distinguir.
 - **Fix propuesto:** separar responsabilidades:
@@ -201,7 +201,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #10 — Cooldown hardcodeado de 60s, ignora `FeedbackLoopConfig.cooldownBetweenChangesMs`
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `cooldownMs` added to `ConfigTunerConfig` (default 60_000), removed dead field from `FeedbackLoopConfig` (Sprint 3)
 - **Archivo:** `src/core/config-tuner/config-tuner.ts:103`
 - **Problema:** El config declara `cooldownBetweenChangesMs: 120_000` pero el tuner usa `60_000` literal.
 - **Fix propuesto:** mover el cooldown al `ConfigTunerConfig` y leer desde `this.config.cooldownMs`. Eliminar el campo del `FeedbackLoopConfig` (no era responsabilidad del loop) — o mantenerlo y propagarlo al tuner.
@@ -240,7 +240,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #14 — Results ignorados (errores de storage silenciados)
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `saveAnomaly` failure logged via observability.warn; interceptor failure logged via observability.error (Sprint 1/3)
 - **Archivos:**
   - `src/core/feedback-loop/feedback-loop.ts:120-122` — `saveAnomaly`
   - `src/core/persistence/file-storage.ts:33` — `super.saveConfig`
@@ -254,7 +254,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #15 — `storage: 'redis' | 'sql'` declarado pero no implementado
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — removed `storage` and `redisUrl` from `AutoLearningModuleOptions` (Sprint 3)
 - **Archivo:** `src/nestjs/auto-learning.module.ts:13-15`
 - **Fix propuesto:** decidir entre:
   - **A.** Remover los campos del tipo público hasta que se implementen.
@@ -265,7 +265,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #16 — Feedback loop no arranca automáticamente desde el módulo NestJS
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `onApplicationBootstrap` starts loop, `onModuleDestroy` stops it; `autoStart: false` opt-out (Sprint 3)
 - **Archivo:** `src/nestjs/auto-learning.module.ts` (y/o nuevo bootstrap service)
 - **Fix propuesto:**
   - En `AutoLearningAdaptersService` (o un nuevo `AutoLearningBootstrapService`):
@@ -283,7 +283,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #17 — `req.url` mete query string en el path → cardinalidad explota
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `raw.split('?')[0]` in `extractRequestInfo` (Sprint 2)
 - **Archivo:** `src/nestjs/auto-learning.interceptor.ts:53-57`
 - **Fix propuesto:**
   ```typescript
@@ -297,7 +297,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #18 — Listeners sin desuscripción → leak en tests/HMR
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `onConfigChange`/`onCycle` return `() => void` unsubscribe; adapters service unsubscribes on destroy (Sprint 3)
 - **Archivos:** `ConfigTuner.listeners`, `FeedbackLoop.cycleListeners`
 - **Fix propuesto:** que `onConfigChange` / `onCycle` retornen una función de unsubscribe:
   ```typescript
@@ -315,7 +315,7 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ---
 
 ### #19 — Interceptor sólo cubre contexto HTTP
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — `if (context.getType() !== 'http') return next.handle()` (Sprint 1)
 - **Archivo:** `src/nestjs/auto-learning.interceptor.ts:33`
 - **Fix propuesto:**
   ```typescript

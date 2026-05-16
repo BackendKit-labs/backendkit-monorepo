@@ -71,14 +71,14 @@ export class FeedbackLoop implements IFeedbackLoop {
   async runOnce(): Promise<Result<LearningCycleEvent, LearningError>> {
     const cycleId = uuid();
     const startTime = Date.now();
+    // Capture a single timestamp so both getPatterns and getAggregates use the same window end.
+    const windowEnd = new Date();
+    const windowStart = new Date(windowEnd.getTime() - this.config.windowSizeMinutes * 60_000);
 
     this.observability.debug('Feedback cycle started', { cycleId });
 
     // Step 1: Collect patterns from the window
-    const patternsResult = this.storage.getPatterns(
-      new Date(Date.now() - this.config.windowSizeMinutes * 60_000),
-      new Date(),
-    );
+    const patternsResult = this.storage.getPatterns(windowStart, windowEnd);
 
     if (!patternsResult.ok) {
       return fail(storageError('Failed to collect patterns', patternsResult.error));
@@ -103,9 +103,10 @@ export class FeedbackLoop implements IFeedbackLoop {
       return ok(skippedEvent);
     }
 
-    // Step 2: Get aggregates
+    // Step 2: Get aggregates (same windowEnd for consistency with step 1)
     const aggregatesResult = this.patternRegistry.getAggregates(
       this.config.windowSizeMinutes,
+      windowEnd,
     );
 
     if (!aggregatesResult.ok) {
@@ -125,7 +126,10 @@ export class FeedbackLoop implements IFeedbackLoop {
 
     // Persist anomalies
     for (const anomaly of anomalies) {
-      this.storage.saveAnomaly(anomaly);
+      const saveAnomalyResult = this.storage.saveAnomaly(anomaly);
+      if (!saveAnomalyResult.ok) {
+        this.observability.warn('Failed to persist anomaly', { error: saveAnomalyResult.error });
+      }
     }
 
     // Log anomalies
@@ -196,7 +200,11 @@ export class FeedbackLoop implements IFeedbackLoop {
     return ok(cycleEvent);
   }
 
-  onCycle(callback: (event: LearningCycleEvent) => void): void {
+  onCycle(callback: (event: LearningCycleEvent) => void): () => void {
     this.cycleListeners.push(callback);
+    return () => {
+      const idx = this.cycleListeners.indexOf(callback);
+      if (idx >= 0) this.cycleListeners.splice(idx, 1);
+    };
   }
 }

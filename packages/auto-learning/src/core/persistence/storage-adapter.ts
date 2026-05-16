@@ -11,7 +11,7 @@ import { LearningError } from '../errors.js';
 export interface StorageAdapter {
   savePattern(pattern: EndpointPattern): Result<void, LearningError>;
   getPatterns(windowStart: Date, windowEnd: Date): Result<EndpointPattern[], LearningError>;
-  getAggregates(windowMinutes: number): Result<AggregatePattern[], LearningError>;
+  getAggregates(windowMinutes: number, windowEnd?: Date): Result<AggregatePattern[], LearningError>;
 
   saveAnomaly(report: AnomalyReport): Result<void, LearningError>;
   getRecentAnomalies(limit: number): Result<AnomalyReport[], LearningError>;

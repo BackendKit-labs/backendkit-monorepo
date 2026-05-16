@@ -132,7 +132,7 @@ describe('PatternRegistry', () => {
       if (result.ok) {
         expect(result.value).toEqual(aggregates);
       }
-      expect(storage.getAggregates).toHaveBeenCalledWith(5);
+      expect(storage.getAggregates).toHaveBeenCalledWith(5, undefined);
     });
 
     it('should return fail when storage.getAggregates fails', () => {

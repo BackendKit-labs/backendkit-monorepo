@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnApplicationBootstrap, OnModuleDestroy, Inject } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import type { CircuitBreakerRegistry } from '@backendkit-labs/circuit-breaker';
 import type { BulkheadRegistry } from '@backendkit-labs/bulkhead';
@@ -8,9 +8,12 @@ import { AUTO_LEARNING_INSTANCE, AUTO_LEARNING_OPTIONS } from './auto-learning.c
 import type { AutoLearningModuleOptions } from './auto-learning.module.js';
 
 @Injectable()
-export class AutoLearningAdaptersService implements OnModuleInit {
+export class AutoLearningAdaptersService
+  implements OnModuleInit, OnApplicationBootstrap, OnModuleDestroy
+{
   private cbRegistry: CircuitBreakerRegistry | null = null;
   private bhRegistry: BulkheadRegistry | null = null;
+  private unsubConfigChange: (() => void) | null = null;
 
   constructor(
     @Inject(AUTO_LEARNING_INSTANCE) private readonly core: AutoLearningCore,
@@ -22,8 +25,21 @@ export class AutoLearningAdaptersService implements OnModuleInit {
     await this.resolveRegistries();
 
     if (this.cbRegistry || this.bhRegistry) {
-      this.core.onConfigChange((config) => this.applyConfig(config));
+      this.unsubConfigChange = this.core.onConfigChange((config) => this.applyConfig(config));
     }
+  }
+
+  onApplicationBootstrap(): void {
+    if (this.options.autoStart !== false) {
+      this.core.startFeedbackLoop(this.options.intervalMs);
+    }
+  }
+
+  onModuleDestroy(): void {
+    if (this.core.isFeedbackLoopRunning()) {
+      this.core.stopFeedbackLoop();
+    }
+    this.unsubConfigChange?.();
   }
 
   private async resolveRegistries(): Promise<void> {

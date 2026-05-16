@@ -72,10 +72,11 @@ export class InMemoryStorage implements StorageAdapter {
     }
   }
 
-  getAggregates(windowMinutes: number): Result<AggregatePattern[], LearningError> {
+  getAggregates(windowMinutes: number, windowEnd?: Date): Result<AggregatePattern[], LearningError> {
     try {
-      const cutoff = new Date(Date.now() - windowMinutes * 60_000);
-      const recent = this.patterns.filter((p) => p.timestamp >= cutoff);
+      const end = windowEnd ?? new Date();
+      const cutoff = new Date(end.getTime() - windowMinutes * 60_000);
+      const recent = this.patterns.filter((p) => p.timestamp >= cutoff && p.timestamp <= end);
 
       // Use \x00 as separator so parameterized paths like /users/:id are preserved.
       type GroupEntry = { method: string; path: string; items: EndpointPattern[] };
@@ -96,7 +97,7 @@ export class InMemoryStorage implements StorageAdapter {
           method,
           path,
           windowStart: cutoff,
-          windowEnd: new Date(),
+          windowEnd: end,
           count: items.length,
           avgDurationMs: durations.reduce((a, b) => a + b, 0) / durations.length,
           p50Ms: percentile(durations, 50),

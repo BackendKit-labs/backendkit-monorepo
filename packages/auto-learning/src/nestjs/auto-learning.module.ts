@@ -9,8 +9,11 @@ import { ObservabilityAdapter } from '../core/observability/observability-adapte
 
 export type AutoLearningModuleOptions = {
   intervalMs?: number;
-  storage?: 'memory' | 'redis' | 'sql';
-  redisUrl?: string;
+  /**
+   * Set to false to skip auto-starting the feedback loop on bootstrap.
+   * Call core.startFeedbackLoop() manually when ready. Default: true.
+   */
+  autoStart?: boolean;
   observability?: {
     logger?: LoggerService;
     metrics?: {
