@@ -11,11 +11,9 @@ import {
 import { LearningError, storageError } from '../errors.js';
 
 const DEFAULT_CONFIG: TunableConfig = {
-  timeoutMs: 10000,
-  maxRetries: 3,
-  circuitBreakerThreshold: 0.5,
-  circuitBreakerHalfOpenAfterMs: 30000,
-  bulkheadMaxConcurrent: 10,
+  circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+  bulkhead: { maxConcurrentCalls: 10 },
+  httpClient: { timeoutMs: 10000, maxRetries: 3 },
 };
 
 function percentile(sorted: number[], p: number): number {
@@ -110,7 +108,11 @@ export class InMemoryStorage implements StorageAdapter {
 
   saveConfig(config: TunableConfig): Result<void, LearningError> {
     try {
-      this.config = { ...config };
+      this.config = {
+        circuitBreaker: { ...config.circuitBreaker },
+        bulkhead: { ...config.bulkhead },
+        httpClient: { ...config.httpClient },
+      };
       return ok(undefined);
     } catch (e) {
       return fail(storageError('Failed to save config', e));
@@ -119,7 +121,11 @@ export class InMemoryStorage implements StorageAdapter {
 
   loadConfig(): Result<TunableConfig | null, LearningError> {
     try {
-      return ok(this.config);
+      return ok({
+        circuitBreaker: { ...this.config.circuitBreaker },
+        bulkhead: { ...this.config.bulkhead },
+        httpClient: { ...this.config.httpClient },
+      });
     } catch (e) {
       return fail(storageError('Failed to load config', e));
     }

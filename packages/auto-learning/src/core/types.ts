@@ -37,11 +37,17 @@ export type AnomalyReport = {
 };
 
 export type TunableConfig = {
-  timeoutMs: number;
-  maxRetries: number;
-  circuitBreakerThreshold: number;
-  circuitBreakerHalfOpenAfterMs: number;
-  bulkheadMaxConcurrent: number;
+  circuitBreaker: {
+    failureThreshold: number;
+    openTimeoutMs: number;
+  };
+  bulkhead: {
+    maxConcurrentCalls: number;
+  };
+  httpClient: {
+    timeoutMs: number;
+    maxRetries: number;
+  };
 };
 
 export type LearningCycleEvent = {

@@ -96,11 +96,9 @@ const makeAnomalyDetectorMock = () => ({
 
 const makeConfigTunerMock = () => {
   const currentConfig: TunableConfig = {
-    timeoutMs: 10000,
-    maxRetries: 3,
-    circuitBreakerThreshold: 0.5,
-    circuitBreakerHalfOpenAfterMs: 30000,
-    bulkheadMaxConcurrent: 10,
+    circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+    bulkhead: { maxConcurrentCalls: 10 },
+    httpClient: { timeoutMs: 10000, maxRetries: 3 },
   };
   return {
     getCurrentConfig: vi.fn<() => TunableConfig>().mockReturnValue({ ...currentConfig }),
