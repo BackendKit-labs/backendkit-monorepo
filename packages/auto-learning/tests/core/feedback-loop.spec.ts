@@ -235,6 +235,49 @@ describe('FeedbackLoop', () => {
       expect(storage.saveAnomaly).toHaveBeenCalledWith(anomaly);
     });
 
+    it('should report configChanges when tune returns a different config', async () => {
+      const prev: TunableConfig = {
+        circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+        bulkhead: { maxConcurrentCalls: 10 },
+        httpClient: { timeoutMs: 10000, maxRetries: 3 },
+      };
+      const next: TunableConfig = {
+        circuitBreaker: { failureThreshold: 40, openTimeoutMs: 30000 },
+        bulkhead: { maxConcurrentCalls: 10 },
+        httpClient: { timeoutMs: 10000, maxRetries: 3 },
+      };
+
+      configTuner.getCurrentConfig.mockReturnValue(prev);
+      configTuner.tune.mockReturnValue(ok(next));
+
+      const result = await loop.runOnce();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.configChanges).toEqual({
+          circuitBreaker: { failureThreshold: 40, openTimeoutMs: 30000 },
+        });
+      }
+    });
+
+    it('should report empty configChanges when config did not change', async () => {
+      const config: TunableConfig = {
+        circuitBreaker: { failureThreshold: 50, openTimeoutMs: 30000 },
+        bulkhead: { maxConcurrentCalls: 10 },
+        httpClient: { timeoutMs: 10000, maxRetries: 3 },
+      };
+
+      configTuner.getCurrentConfig.mockReturnValue(config);
+      configTuner.tune.mockReturnValue(ok({ ...config, circuitBreaker: { ...config.circuitBreaker } }));
+
+      const result = await loop.runOnce();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.configChanges).toEqual({});
+      }
+    });
+
     it('should call cycle listeners with the cycle event', async () => {
       const listener = vi.fn();
       loop.onCycle(listener);

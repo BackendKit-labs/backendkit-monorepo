@@ -121,9 +121,9 @@ describe('AnomalyDetector', () => {
     });
 
     describe('error rate anomalies', () => {
-      it('should report error_rate anomaly when statusCode >= 500 and baseline has enough errors', () => {
+      it('should report error_rate anomaly when 5xx arrives at a healthy endpoint (baseline errorRate below threshold)', () => {
         const pattern = makePattern({ statusCode: 500 });
-        const baseline = makeBaseline({ errorCount: 5, errorRate: 0.01 });
+        const baseline = makeBaseline({ errorRate: 0.01 }); // 1% < 5% threshold → healthy
 
         const result = detector.analyze(pattern, baseline);
 
@@ -131,12 +131,14 @@ describe('AnomalyDetector', () => {
         if (result.ok && result.value) {
           expect(result.value.metric).toBe('error_rate');
           expect(result.value.severity).toBe('high');
+          expect(result.value.expectedValue).toBe(0.01);
+          expect(result.value.actualValue).toBe(1);
         }
       });
 
-      it('should NOT report error_rate anomaly when baseline.errorCount < 3', () => {
+      it('should NOT report error_rate anomaly when baseline is already degraded (errorRate >= threshold)', () => {
         const pattern = makePattern({ statusCode: 500 });
-        const baseline = makeBaseline({ errorCount: 2, errorRate: 0.01 });
+        const baseline = makeBaseline({ errorRate: 0.5 }); // 50% >= 5% threshold → degraded
 
         const result = detector.analyze(pattern, baseline);
 
@@ -148,7 +150,7 @@ describe('AnomalyDetector', () => {
 
       it('should NOT report error_rate anomaly when statusCode < 500', () => {
         const pattern = makePattern({ statusCode: 404 });
-        const baseline = makeBaseline({ errorCount: 5, errorRate: 0.01 });
+        const baseline = makeBaseline({ errorRate: 0.01 });
 
         const result = detector.analyze(pattern, baseline);
 
@@ -158,9 +160,10 @@ describe('AnomalyDetector', () => {
         }
       });
 
-      it('should NOT report error_rate anomaly when error rate is not above threshold', () => {
+      it('should NOT report error_rate anomaly when errorRate equals the threshold exactly', () => {
         const pattern = makePattern({ statusCode: 500 });
-        const baseline = makeBaseline({ errorCount: 3, errorRate: 0.5 });
+        // default threshold is 0.05 — at exactly 0.05 it's no longer "below"
+        const baseline = makeBaseline({ errorRate: 0.05 });
 
         const result = detector.analyze(pattern, baseline);
 
@@ -225,6 +228,39 @@ describe('AnomalyDetector', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value).toEqual([]);
+      }
+    });
+
+    it('should emit only ONE unknown_endpoint report per method:path regardless of how many patterns arrive', () => {
+      const patterns = Array.from({ length: 100 }, () =>
+        makePattern({ path: '/api/new-endpoint' }),
+      );
+      const baselines: AggregatePattern[] = [];
+
+      const result = detector.batchAnalyze(patterns, baselines);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(1);
+        expect(result.value[0].metric).toBe('unknown_endpoint');
+        expect(result.value[0].endpoint).toBe('/api/new-endpoint');
+      }
+    });
+
+    it('should emit one unknown_endpoint per distinct method:path combination', () => {
+      const patterns = [
+        ...Array.from({ length: 50 }, () => makePattern({ method: 'GET', path: '/api/a' })),
+        ...Array.from({ length: 50 }, () => makePattern({ method: 'POST', path: '/api/a' })),
+        ...Array.from({ length: 30 }, () => makePattern({ method: 'GET', path: '/api/b' })),
+      ];
+      const baselines: AggregatePattern[] = [];
+
+      const result = detector.batchAnalyze(patterns, baselines);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(3);
+        expect(result.value.every((r) => r.metric === 'unknown_endpoint')).toBe(true);
       }
     });
 

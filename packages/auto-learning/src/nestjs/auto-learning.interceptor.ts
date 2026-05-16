@@ -20,6 +20,8 @@ export class AutoLearningInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    if (context.getType() !== 'http') return next.handle();
+
     const options = this.reflector.get<AutoLearnOptions>(
       AUTO_LEARN_METADATA,
       context.getHandler(),
@@ -33,19 +35,30 @@ export class AutoLearningInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest();
     const { method, path } = this.extractRequestInfo(req);
 
-    return next.handle().pipe(
-      tap(() => {
-        const duration = Date.now() - start;
-        const status = context.switchToHttp().getResponse().statusCode;
+    const record = (statusCode: number) => {
+      const result = this.core.recordPattern({
+        method,
+        path,
+        statusCode,
+        durationMs: Date.now() - start,
+        timestamp: new Date(),
+        metadata: options.customMetadata ? options.customMetadata(req) : undefined,
+      });
+      if (!result.ok) {
+        this.core.observability.error('Failed to record pattern', { error: result.error });
+      }
+    };
 
-        this.core.recordPattern({
-          method,
-          path,
-          statusCode: status,
-          durationMs: duration,
-          timestamp: new Date(),
-          metadata: options.customMetadata ? options.customMetadata(req) : undefined,
-        });
+    return next.handle().pipe(
+      tap({
+        next: () => record(context.switchToHttp().getResponse().statusCode),
+        error: (err: unknown) => {
+          const status =
+            typeof (err as any)?.getStatus === 'function'
+              ? (err as any).getStatus()
+              : ((err as any)?.status ?? 500);
+          record(status);
+        },
       }),
     );
   }

@@ -40,23 +40,21 @@ export class AnomalyDetector implements IAnomalyDetector {
         }
       }
 
-      // Error rate anomaly: require at least 3 errors in the window
-      // to avoid false positives from individual 500s
-      if (current.statusCode >= 500 && baseline.errorCount >= 3) {
-        const currentErrorRate = 1.0;
-        if (currentErrorRate > baseline.errorRate * 2 && currentErrorRate > this.config.errorRateThreshold) {
-          reports.push({
-            id: uuid(),
-            endpoint: current.path,
-            method: current.method,
-            severity: 'high',
-            metric: 'error_rate',
-            expectedValue: baseline.errorRate,
-            actualValue: currentErrorRate,
-            deviation: currentErrorRate / Math.max(baseline.errorRate, 0.001),
-            detectedAt: new Date(),
-          });
-        }
+      // Error rate anomaly: alert when a 5xx arrives at an endpoint that is
+      // normally healthy (baseline errorRate below threshold). Avoids noise
+      // from already-degraded endpoints.
+      if (current.statusCode >= 500 && baseline.errorRate < this.config.errorRateThreshold) {
+        reports.push({
+          id: uuid(),
+          endpoint: current.path,
+          method: current.method,
+          severity: 'high',
+          metric: 'error_rate',
+          expectedValue: baseline.errorRate,
+          actualValue: 1,
+          deviation: 1 / Math.max(baseline.errorRate, 0.001),
+          detectedAt: new Date(),
+        });
       }
 
       return ok(reports.length > 0 ? reports[0] : null);
@@ -80,13 +78,15 @@ export class AnomalyDetector implements IAnomalyDetector {
       }
 
       const reports: AnomalyReport[] = [];
+      const seenUnknown = new Set<string>();
 
       for (const pattern of windowPatterns) {
         const key = `${pattern.method}:${pattern.path}`;
         const baseline = baselineMap.get(key);
 
         if (!baseline) {
-          if (this.config.enableUnknownEndpointDetection) {
+          if (this.config.enableUnknownEndpointDetection && !seenUnknown.has(key)) {
+            seenUnknown.add(key);
             reports.push({
               id: uuid(),
               endpoint: pattern.path,

@@ -131,6 +131,7 @@ export class FeedbackLoop implements IFeedbackLoop {
     }
 
     // Step 4: Tune config
+    const previousConfig = this.configTuner.getCurrentConfig();
     const tuneResult = this.configTuner.tune(aggregates, anomalies);
 
     if (!tuneResult.ok) {
@@ -138,7 +139,6 @@ export class FeedbackLoop implements IFeedbackLoop {
     }
 
     const newConfig = tuneResult.value;
-    const previousConfig = this.configTuner.getCurrentConfig();
 
     // Compute config changes (section-level comparison)
     const configChanges: Partial<TunableConfig> = {};

@@ -74,8 +74,8 @@ function wireBH(core: AutoLearningCore, bhRegistry: BulkheadRegistry) {
 
 describe('integration: Circuit Breaker', () => {
   it('decreases failureThreshold when high error-rate anomalies are detected', async () => {
-    // 12 successes + 3 errors → errorRate=0.2, errorCount=3
-    // Anomaly detector: 1.0 > 0.2*2(0.4) ✓ and 1.0 > 0.05 ✓ → 3 HIGH anomalies
+    // 58 successes + 3 errors → errorRate = 3/61 ≈ 4.9% < threshold (5%)
+    // Each 500 pattern fires an error_rate anomaly (baseline is healthy) → 3 HIGH anomalies
     // ConfigTuner: failureThreshold = max(50 - 10*3, 10) = 20
     const core = makeCore();
     const cbRegistry = new CircuitBreakerRegistry();
@@ -83,7 +83,7 @@ describe('integration: Circuit Breaker', () => {
     const spy = vi.spyOn(cb, 'updateConfig');
 
     wireCB(core, cbRegistry);
-    record(core, 12);
+    record(core, 58);
     record(core, 3, { statusCode: 500 });
 
     const result = await core.runOnce();
@@ -328,8 +328,8 @@ describe('integration: CircuitBreaker + Bulkhead together', () => {
   });
 
   it('anomaly scenario: CB tightens while BH keeps default concurrency', async () => {
-    // 3 high anomalies → failureThreshold drops to 20
-    // bulkheadMaxConcurrent unchanged at 10
+    // 58 successes + 3 errors → errorRate ≈ 4.9% < threshold (5%)
+    // 3 HIGH anomalies → failureThreshold drops to 20; BH unchanged at 10
     const core = makeCore();
     const cbRegistry = new CircuitBreakerRegistry();
     const bhRegistry = new BulkheadRegistry();
@@ -340,7 +340,7 @@ describe('integration: CircuitBreaker + Bulkhead together', () => {
 
     wireCB(core, cbRegistry);
     wireBH(core, bhRegistry);
-    record(core, 12);
+    record(core, 58);
     record(core, 3, { statusCode: 500 });
 
     await core.runOnce();
