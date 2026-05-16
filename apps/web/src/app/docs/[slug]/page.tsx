@@ -1711,6 +1711,180 @@ anim.stop();`}
       );
     },
   },
+
+  'auto-learning': {
+    examples: [
+      {
+        label: 'Standalone',
+        filename: 'learning.service.ts',
+        code: `import { AutoLearningCore } from '@backendkit-labs/auto-learning';
+
+const learner = AutoLearningCore.create();
+
+learner.recordPattern({
+  method: 'POST',
+  path: '/api/payments',
+  statusCode: 200,
+  durationMs: 145,
+  timestamp: new Date(),
+});
+
+learner.onConfigChange((config) => {
+  circuitBreaker.setThreshold(config.circuitBreakerThreshold);
+  bulkhead.setMaxConcurrent(config.bulkheadMaxConcurrent);
+  httpClient.setTimeout(config.timeoutMs);
+});
+
+learner.startFeedbackLoop(60_000);`,
+      },
+      {
+        label: 'NestJS',
+        filename: 'app.module.ts',
+        code: `import { AutoLearningModule, AutoLearn } from '@backendkit-labs/auto-learning';
+
+@Module({
+  imports: [
+    AutoLearningModule.forRoot({
+      feedbackIntervalMs: 60_000,
+      anomaly: {
+        latencyStdDevThreshold: 2.5,
+        errorRateThreshold: 0.15,
+      },
+    }),
+  ],
+})
+export class AppModule {}
+
+// ----- payment.controller.ts -----
+@Controller('payments')
+export class PaymentController {
+  @Post()
+  @AutoLearn()
+  async charge(@Body() dto: ChargeDto): Promise<PaymentResult> {
+    return this.paymentService.charge(dto);
+  }
+}`,
+      },
+      {
+        label: 'Custom Storage',
+        filename: 'redis-storage.adapter.ts',
+        code: `import { StorageAdapter, EndpointPattern, TunableConfig } from '@backendkit-labs/auto-learning';
+import { ok } from '@backendkit-labs/result';
+import type { Redis } from 'ioredis';
+
+export class RedisStorageAdapter implements StorageAdapter {
+  constructor(private readonly redis: Redis) {}
+
+  async savePattern(pattern: EndpointPattern) {
+    const key = \`patterns:\${pattern.method}:\${pattern.path}\`;
+    await this.redis.lpush(key, JSON.stringify(pattern));
+    await this.redis.ltrim(key, 0, 999);
+    return ok(undefined);
+  }
+
+  async loadConfig() {
+    const raw = await this.redis.get('auto-learning:config');
+    if (!raw) return ok(null);
+    return ok(JSON.parse(raw) as TunableConfig);
+  }
+
+  async saveConfig(config: TunableConfig) {
+    await this.redis.set('auto-learning:config', JSON.stringify(config));
+    return ok(undefined);
+  }
+}`,
+      },
+    ],
+    content: function AutoLearningContent({ color }: { color: string }) {
+      return (
+        <>
+          <section id="overview">
+            <SectionHeading id="overview">Overview</SectionHeading>
+            <P>
+              <code>@backendkit-labs/auto-learning</code> observes your backend in production and continuously tunes its
+              resilience configuration. Every endpoint call is recorded as a pattern; a periodic feedback loop analyzes those
+              patterns, detects anomalies, and emits an updated <code>TunableConfig</code> that your circuit breaker,
+              bulkhead, and HTTP client can consume immediately.
+            </P>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {['87 tests', '>94% coverage', 'Zero ML deps', 'Pluggable storage'].map((item) => (
+                <span key={item} className="text-[12px] font-medium px-2.5 py-1 rounded-lg" style={{ background: `${color}15`, color }}>{item}</span>
+              ))}
+            </div>
+          </section>
+
+          <section id="how-it-works">
+            <SectionHeading id="how-it-works">How It Works</SectionHeading>
+            <P>The learning cycle runs in four stages:</P>
+            <div className="grid sm:grid-cols-2 gap-3 my-5">
+              {([
+                { step: '1. Record', accent: '#0ea5e9', desc: 'Every endpoint call is captured as an EndpointPattern — method, path, status, duration, timestamp.' },
+                { step: '2. Aggregate', accent: '#6366f1', desc: 'PatternRegistry groups calls by endpoint and computes p50/p95/p99 latency, error rate, and call frequency.' },
+                { step: '3. Detect', accent: '#f59e0b', desc: 'AnomalyDetector uses z-score and percentile analysis to flag latency spikes, error surges, frequency shifts, and unknown endpoints.' },
+                { step: '4. Tune', accent: '#10b981', desc: 'ConfigTuner adjusts timeoutMs, maxRetries, circuitBreakerThreshold, and bulkheadMaxConcurrent based on detected anomalies.' },
+              ] as const).map(({ step, accent, desc }) => (
+                <div key={step} className="rounded-xl border border-gray-200 dark:border-white/[0.06] p-4" style={{ background: `${accent}06` }}>
+                  <div className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: accent }}>{step}</div>
+                  <p className="text-[13px] text-slate-500 dark:text-[#64748b] leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="config">
+            <SectionHeading id="config">Configuration</SectionHeading>
+            <P>All options are optional — the defaults work for most backends.</P>
+            <PropsTable rows={[
+              { prop: 'feedbackIntervalMs',               type: 'number',            default: '60000',          description: 'How often the learning cycle runs (ms).' },
+              { prop: 'anomaly.latencyStdDevThreshold',   type: 'number',            default: '2.0',            description: 'Z-score threshold for latency spike detection.' },
+              { prop: 'anomaly.errorRateThreshold',       type: 'number',            default: '0.10',           description: 'Error rate fraction that triggers an anomaly (0.10 = 10%).' },
+              { prop: 'tuner.cooldownMs',                 type: 'number',            default: '120000',         description: 'Minimum time between config adjustments.' },
+              { prop: 'storage',                          type: 'StorageAdapter',    default: 'InMemoryStorage', description: 'Pluggable persistence layer.' },
+              { prop: 'observability',                    type: 'ObservabilityAdapter', default: 'NoopAdapter', description: 'Pluggable logging and metrics.' },
+            ]} />
+          </section>
+
+          <section id="nestjs">
+            <SectionHeading id="nestjs">NestJS Integration</SectionHeading>
+            <P>
+              <code>AutoLearningModule.forRoot()</code> registers the core instance as a singleton.
+              The <code>@AutoLearn()</code> decorator marks controllers or methods for automatic pattern recording
+              via an interceptor — no manual <code>recordPattern()</code> calls needed.
+            </P>
+            <CodeBlock filename="resilience.service.ts" code={`@Injectable()
+export class ResilienceService implements OnModuleInit {
+  constructor(
+    @Inject(AUTO_LEARNING_INSTANCE)
+    private readonly learner: AutoLearningCore,
+  ) {}
+
+  onModuleInit() {
+    this.learner.onConfigChange((config) => {
+      this.circuitBreaker.setThreshold(config.circuitBreakerThreshold);
+      this.bulkhead.setMaxConcurrent(config.bulkheadMaxConcurrent);
+    });
+  }
+}`} />
+          </section>
+
+          <section id="storage">
+            <SectionHeading id="storage">Storage Adapters</SectionHeading>
+            <P>
+              The default <code>InMemoryStorage</code> loses data on restart — suitable for development.
+              For production, implement <code>StorageAdapter</code> backed by Redis or SQL.
+            </P>
+            <PropsTable rows={[
+              { prop: 'savePattern(pattern)', type: 'Promise<Result>', default: '—', description: 'Persist an endpoint pattern observation.' },
+              { prop: 'getAggregates()',      type: 'Promise<Result>', default: '—', description: 'Load aggregated statistics per endpoint.' },
+              { prop: 'saveConfig(config)',   type: 'Promise<Result>', default: '—', description: 'Persist the latest tuned configuration.' },
+              { prop: 'loadConfig()',         type: 'Promise<Result>', default: '—', description: 'Load the last saved configuration on startup.' },
+              { prop: 'prune(olderThan)',     type: 'Promise<Result>', default: '—', description: 'Remove patterns older than the given date.' },
+            ]} />
+          </section>
+        </>
+      );
+    },
+  },
 };
 
 // ── Comparison tables data ───────────────────────────────────────────────────
@@ -1834,6 +2008,7 @@ const comparisonData: Record<string, {
     ],
   },
 };
+
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,16 @@
+export { AutoLearningCore } from './auto-learning-core.js';
+export type { AutoLearningCoreOptions } from './auto-learning-core.js';
+export type { EndpointPattern, AggregatePattern, AnomalySeverity, AnomalyReport, TunableConfig, LearningCycleEvent } from './types.js';
+export type { LearningError } from './errors.js';
+export type { IPatternRegistry, RegistryStats } from './pattern-registry/index.js';
+export { PatternRegistry } from './pattern-registry/index.js';
+export type { IAnomalyDetector, AnomalyDetectorConfig } from './anomaly-detector/index.js';
+export { DEFAULT_ANOMALY_CONFIG, AnomalyDetector } from './anomaly-detector/index.js';
+export type { IConfigTuner, ConfigTunerConfig } from './config-tuner/index.js';
+export { DEFAULT_TUNER_CONFIG, ConfigTuner } from './config-tuner/index.js';
+export type { IFeedbackLoop, FeedbackLoopConfig } from './feedback-loop/index.js';
+export { DEFAULT_LOOP_CONFIG, FeedbackLoop } from './feedback-loop/index.js';
+export type { StorageAdapter } from './persistence/index.js';
+export { InMemoryStorage } from './persistence/index.js';
+export type { ObservabilityAdapter } from './observability/index.js';
+export { NoopObservabilityAdapter } from './observability/index.js';

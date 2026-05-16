@@ -87,6 +87,14 @@ const packageSections: Record<string, { label: string; href: string }[]> = {
     { label: 'Builder API',       href: '#builder' },
     { label: 'Examples',          href: '#examples' },
   ],
+  'auto-learning': [
+    { label: 'Overview',          href: '#overview' },
+    { label: 'How It Works',      href: '#how-it-works' },
+    { label: 'Configuration',     href: '#config' },
+    { label: 'NestJS Integration', href: '#nestjs' },
+    { label: 'Storage Adapters',  href: '#storage' },
+    { label: 'Examples',          href: '#examples' },
+  ],
 };
 
 const gettingStartedLinks = [

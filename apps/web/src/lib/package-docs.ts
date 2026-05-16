@@ -601,4 +601,77 @@ console.log('\\nDeployed successfully.');`,
       },
     ],
   },
+  {
+    slug: 'auto-learning',
+    name: 'auto-learning',
+    npmName: '@backendkit-labs/auto-learning',
+    version: '0.1.0',
+    icon: 'AL',
+    color: '#0ea5e9',
+    tagline: 'Self-tuning backend intelligence — learns, detects anomalies, auto-adjusts.',
+    description:
+      'Records real endpoint patterns (latency, errors, frequency) and continuously tunes your resilience config: timeouts, retries, circuit breaker thresholds, and bulkhead concurrency. No ML models required — statistical analysis (percentiles, z-score) keeps it predictable and dependency-free. Pairs directly with @backendkit-labs/circuit-breaker, bulkhead, and http-client.',
+    highlights: [
+      'Auto-tunes circuit breaker, bulkhead, timeout, retries',
+      'Detects latency spikes, error surges, unknown endpoints',
+      'Pluggable StorageAdapter (in-memory or Redis/SQL)',
+      '87 tests · >94% coverage',
+    ],
+    examples: [
+      {
+        label: 'Standalone',
+        filename: 'learning.service.ts',
+        code: `import { AutoLearningCore } from '@backendkit-labs/auto-learning';
+
+const learner = AutoLearningCore.create();
+
+// Record real calls as they happen
+learner.recordPattern({
+  method: 'POST',
+  path: '/api/payments',
+  statusCode: 200,
+  durationMs: 145,
+  timestamp: new Date(),
+});
+
+// React to config changes
+learner.onConfigChange((config) => {
+  circuitBreaker.setThreshold(config.circuitBreakerThreshold);
+  bulkhead.setMaxConcurrent(config.bulkheadMaxConcurrent);
+  httpClient.setTimeout(config.timeoutMs);
+});
+
+// Start the learning loop (runs every 60s by default)
+learner.startFeedbackLoop(60_000);`,
+      },
+      {
+        label: 'NestJS',
+        filename: 'app.module.ts',
+        code: `import { AutoLearningModule } from '@backendkit-labs/auto-learning';
+
+@Module({
+  imports: [
+    AutoLearningModule.forRoot({
+      feedbackIntervalMs: 60_000,
+      anomaly: {
+        latencyStdDevThreshold: 2.5,
+        errorRateThreshold: 0.15,
+      },
+    }),
+  ],
+})
+export class AppModule {}
+
+// ----- payment.controller.ts -----
+@Controller('payments')
+export class PaymentController {
+  @Post()
+  @AutoLearn()   // ← records pattern automatically via interceptor
+  async charge(@Body() dto: ChargeDto): Promise<PaymentResult> {
+    return this.paymentService.charge(dto);
+  }
+}`,
+      },
+    ],
+  },
 ];
