@@ -57,7 +57,11 @@ export class Bulkhead {
   private timedOutCalls = 0;
   private totalDurationMs = 0;
 
-  constructor(private readonly config: BulkheadConfig) {}
+  constructor(private config: BulkheadConfig) {}
+
+  updateConfig(partial: Partial<Omit<BulkheadConfig, 'name'>>): void {
+    this.config = { ...this.config, ...partial };
+  }
 
   async execute<T>(task: () => Promise<T>): Promise<T> {
     const startTime = Date.now();
