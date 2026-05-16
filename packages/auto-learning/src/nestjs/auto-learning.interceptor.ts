@@ -42,7 +42,7 @@ export class AutoLearningInterceptor implements NestInterceptor {
         statusCode,
         durationMs: Date.now() - start,
         timestamp: new Date(),
-        metadata: options.customMetadata ? options.customMetadata(req) : undefined,
+        metadata: this.buildMetadata(req, options),
       });
       if (!result.ok) {
         this.core.observability.error('Failed to record pattern', { error: result.error });
@@ -68,5 +68,13 @@ export class AutoLearningInterceptor implements NestInterceptor {
     const raw = req.route?.path ?? req.path ?? req.url ?? '/';
     const path = raw.split('?')[0];
     return { method, path };
+  }
+
+  private buildMetadata(req: any, options: AutoLearnOptions): Record<string, unknown> | undefined {
+    const meta: Record<string, unknown> = {};
+    if (options.trackParams && req.params) meta.params = req.params;
+    if (options.trackBody && req.body) meta.body = req.body;
+    if (options.customMetadata) Object.assign(meta, options.customMetadata(req));
+    return Object.keys(meta).length > 0 ? meta : undefined;
   }
 }

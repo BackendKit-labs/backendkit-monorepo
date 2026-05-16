@@ -198,6 +198,91 @@ describe('AutoLearningInterceptor', () => {
         expect.objectContaining({ metadata }),
       );
     });
+
+    it('should include req.params when trackParams is true', () => {
+      const params = { id: '42' };
+      const req = { method: 'GET', route: { path: '/api/users/:id' }, url: '/api/users/42', params };
+      const res = { statusCode: 200 };
+      const context = {
+        getType: vi.fn(() => 'http'),
+        getHandler: vi.fn(() => ({})),
+        switchToHttp: vi.fn(() => ({
+          getRequest: vi.fn(() => req),
+          getResponse: vi.fn(() => res),
+        })),
+      } as unknown as ExecutionContext;
+      reflector.get.mockReturnValue({ trackParams: true });
+      const handler = makeHandler();
+
+      interceptor.intercept(context, handler).subscribe();
+
+      expect(core.recordPattern).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: expect.objectContaining({ params }) }),
+      );
+    });
+
+    it('should include req.body when trackBody is true', () => {
+      const body = { name: 'Alice', email: 'alice@example.com' };
+      const req = { method: 'POST', route: { path: '/api/users' }, url: '/api/users', body };
+      const res = { statusCode: 201 };
+      const context = {
+        getType: vi.fn(() => 'http'),
+        getHandler: vi.fn(() => ({})),
+        switchToHttp: vi.fn(() => ({
+          getRequest: vi.fn(() => req),
+          getResponse: vi.fn(() => res),
+        })),
+      } as unknown as ExecutionContext;
+      reflector.get.mockReturnValue({ trackBody: true });
+      const handler = makeHandler();
+
+      interceptor.intercept(context, handler).subscribe();
+
+      expect(core.recordPattern).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: expect.objectContaining({ body }) }),
+      );
+    });
+
+    it('should merge trackParams, trackBody, and customMetadata together', () => {
+      const params = { id: '7' };
+      const body = { status: 'active' };
+      const req = { method: 'PATCH', route: { path: '/api/users/:id' }, url: '/api/users/7', params, body };
+      const res = { statusCode: 200 };
+      const context = {
+        getType: vi.fn(() => 'http'),
+        getHandler: vi.fn(() => ({})),
+        switchToHttp: vi.fn(() => ({
+          getRequest: vi.fn(() => req),
+          getResponse: vi.fn(() => res),
+        })),
+      } as unknown as ExecutionContext;
+      reflector.get.mockReturnValue({
+        trackParams: true,
+        trackBody: true,
+        customMetadata: () => ({ tenant: 'acme' }),
+      });
+      const handler = makeHandler();
+
+      interceptor.intercept(context, handler).subscribe();
+
+      expect(core.recordPattern).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({ params, body, tenant: 'acme' }),
+        }),
+      );
+    });
+
+    it('should record undefined metadata when no tracking options are set', () => {
+      reflector.get.mockReturnValue({}); // no trackParams, trackBody, or customMetadata
+      const context = makeHttpContext();
+      const handler = makeHandler();
+
+      interceptor.intercept(context, handler).subscribe();
+
+      expect(core.recordPattern).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: undefined }),
+      );
+    });
   });
 
   // ---- failed requests (the main bug fix) ----

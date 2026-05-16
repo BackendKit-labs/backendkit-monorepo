@@ -6,7 +6,7 @@ export interface IAnomalyDetector {
   analyze(
     current: EndpointPattern,
     baseline: AggregatePattern,
-  ): Result<AnomalyReport | null, LearningError>;
+  ): Result<AnomalyReport[], LearningError>;
 
   batchAnalyze(
     windowPatterns: EndpointPattern[],

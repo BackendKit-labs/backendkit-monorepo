@@ -15,7 +15,7 @@ export class AnomalyDetector implements IAnomalyDetector {
   analyze(
     current: EndpointPattern,
     baseline: AggregatePattern,
-  ): Result<AnomalyReport | null, LearningError> {
+  ): Result<AnomalyReport[], LearningError> {
     try {
       const reports: AnomalyReport[] = [];
 
@@ -57,7 +57,7 @@ export class AnomalyDetector implements IAnomalyDetector {
         });
       }
 
-      return ok(reports.length > 0 ? reports[0] : null);
+      return ok(reports);
     } catch (e) {
       return fail(
         anomalyDetectionFailed(
@@ -103,8 +103,8 @@ export class AnomalyDetector implements IAnomalyDetector {
         }
 
         const result = this.analyze(pattern, baseline);
-        if (result.ok && result.value) {
-          reports.push(result.value);
+        if (result.ok) {
+          reports.push(...result.value);
         }
       }
 

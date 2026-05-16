@@ -2,7 +2,7 @@
 
 > Trazabilidad de los hallazgos de auditoría de `@backendkit-labs/auto-learning` y su integración con `circuit-breaker` / `bulkhead`. Fecha de auditoría: **2026-05-16**.
 
-**Estado global:** 13/19 resueltos · 7/7 críticos · 6/9 logica/diseño · 0/3 minores priorizados
+**Estado global:** 18/19 resueltos · 7/7 críticos · 8/9 logica/diseño · 3/3 minores priorizados
 
 Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT-FIX`
 
@@ -328,19 +328,16 @@ Leyenda de status: `🟥 TODO` · `🟧 IN PROGRESS` · `🟩 DONE` · `⬜ WONT
 ## 🟢 Bad Practices / Minores (priorizados)
 
 ### #20 — `LearningError` no es un discriminated union real
-- **Status:** 🟥 TODO
+- **Status:** 🟩 DONE — converted to proper discriminated union; each variant exported (`StorageError`, `InsufficientDataError`, etc.) (Sprint 4)
 - **Archivo:** `src/core/errors.ts`
-- **Fix:** convertir a union de variantes con campos específicos por tag.
 
 ### #24 — `AutoLearn` declara `trackParams`/`trackBody` pero no se usan
-- **Status:** 🟥 TODO
-- **Archivo:** `src/nestjs/auto-learning.decorator.ts`
-- **Fix:** o implementar (capturarlos en `metadata`) o eliminar.
+- **Status:** 🟩 DONE — implemented: captured into pattern.metadata alongside customMetadata (Sprint 4)
+- **Archivo:** `src/nestjs/auto-learning.interceptor.ts`
 
 ### #27 — `analyze` devuelve sólo `reports[0]`, descartando combinaciones
-- **Status:** 🟥 TODO
-- **Archivo:** `src/core/anomaly-detector/anomaly-detector.ts:62`
-- **Fix:** devolver `AnomalyReport[]` o el report de mayor severidad.
+- **Status:** 🟩 DONE — `analyze()` now returns `AnomalyReport[]`; `batchAnalyze` spreads the array so both latency + error_rate are reported for the same pattern (Sprint 4)
+- **Archivo:** `src/core/anomaly-detector/anomaly-detector.ts`
 
 ---
 

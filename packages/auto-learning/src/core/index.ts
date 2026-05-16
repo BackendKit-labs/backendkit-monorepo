@@ -1,7 +1,7 @@
 export { AutoLearningCore } from './auto-learning-core.js';
 export type { AutoLearningCoreOptions } from './auto-learning-core.js';
 export type { EndpointPattern, AggregatePattern, AnomalySeverity, AnomalyReport, TunableConfig, LearningCycleEvent } from './types.js';
-export type { LearningError } from './errors.js';
+export type { LearningError, StorageError, InsufficientDataError, InvalidConfigError, AnomalyDetectionFailedError, FeedbackLoopAlreadyRunningError, FeedbackLoopNotRunningError } from './errors.js';
 export type { IPatternRegistry, RegistryStats } from './pattern-registry/index.js';
 export { PatternRegistry } from './pattern-registry/index.js';
 export type { IAnomalyDetector, AnomalyDetectorConfig } from './anomaly-detector/index.js';

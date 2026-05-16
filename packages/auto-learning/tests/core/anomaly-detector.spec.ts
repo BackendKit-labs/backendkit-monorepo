@@ -45,7 +45,7 @@ describe('AnomalyDetector', () => {
 
   describe('analyze', () => {
     describe('latency anomalies', () => {
-      it('should return null when latency is within normal range', () => {
+      it('should return empty array when latency is within normal range', () => {
         const pattern = makePattern({ durationMs: 110 });
         const baseline = makeBaseline({ avgDurationMs: 100, p50Ms: 90, p95Ms: 200 });
 
@@ -53,7 +53,7 @@ describe('AnomalyDetector', () => {
 
         expect(result.ok).toBe(true);
         if (result.ok) {
-          expect(result.value).toBeNull();
+          expect(result.value).toEqual([]);
         }
       });
 
@@ -64,16 +64,16 @@ describe('AnomalyDetector', () => {
         const result = detector.analyze(pattern, baseline);
 
         expect(result.ok).toBe(true);
-        if (result.ok && result.value) {
-          expect(result.value.metric).toBe('latency');
-          expect(result.value.actualValue).toBe(1000);
-          expect(result.value.expectedValue).toBe(100);
-          expect(result.value.endpoint).toBe('/api/users');
-          expect(result.value.method).toBe('GET');
+        if (result.ok && result.value.length > 0) {
+          expect(result.value[0].metric).toBe('latency');
+          expect(result.value[0].actualValue).toBe(1000);
+          expect(result.value[0].expectedValue).toBe(100);
+          expect(result.value[0].endpoint).toBe('/api/users');
+          expect(result.value[0].method).toBe('GET');
         }
       });
 
-      it('should return null when baseline count is 0', () => {
+      it('should return empty array when baseline count is 0', () => {
         const pattern = makePattern({ durationMs: 9999 });
         const baseline = makeBaseline({ count: 0, avgDurationMs: 0 });
 
@@ -81,7 +81,7 @@ describe('AnomalyDetector', () => {
 
         expect(result.ok).toBe(true);
         if (result.ok) {
-          expect(result.value).toBeNull();
+          expect(result.value).toEqual([]);
         }
       });
 
@@ -96,26 +96,26 @@ describe('AnomalyDetector', () => {
 
         const critical = detector.analyze(makePattern({ durationMs: 400 }), baseline);
         expect(critical.ok).toBe(true);
-        if (critical.ok && critical.value) {
-          expect(critical.value.severity).toBe('critical');
+        if (critical.ok && critical.value.length > 0) {
+          expect(critical.value[0].severity).toBe('critical');
         }
 
         const high = detector.analyze(makePattern({ durationMs: 350 }), baseline);
         expect(high.ok).toBe(true);
-        if (high.ok && high.value) {
-          expect(high.value.severity).toBe('high');
+        if (high.ok && high.value.length > 0) {
+          expect(high.value[0].severity).toBe('high');
         }
 
         const medium = detector.analyze(makePattern({ durationMs: 300 }), baseline);
         expect(medium.ok).toBe(true);
-        if (medium.ok && medium.value) {
-          expect(medium.value.severity).toBe('medium');
+        if (medium.ok && medium.value.length > 0) {
+          expect(medium.value[0].severity).toBe('medium');
         }
 
         const low = detector.analyze(makePattern({ durationMs: 250 }), baseline);
         expect(low.ok).toBe(true);
-        if (low.ok && low.value) {
-          expect(low.value.severity).toBe('low');
+        if (low.ok && low.value.length > 0) {
+          expect(low.value[0].severity).toBe('low');
         }
       });
     });
@@ -128,11 +128,11 @@ describe('AnomalyDetector', () => {
         const result = detector.analyze(pattern, baseline);
 
         expect(result.ok).toBe(true);
-        if (result.ok && result.value) {
-          expect(result.value.metric).toBe('error_rate');
-          expect(result.value.severity).toBe('high');
-          expect(result.value.expectedValue).toBe(0.01);
-          expect(result.value.actualValue).toBe(1);
+        if (result.ok && result.value.length > 0) {
+          expect(result.value[0].metric).toBe('error_rate');
+          expect(result.value[0].severity).toBe('high');
+          expect(result.value[0].expectedValue).toBe(0.01);
+          expect(result.value[0].actualValue).toBe(1);
         }
       });
 
@@ -144,7 +144,7 @@ describe('AnomalyDetector', () => {
 
         expect(result.ok).toBe(true);
         if (result.ok) {
-          expect(result.value).toBeNull();
+          expect(result.value).toEqual([]);
         }
       });
 
@@ -156,7 +156,7 @@ describe('AnomalyDetector', () => {
 
         expect(result.ok).toBe(true);
         if (result.ok) {
-          expect(result.value).toBeNull();
+          expect(result.value).toEqual([]);
         }
       });
 
@@ -169,7 +169,29 @@ describe('AnomalyDetector', () => {
 
         expect(result.ok).toBe(true);
         if (result.ok) {
-          expect(result.value).toBeNull();
+          expect(result.value).toEqual([]);
+        }
+      });
+    });
+
+    describe('multiple anomalies in one call', () => {
+      it('should report both latency and error_rate when both conditions are met', () => {
+        // High latency (1000ms vs 100ms baseline) AND 5xx on healthy endpoint
+        const pattern = makePattern({ durationMs: 1000, statusCode: 500 });
+        const baseline = makeBaseline({
+          avgDurationMs: 100,
+          p50Ms: 90,
+          p95Ms: 200,
+          errorRate: 0.01, // healthy → error_rate fires
+        });
+
+        const result = detector.analyze(pattern, baseline);
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value).toHaveLength(2);
+          const metrics = result.value.map((r) => r.metric).sort();
+          expect(metrics).toEqual(['error_rate', 'latency']);
         }
       });
     });
@@ -274,6 +296,27 @@ describe('AnomalyDetector', () => {
       if (result.ok) {
         expect(result.value).toHaveLength(1);
         expect(result.value[0].metric).toBe('latency');
+      }
+    });
+
+    it('should accumulate multiple anomaly types from a single pattern via analyze spread', () => {
+      // Pattern with both high latency AND 5xx on a healthy endpoint
+      const patterns = [makePattern({ durationMs: 2000, statusCode: 500, path: '/api/users' })];
+      const baselines = [makeBaseline({
+        path: '/api/users',
+        avgDurationMs: 100,
+        p50Ms: 90,
+        p95Ms: 200,
+        errorRate: 0.01, // healthy → error_rate fires too
+      })];
+
+      const result = detector.batchAnalyze(patterns, baselines);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(2);
+        const metrics = result.value.map((r) => r.metric).sort();
+        expect(metrics).toEqual(['error_rate', 'latency']);
       }
     });
 
