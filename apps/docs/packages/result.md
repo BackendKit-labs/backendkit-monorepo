@@ -1,4 +1,4 @@
----
+﻿---
 title: Result
 description: Type-safe Result monad for Node.js — generic errors, composable transformations, resilience, and NestJS integration.
 ---
@@ -6,7 +6,7 @@ description: Type-safe Result monad for Node.js — generic errors, composable t
 # @backendkit-labs/result
 
 [![npm](https://img.shields.io/npm/v/@backendkit-labs/result?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/result)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/result?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/result?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/result?style=flat-square)](https://nodejs.org)
 
 > Type-safe Result monad for Node.js. Generic error types, observability, resilience, and optional NestJS integration. Zero runtime dependencies.

@@ -1,4 +1,4 @@
----
+﻿---
 title: Request Firewall
 description: Web Application Firewall for Node.js — 23 built-in threat-detection rules across 6 attack categories, framework-agnostic core, and optional NestJS integration.
 ---
@@ -6,7 +6,7 @@ description: Web Application Firewall for Node.js — 23 built-in threat-detecti
 # @backendkit-labs/request-scanner
 
 [![npm](https://img.shields.io/npm/v/@backendkit-labs/request-scanner?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/request-scanner)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/request-scanner?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/request-scanner?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/request-scanner?style=flat-square)](https://nodejs.org)
 
 > Web Application Firewall for Node.js. Pattern-based threat detection with 23 built-in rules across 6 attack categories. Zero runtime dependencies.

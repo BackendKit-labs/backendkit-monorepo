@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "backendkit-monorepo",
   "version": "1.0.0",
   "license": "Apache-2.0",
@@ -6,10 +6,10 @@
     "name": "BackendKit Labs",
     "email": "hello@backendkitlabs.dev"
   },
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo",
+  "homepage": "https://github.com/BackendKit-labs/backendkit-monorepo",
   "repository": {
     "type": "git",
-    "url": "https://github.com/backendkit-dev/backendkit-monorepo.git"
+    "url": "https://github.com/BackendKit-labs/backendkit-monorepo.git"
   },
   "private": true,
   "description": "Monorepo for BackendKit Labs - Reusable backend libraries",

@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "@backendkit-labs/observability",
   "version": "0.1.1",
   "license": "Apache-2.0",
@@ -48,11 +48,11 @@
   "homepage": "https://backendkitlabs.dev/docs/observability/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
+    "url": "git+https://github.com/BackendKit-labs/backendkit-monorepo.git",
     "directory": "packages/observability"
   },
   "bugs": {
-    "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
+    "url": "https://github.com/BackendKit-labs/backendkit-monorepo/issues"
   },
   "publishConfig": {
     "access": "public"

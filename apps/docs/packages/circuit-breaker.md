@@ -1,4 +1,4 @@
----
+﻿---
 title: Circuit Breaker
 description: Sliding-window circuit breaker for Node.js with business vs infrastructure error classification and optional NestJS integration.
 ---
@@ -6,7 +6,7 @@ description: Sliding-window circuit breaker for Node.js with business vs infrast
 # @backendkit-labs/circuit-breaker
 
 [![npm](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/circuit-breaker?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/circuit-breaker?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/circuit-breaker?style=flat-square)](https://nodejs.org)
 
 > Circuit Breaker pattern for Node.js — fail-fast with automatic recovery.

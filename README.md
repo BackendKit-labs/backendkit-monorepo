@@ -1,6 +1,6 @@
-# BackendKit Monorepo
+﻿# BackendKit Monorepo
 
-Reusable, enterprise-grade Node.js libraries by [BackendKit Labs](https://github.com/backendkit-dev).
+Reusable, enterprise-grade Node.js libraries by [BackendKit Labs](https://github.com/BackendKit-labs).
 
 ## Packages
 

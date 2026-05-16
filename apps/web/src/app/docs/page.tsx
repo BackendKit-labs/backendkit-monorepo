@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { packages } from '@/lib/packages';
 import type { Metadata } from 'next';
 import { highlight } from '@/lib/highlight';
@@ -227,7 +227,7 @@ export default function DocsPage() {
             Browse packages
           </Link>
           <a
-            href="https://github.com/backendkit-dev/backendkit-monorepo"
+            href="https://github.com/BackendKit-labs/backendkit-monorepo"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-slate-600 dark:text-[#94a3b8] text-sm font-medium hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-white/[0.15] transition-colors"
@@ -478,7 +478,7 @@ export default function DocsPage() {
             Start with result →
           </Link>
           <a
-            href="https://github.com/backendkit-dev/backendkit-monorepo"
+            href="https://github.com/BackendKit-labs/backendkit-monorepo"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[#94a3b8] text-sm font-medium hover:text-white transition-colors"

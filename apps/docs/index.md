@@ -1,4 +1,4 @@
----
+﻿---
 layout: home
 
 hero:
@@ -14,7 +14,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/backendkit-dev/backendkit-monorepo
+      link: https://github.com/BackendKit-labs/backendkit-monorepo
 
 features:
   - icon: 🎯

@@ -58,14 +58,14 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/backendkit-dev/backendkit-monorepo/edit/master/apps/docs/:path',
+      pattern: 'https://github.com/BackendKit-labs/backendkit-monorepo/edit/master/apps/docs/:path',
       text:    'Edit this page on GitHub',
     },
 
     lastUpdated: { text: 'Last updated' },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/backendkit-dev/backendkit-monorepo' },
+      { icon: 'github', link: 'https://github.com/BackendKit-labs/backendkit-monorepo' },
       { icon: 'npm',    link: 'https://www.npmjs.com/org/backendkit-labs' },
     ],
 

@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "@backendkit-labs/request-scanner",
   "version": "0.1.5",
   "license": "Apache-2.0",
@@ -58,11 +58,11 @@
   "homepage": "https://backendkitlabs.dev/docs/request-scanner/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
+    "url": "git+https://github.com/BackendKit-labs/backendkit-monorepo.git",
     "directory": "packages/request-scanner"
   },
   "bugs": {
-    "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
+    "url": "https://github.com/BackendKit-labs/backendkit-monorepo/issues"
   },
   "sideEffects": false,
   "engines": {

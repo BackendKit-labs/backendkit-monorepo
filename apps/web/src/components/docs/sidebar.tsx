@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -97,9 +97,9 @@ const gettingStartedLinks = [
 ];
 
 const resourceLinks = [
-  { label: 'GitHub',     href: 'https://github.com/backendkit-dev/backendkit-monorepo', external: true },
+  { label: 'GitHub',     href: 'https://github.com/BackendKit-labs/backendkit-monorepo', external: true },
   { label: 'npm',        href: 'https://www.npmjs.com/search?q=%40backendkit-labs',     external: true },
-  { label: 'Changelog',  href: 'https://github.com/backendkit-dev/backendkit-monorepo/blob/main/CHANGELOG.md', external: true },
+  { label: 'Changelog',  href: 'https://github.com/BackendKit-labs/backendkit-monorepo/blob/main/CHANGELOG.md', external: true },
 ];
 
 export default function DocsSidebar() {

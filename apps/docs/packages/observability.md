@@ -1,4 +1,4 @@
----
+﻿---
 title: Observability
 description: Structured logging, metrics, correlation ID propagation, and optional OpenTelemetry support for NestJS.
 ---
@@ -6,7 +6,7 @@ description: Structured logging, metrics, correlation ID propagation, and option
 # @backendkit-labs/observability
 
 [![npm](https://img.shields.io/npm/v/@backendkit-labs/observability?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/observability)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/observability?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/observability?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/observability?style=flat-square)](https://nodejs.org)
 
 Structured logging, distributed tracing correlation, metrics shipping, performance interceptors, and exception handling for **NestJS** — with optional OpenTelemetry integration.

@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -182,4 +182,4 @@ Terminal animations for Node.js CLI tools.
 
 ---
 
-[Unreleased]: https://github.com/backendkit-dev/backendkit-monorepo/compare/HEAD...HEAD
+[Unreleased]: https://github.com/BackendKit-labs/backendkit-monorepo/compare/HEAD...HEAD

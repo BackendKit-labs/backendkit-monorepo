@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 function LogoIcon() {
   return (
@@ -80,7 +80,7 @@ export default function Footer() {
               Packages
             </a>
             <a
-              href="https://github.com/backendkit-dev/backendkit-monorepo"
+              href="https://github.com/BackendKit-labs/backendkit-monorepo"
               target="_blank"
               rel="noopener noreferrer"
               className={linkCls}
@@ -104,7 +104,7 @@ export default function Footer() {
           <p className="text-xs text-[#475569]">
             Released under the{' '}
             <a
-              href="https://github.com/backendkit-dev/backendkit-monorepo/blob/main/LICENSE"
+              href="https://github.com/BackendKit-labs/backendkit-monorepo/blob/main/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[#64748b] hover:text-[#94a3b8] underline underline-offset-2 transition-colors"

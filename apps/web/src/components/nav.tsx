@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -91,7 +91,7 @@ export default function Nav() {
             Packages
           </a>
           <a
-            href="https://github.com/backendkit-dev/backendkit-monorepo"
+            href="https://github.com/BackendKit-labs/backendkit-monorepo"
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link text-sm font-medium flex items-center gap-1.5"
@@ -148,7 +148,7 @@ export default function Nav() {
               Packages
             </a>
             <a
-              href="https://github.com/backendkit-dev/backendkit-monorepo"
+              href="https://github.com/BackendKit-labs/backendkit-monorepo"
               target="_blank"
               rel="noopener noreferrer"
               className="py-2 px-3 rounded-lg text-sm text-[#94a3b8] hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2"

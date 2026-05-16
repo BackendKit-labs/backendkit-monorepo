@@ -1,4 +1,4 @@
----
+﻿---
 title: Console Animations
 description: Enterprise-grade terminal animations for Node.js CLI applications — 17 built-in animations, CI detection, zero runtime dependencies.
 ---
@@ -6,7 +6,7 @@ description: Enterprise-grade terminal animations for Node.js CLI applications �
 # @backendkit-labs/console-animations
 
 [![npm](https://img.shields.io/npm/v/@backendkit-labs/console-animations?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/console-animations)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/console-animations?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/console-animations?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/console-animations?style=flat-square)](https://nodejs.org)
 
 > Enterprise-grade terminal animations for Node.js CLI applications and backend processes.

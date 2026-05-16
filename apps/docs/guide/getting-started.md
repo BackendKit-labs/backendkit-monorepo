@@ -1,4 +1,4 @@
----
+﻿---
 title: Getting Started
 description: Introduction to BackendKit Labs — reusable, enterprise-grade Node.js libraries.
 ---
@@ -122,7 +122,7 @@ export class PaymentService {
 
 ## Source code
 
-All packages live in the [`backendkit-dev/backendkit-monorepo`](https://github.com/backendkit-dev/backendkit-monorepo) repository on GitHub.
+All packages live in the [`BackendKit-labs/backendkit-monorepo`](https://github.com/BackendKit-labs/backendkit-monorepo) repository on GitHub.
 
 ```
 backendkit-monorepo/

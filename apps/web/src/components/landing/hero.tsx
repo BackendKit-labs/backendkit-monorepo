@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 
 function CodeLine({
   children,
@@ -94,7 +94,7 @@ export default function Hero() {
                 </svg>
               </Link>
               <a
-                href="https://github.com/backendkit-dev/backendkit-monorepo"
+                href="https://github.com/BackendKit-labs/backendkit-monorepo"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-gray-800 dark:text-white bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/20 transition-all duration-200"

@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "@backendkit-labs/console-animations",
   "version": "0.1.3",
   "license": "Apache-2.0",
@@ -46,14 +46,14 @@
     "progress",
     "console"
   ],
-  "homepage": "https://github.com/backendkit-dev/backendkit-monorepo/tree/master/packages/console-animations#readme",
+  "homepage": "https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/packages/console-animations#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/backendkit-dev/backendkit-monorepo.git",
+    "url": "git+https://github.com/BackendKit-labs/backendkit-monorepo.git",
     "directory": "packages/console-animations"
   },
   "bugs": {
-    "url": "https://github.com/backendkit-dev/backendkit-monorepo/issues"
+    "url": "https://github.com/BackendKit-labs/backendkit-monorepo/issues"
   },
   "publishConfig": {
     "access": "public"

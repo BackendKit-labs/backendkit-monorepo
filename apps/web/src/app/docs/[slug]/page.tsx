@@ -1923,7 +1923,7 @@ export default async function PackageDocPage({
           </svg>
         </a>
         <a
-          href="https://github.com/backendkit-dev/backendkit-monorepo"
+          href="https://github.com/BackendKit-labs/backendkit-monorepo"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-sm text-slate-500 dark:text-[#64748b] hover:text-slate-700 dark:hover:text-[#94a3b8] transition-colors"

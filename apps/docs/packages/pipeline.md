@@ -1,4 +1,4 @@
----
+﻿---
 title: Pipeline
 description: Type-safe async pipeline implementing Chain of Responsibility — conditional steps, two error modes, observability hooks, and NestJS DI integration.
 ---
@@ -6,7 +6,7 @@ description: Type-safe async pipeline implementing Chain of Responsibility — c
 # @backendkit-labs/pipeline
 
 [![npm](https://img.shields.io/npm/v/@backendkit-labs/pipeline?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/pipeline)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/pipeline?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/pipeline?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/pipeline?style=flat-square)](https://nodejs.org)
 
 > Type-safe async pipeline implementing the Chain of Responsibility pattern. Steps receive an immutable context, transform it, and return a `StepResult`. Zero runtime dependencies.

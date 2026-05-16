@@ -1,7 +1,7 @@
 ﻿# @backendkit-labs/console-animations
 
 [![npm version](https://img.shields.io/npm/v/@backendkit-labs/console-animations?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/console-animations)
-[![CI](https://img.shields.io/github/actions/workflow/status/backendkit-dev/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/backendkit-dev/backendkit-monorepo/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/BackendKit-labs/backendkit-monorepo/ci.yml?style=flat-square&label=CI)](https://github.com/BackendKit-labs/backendkit-monorepo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/npm/l/@backendkit-labs/console-animations?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/console-animations?style=flat-square)](package.json)
 [![Downloads](https://img.shields.io/npm/dm/@backendkit-labs/console-animations?style=flat-square)](https://www.npmjs.com/package/@backendkit-labs/console-animations)
@@ -317,7 +317,7 @@ terminal / symbols — environment detection utilities
 ## Running Examples
 
 ```bash
-git clone https://github.com/backendkit-dev/backendkit-monorepo.git
+git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
 cd backendkit-monorepo/packages/console-animations
 npm install && npm run build
 
@@ -331,4 +331,4 @@ npx tsx examples/async-workflow.ts
 
 ## License
 
-Apache-2.0 — [BackendKit Labs](https://github.com/backendkit-dev)
+Apache-2.0 — [BackendKit Labs](https://github.com/BackendKit-labs)

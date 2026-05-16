@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 
@@ -136,7 +136,7 @@ export default function InstallSection() {
             {/* CTA */}
             <div className="mt-8 flex flex-wrap gap-3">
               <a
-                href="https://github.com/backendkit-dev/backendkit-monorepo"
+                href="https://github.com/BackendKit-labs/backendkit-monorepo"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-gradient inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white"

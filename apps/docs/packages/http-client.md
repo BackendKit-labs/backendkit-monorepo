@@ -1,4 +1,4 @@
----
+﻿---
 title: HTTP Client
 description: Production-grade HTTP client built on axios — Result-based API, circuit breaker, retry with backoff, request cancellation, and pipeline middleware.
 ---
@@ -6,7 +6,7 @@ description: Production-grade HTTP client built on axios — Result-based API, c
 # @backendkit-labs/http-client
 
 [![npm](https://img.shields.io/npm/v/@backendkit-labs/http-client?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/http-client)
-[![License](https://img.shields.io/npm/l/@backendkit-labs/http-client?style=flat-square)](https://github.com/backendkit-dev/backendkit-monorepo/blob/master/LICENSE)
+[![License](https://img.shields.io/npm/l/@backendkit-labs/http-client?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/http-client?style=flat-square)](https://nodejs.org)
 
 > Production-grade HTTP client built on axios. Every method returns `Result<HttpResponse<T>, HttpClientError>` — no try/catch required.
