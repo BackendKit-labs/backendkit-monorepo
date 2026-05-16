@@ -2,7 +2,7 @@ import { ok, fail } from '@backendkit-labs/result';
 import type { Result } from '@backendkit-labs/result';
 import { v4 as uuid } from 'uuid';
 import { IFeedbackLoop, FeedbackLoopConfig, DEFAULT_LOOP_CONFIG } from './types.js';
-import { LearningCycleEvent } from '../types.js';
+import { LearningCycleEvent, TunableConfig } from '../types.js';
 import { LearningError, storageError } from '../errors.js';
 import { IPatternRegistry } from '../pattern-registry/types.js';
 import { IAnomalyDetector } from '../anomaly-detector/types.js';
@@ -142,10 +142,9 @@ export class FeedbackLoop implements IFeedbackLoop {
 
     // Compute config changes (section-level comparison)
     const configChanges: Partial<TunableConfig> = {};
-    const sections = Object.keys(newConfig) as Array<keyof TunableConfig>;
-    for (const section of sections) {
-      if (JSON.stringify(newConfig[section]) !== JSON.stringify(previousConfig[section])) {
-        (configChanges as Record<string, unknown>)[section] = newConfig[section];
+    for (const key of Object.keys(newConfig) as Array<keyof TunableConfig>) {
+      if (JSON.stringify(newConfig[key]) !== JSON.stringify(previousConfig[key])) {
+        (configChanges as Record<keyof TunableConfig, unknown>)[key] = newConfig[key];
       }
     }
 
