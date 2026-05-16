@@ -106,7 +106,11 @@ export class CircuitBreaker {
   private slowCalls = 0;
   private notPermittedCalls = 0;
 
-  constructor(private readonly config: CircuitBreakerConfig) {}
+  constructor(private config: CircuitBreakerConfig) {}
+
+  updateConfig(partial: Partial<Omit<CircuitBreakerConfig, 'name'>>): void {
+    this.config = { ...this.config, ...partial };
+  }
 
   /**
    * Executes a task inside the circuit breaker.

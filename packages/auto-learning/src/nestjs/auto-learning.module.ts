@@ -2,6 +2,7 @@ import { DynamicModule, Module, Provider, LoggerService } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AutoLearningCore, AutoLearningCoreOptions } from '../core/auto-learning-core.js';
 import { AutoLearningInterceptor } from './auto-learning.interceptor.js';
+import { AutoLearningAdaptersService } from './auto-learning-adapters.service.js';
 import { AUTO_LEARNING_OPTIONS, AUTO_LEARNING_INSTANCE } from './auto-learning.constants.js';
 import { BackendKitObservabilityAdapter } from './backend-kit-observability-adapter.js';
 import { ObservabilityAdapter } from '../core/observability/observability-adapter.js';
@@ -19,6 +20,10 @@ export type AutoLearningModuleOptions = {
     };
   };
   coreOptions?: Omit<AutoLearningCoreOptions, 'storage' | 'observability'>;
+  adapters?: {
+    circuitBreaker?: boolean;
+    bulkhead?: boolean;
+  };
 };
 
 @Module({})
@@ -52,6 +57,7 @@ export class AutoLearningModule {
         provide: APP_INTERCEPTOR,
         useClass: AutoLearningInterceptor,
       },
+      AutoLearningAdaptersService,
     ];
 
     return {
