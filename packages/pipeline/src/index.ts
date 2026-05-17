@@ -9,4 +9,5 @@ export type {
   PipelineError,
   PipelineStepFailure,
   StepResult,
+  PipelineExecutionMetadata,
 } from './core/types.js';
