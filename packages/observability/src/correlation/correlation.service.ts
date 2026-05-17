@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable }        from '@nestjs/common';
-import { randomUUID }        from 'node:crypto';
 import { getActiveSpan }     from '../internal/otel.js';
 
 const storage = new AsyncLocalStorage<string>();
@@ -16,9 +15,9 @@ export class CorrelationIdService {
     return storage.run(correlationId, fn);
   }
 
-  /** Current correlation ID, or a fresh UUID when called outside a context. */
+  /** Current correlation ID, or 'no-context' when called outside a context. */
   get(): string {
-    return storage.getStore() ?? randomUUID();
+    return storage.getStore() ?? 'no-context';
   }
 
   /**

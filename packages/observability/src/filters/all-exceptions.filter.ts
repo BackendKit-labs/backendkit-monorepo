@@ -79,10 +79,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const body = exception.getResponse();
-      const message =
+      const rawMessage =
         typeof body === 'string'
           ? body
-          : (body as { message?: string }).message ?? exception.message;
+          : (body as { message?: unknown }).message ?? exception.message;
+      const message = Array.isArray(rawMessage)
+        ? rawMessage.join('; ')
+        : String(rawMessage ?? exception.message);
       return { statusCode: exception.getStatus(), message };
     }
 
