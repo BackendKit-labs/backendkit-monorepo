@@ -6,8 +6,8 @@ export const WAF_OPTIONS = Symbol('WAF_OPTIONS');
 export interface WafModuleOptions {
   /**
    * - `block`   — reject the request with 403 (default)
-   * - `log`     — allow but log threats to `onThreat`
-   * - `monitor` — allow and call `onThreat`, no log output
+   * - `log`     — allow the request, emit threats to `console.warn`, and call `onThreat`
+   * - `monitor` — allow the request and call `onThreat` silently (no console output)
    */
   mode?: WafMode;
 

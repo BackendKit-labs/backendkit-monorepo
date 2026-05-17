@@ -16,6 +16,15 @@ const re = (...parts: string[]): RegExp => new RegExp(parts.join(''), 'i');
 /** Build a case-sensitive RegExp from joined string parts. */
 const reCs = (...parts: string[]): RegExp => new RegExp(parts.join(''));
 
+/**
+ * Whitespace-or-SQL-block-comment separator (one-or-more).
+ * Allows patterns to detect obfuscated inputs like UNION/**\/SELECT.
+ * Uses a non-backtracking form safe against ReDoS.
+ */
+const WS  = '(?:\\s|\\/\\*(?:[^*]|\\*(?!\\/))*\\*\\/)+';
+/** Zero-or-more variant — for patterns that originally used `\s*`. */
+const WS0 = '(?:\\s|\\/\\*(?:[^*]|\\*(?!\\/))*\\*\\/)*';
+
 export const BUILT_IN_RULES: WafRule[] = [
   // ── SQL Injection ────────────────────────────────────────────────────────
   {
@@ -33,8 +42,8 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'sqli',
     severity:    'critical',
     description: 'UNION-based SELECT injection',
-    // "UNION" + whitespace + optional ALL + "SELECT"
-    pattern:     re('UNI', 'ON', '\\s+(?:ALL\\s+)?', 'SEL', 'ECT\\s+'),
+    // WS allows SQL block-comments as separators to catch UNION/**/SELECT bypasses
+    pattern:     re('UNI', 'ON', WS, '(?:ALL', WS, ')?', 'SEL', 'ECT\\b'),
     enabled:     true,
   },
   {
@@ -42,8 +51,8 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'sqli',
     severity:    'critical',
     description: 'DDL attack — DROP, TRUNCATE, ALTER',
-    // DDL verbs followed by object type
-    pattern:     re('(?:DR', 'OP|TRUN', 'CATE|ALTER)', '\\s+(?:TAB', 'LE|DATA', 'BASE|SCHEMA|INDEX|VIEW)\\s+'),
+    // WS catches DROP/**/TABLE and TRUNCATE/**/TABLE bypasses
+    pattern:     re('(?:DR', 'OP|TRUN', 'CATE|ALTER)', WS, '(?:TAB', 'LE|DATA', 'BASE|SCHEMA|INDEX|VIEW)\\b'),
     enabled:     true,
   },
   {
@@ -51,8 +60,8 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'sqli',
     severity:    'critical',
     description: 'Stacked queries via semicolon',
-    // Semicolon followed by a DML/DDL keyword
-    pattern:     re(';\\s*(?:SEL', 'ECT|INS', 'ERT|UPD', 'ATE|DEL', 'ETE|DR', 'OP|CREATE|EXEC(?:UTE)?|ALTER|TRUN', 'CATE)\\b'),
+    // WS0 catches ;/**/DELETE bypasses (zero-or-more — original used \s*)
+    pattern:     re(';', WS0, '(?:SEL', 'ECT|INS', 'ERT|UPD', 'ATE|DEL', 'ETE|DR', 'OP|CREATE|EXEC(?:UTE)?|ALTER|TRUN', 'CATE)\\b'),
     enabled:     true,
   },
   {
@@ -280,6 +289,23 @@ export const BUILT_IN_RULES: WafRule[] = [
     description: 'Cloud instance metadata endpoint (link-local address)',
     // Split the metadata IP to avoid verbatim sensitive address in dist
     pattern:     re('169\\.254\\.', '169\\.254|metadata\\.google\\.internal'),
+    enabled:     false,
+  },
+  {
+    id:          'ssrf-004',
+    category:    'ssrf',
+    severity:    'high',
+    description: 'SSRF via hex-encoded IP address (e.g. http://0x7f000001/)',
+    // Hex-encoded IPs are unambiguously obfuscation — no legitimate URL uses them
+    pattern:     /(?:https?|ftp):\/\/0x[\da-f]{1,8}(?:\/|$)/i,
+    enabled:     false,
+  },
+  {
+    id:          'ssrf-005',
+    category:    'ssrf',
+    severity:    'critical',
+    description: 'SSRF via IPv6 loopback or link-local address',
+    pattern:     /(?:https?|ftp):\/\/\[(?:::1\b|::ffff:|fe80:)/i,
     enabled:     false,
   },
 ];

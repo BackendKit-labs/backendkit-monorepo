@@ -22,8 +22,17 @@ export class WafScanner {
       return r.enabled;
     });
 
-    this.activeRules    = [...builtIn, ...(options.customRules ?? [])];
-    this.maxDepth       = options.maxDepth       ?? 10;
+    for (const rule of options.customRules ?? []) {
+      if (rule.pattern.global) {
+        throw new Error(
+          `[request-scanner] Custom rule '${rule.id}': pattern must not use the global (g) flag. ` +
+          `A global regex retains lastIndex state across calls, producing alternating false negatives.`,
+        );
+      }
+    }
+
+    this.activeRules     = [...builtIn, ...(options.customRules ?? [])];
+    this.maxDepth        = options.maxDepth        ?? 10;
     this.maxStringLength = options.maxStringLength ?? 8_000;
   }
 

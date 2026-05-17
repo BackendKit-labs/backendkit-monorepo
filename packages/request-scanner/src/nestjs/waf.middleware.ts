@@ -35,22 +35,31 @@ export class WafMiddleware implements NestMiddleware {
 
     this.options.onThreat?.(threats, req);
 
-    if (mode !== 'block') {
-      // log / monitor — attach threats to request for downstream inspection
-      (req as Request & { wafThreats: WafThreat[] }).wafThreats = threats;
-      return next();
+    if (mode === 'block') {
+      const worst = this.pickWorst(threats);
+      const code  = `WAF_${worst.category.toUpperCase().replace(/-/g, '_')}`;
+      res.status(403).json({
+        ok:       false,
+        message:  'Request blocked by WAF',
+        code,
+        ruleId:   worst.ruleId,
+        location: worst.location,
+      });
+      return;
     }
 
-    const worst  = this.pickWorst(threats);
-    const code   = `WAF_${worst.category.toUpperCase().replace(/-/g, '_')}`;
+    // log / monitor — allow request through, attach threats for downstream inspection
+    (req as Request & { wafThreats: WafThreat[] }).wafThreats = threats;
 
-    res.status(403).json({
-      ok:        false,
-      message:   'Request blocked by WAF',
-      code,
-      ruleId:    worst.ruleId,
-      location:  worst.location,
-    });
+    if (mode === 'log') {
+      // log emits to console; monitor is silent — only onThreat fires for both
+      console.warn(
+        `[request-scanner] ${threats.length} threat(s) on ${req.method} ${req.path}:`,
+        threats.map(t => `${t.ruleId}(${t.severity})`).join(', '),
+      );
+    }
+
+    return next();
   }
 
   private getTarget(req: Request, target: ScanTarget): unknown {

@@ -171,6 +171,87 @@ describe('SSRF detection (enabled in test scanner)', () => {
   });
 });
 
+// ── Sprint 3 — SQL comment bypass, SSRF alt-encodings, customRules validation ─
+
+describe('Sprint 3: SQL block-comment bypass detection', () => {
+  it('detects UNION/**/SELECT (sqli-002)', () => {
+    const r = scanner.scan({ q: '1 UNION/**/SELECT NULL,user,pass FROM users' }, 'query');
+    expect(r.threats.some(t => t.ruleId === 'sqli-002')).toBe(true);
+  });
+
+  it('detects UNION/* comment */SELECT (sqli-002)', () => {
+    const r = scanner.scan({ q: '1 UNION/* bypass */SELECT NULL FROM users' }, 'query');
+    expect(r.threats.some(t => t.ruleId === 'sqli-002')).toBe(true);
+  });
+
+  it('detects UNION/**/ALL/**/SELECT (sqli-002)', () => {
+    const r = scanner.scan({ q: '1 UNION/**/ALL/**/SELECT NULL FROM users' }, 'query');
+    expect(r.threats.some(t => t.ruleId === 'sqli-002')).toBe(true);
+  });
+
+  it('detects DROP/**/TABLE (sqli-003)', () => {
+    const r = scanner.scan({ q: 'DROP/**/TABLE users' }, 'body');
+    expect(r.threats.some(t => t.ruleId === 'sqli-003')).toBe(true);
+  });
+
+  it('detects TRUNCATE/**/TABLE (sqli-003)', () => {
+    const r = scanner.scan({ q: 'TRUNCATE/**/TABLE orders' }, 'body');
+    expect(r.threats.some(t => t.ruleId === 'sqli-003')).toBe(true);
+  });
+
+  it('detects ;/**/DELETE (sqli-004)', () => {
+    const r = scanner.scan({ id: '1;/**/DELETE FROM orders' }, 'query');
+    expect(r.threats.some(t => t.ruleId === 'sqli-004')).toBe(true);
+  });
+
+  it('detects ;/* x */DROP (sqli-004)', () => {
+    const r = scanner.scan({ id: '1;/* x */DROP TABLE users' }, 'query');
+    expect(r.threats.some(t => t.ruleId === 'sqli-004')).toBe(true);
+  });
+});
+
+describe('Sprint 3: SSRF alternate encodings (enabled in test scanner)', () => {
+  it('detects hex-encoded IP http://0x7f000001/ (ssrf-004)', () => {
+    const r = scanner.scan({ url: 'http://0x7f000001/admin' }, 'body');
+    expect(r.threats.some(t => t.ruleId === 'ssrf-004')).toBe(true);
+  });
+
+  it('detects hex-encoded 10.x.x.x http://0x0a000001/ (ssrf-004)', () => {
+    const r = scanner.scan({ url: 'http://0x0a000001/' }, 'body');
+    expect(r.threats.some(t => t.ruleId === 'ssrf-004')).toBe(true);
+  });
+
+  it('detects IPv6 loopback http://[::1]/ (ssrf-005)', () => {
+    const r = scanner.scan({ url: 'http://[::1]/secret' }, 'body');
+    expect(r.threats.some(t => t.ruleId === 'ssrf-005')).toBe(true);
+  });
+
+  it('detects IPv6 mapped IPv4 http://[::ffff:127.0.0.1]/ (ssrf-005)', () => {
+    const r = scanner.scan({ url: 'http://[::ffff:127.0.0.1]/admin' }, 'body');
+    expect(r.threats.some(t => t.ruleId === 'ssrf-005')).toBe(true);
+  });
+});
+
+describe('Sprint 3: customRules global-flag validation', () => {
+  it('throws on customRule with global flag', () => {
+    expect(() => new WafScanner({
+      customRules: [{
+        id: 'bad', category: 'sqli', severity: 'high',
+        description: 'test', pattern: /evil/g, enabled: true,
+      }],
+    })).toThrow(/global/i);
+  });
+
+  it('accepts customRule without global flag', () => {
+    expect(() => new WafScanner({
+      customRules: [{
+        id: 'ok', category: 'sqli', severity: 'high',
+        description: 'test', pattern: /evil/i, enabled: true,
+      }],
+    })).not.toThrow();
+  });
+});
+
 // ── Sprint 2 — must-pass benign inputs ───────────────────────────────────────
 
 describe('Sprint 2: benign inputs must not be blocked (false-positive guard)', () => {

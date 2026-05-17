@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.2.0
+
+### Fixed
+
+- **SQL block-comment bypass (`sqli-002`, `sqli-003`, `sqli-004`)** — patterns now use a `WS` helper that matches `\s` or `/*...*/` SQL block-comments as whitespace separators. Inputs like `UNION/**/SELECT`, `DROP/**/TABLE`, and `;/**/DELETE` are now detected. A `WS0` (zero-or-more) variant is used for `sqli-004` which originally used `\s*`.
+- **SSRF via hex-encoded IP (`ssrf-004`)** — new rule detects `http://0x7f000001/` style requests (disabled by default like all SSRF rules; enable with `rules: { ssrf: true }`).
+- **SSRF via IPv6 loopback/mapped addresses (`ssrf-005`)** — new rule detects `http://[::1]/` and `http://[::ffff:127.0.0.1]/` style requests (disabled by default).
+- **`customRules` global-flag validation** — `WafScanner` constructor now throws immediately if any custom rule's `pattern` has the `global` flag set, surfacing the bug at configuration time rather than silently producing alternating false negatives at request time.
+- **`log` vs `monitor` mode distinction** — `log` mode now emits detected threats to `console.warn` in addition to calling `onThreat`. `monitor` mode remains silent (only `onThreat` fires). Previously both modes behaved identically.
+
+### Added
+
+- 13 new tests: SQL comment bypass coverage for `sqli-002/003/004`, SSRF hex/IPv6 coverage for `ssrf-004/005`, and `customRules` global-flag validation.
+
+---
+
 ## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.1.7
 
 ### Fixed
