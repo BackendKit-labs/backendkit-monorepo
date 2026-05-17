@@ -3,7 +3,7 @@ name: Publish to npm
 on:
   push:
     tags:
-      - 'v*'
+      - '*@*'
 
 jobs:
   publish:
@@ -16,6 +16,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Extract package from tag
+        id: pkg
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PKG_DIR="${TAG%@*}"
+          PKG_VERSION="${TAG#*@}"
+          echo "dir=$PKG_DIR" >> $GITHUB_OUTPUT
+          echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing packages/$PKG_DIR @ $PKG_VERSION"
+
+      - name: Validate package directory
+        run: |
+          if [ ! -d "packages/${{ steps.pkg.outputs.dir }}" ]; then
+            echo "::error::Package directory 'packages/${{ steps.pkg.outputs.dir }}' not found"
+            exit 1
+          fi
+
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -27,19 +44,19 @@ jobs:
         run: npm ci
 
       - name: Type check
-        run: npx turbo run typecheck
+        run: npx turbo run typecheck --filter=./packages/${{ steps.pkg.outputs.dir }}
 
       - name: Lint
-        run: npx turbo run lint
+        run: npx turbo run lint --filter=./packages/${{ steps.pkg.outputs.dir }}
 
-      - name: Run tests
-        run: npx turbo run test
+      - name: Test
+        run: npx turbo run test --filter=./packages/${{ steps.pkg.outputs.dir }}
 
       - name: Build
-        run: npx turbo run build
+        run: npx turbo run build --filter=./packages/${{ steps.pkg.outputs.dir }}
 
       - name: Publish to npm
-        working-directory: packages/console-animations
+        working-directory: packages/${{ steps.pkg.outputs.dir }}
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
