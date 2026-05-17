@@ -54,7 +54,7 @@ export default function Hero() {
                   <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-[#4f7eff] opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#4f7eff]" />
                 </span>
-                8 packages · Apache-2.0 · TypeScript-first
+                9 packages · Apache-2.0 · TypeScript-first
               </span>
             </div>
 
@@ -109,7 +109,7 @@ export default function Hero() {
             {/* Stats */}
             <div className="flex flex-wrap gap-6 pt-2 animate-fade-in-up stagger-4">
               {[
-                { value: '7', label: 'packages' },
+                { value: '9', label: 'packages' },
                 { value: '0', label: 'runtime deps (core)' },
                 { value: '100%', label: 'TypeScript' },
               ].map((stat) => (

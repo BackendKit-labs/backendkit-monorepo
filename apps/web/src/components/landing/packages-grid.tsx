@@ -135,7 +135,7 @@ export default function PackagesGrid() {
             Pick what you need
           </h2>
           <p className="mt-3 text-[#64748b] text-base max-w-lg mx-auto">
-            Seven focused packages. Install only what you need — no bundled bloat.
+            Nine focused packages. Install only what you need — no bundled bloat.
           </p>
         </div>
 
