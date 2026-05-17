@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { CircuitBreakerRegistry } from '../circuit-breaker/circuit-breaker.registry.js';
 import { isHttpServerError } from '../circuit-breaker/circuit-breaker.registry.js';
+import { CircuitBreakerState } from '../circuit-breaker/circuit-breaker.js';
 
 export interface CircuitBreakerGuardOptions {
   /** Named circuit breaker to use */
@@ -19,6 +20,16 @@ export interface CircuitBreakerGuardOptions {
    * only HTTP 5xx and non-HTTP errors open the circuit.
    */
   isFailure?: (error: unknown) => boolean;
+}
+
+/**
+ * Immutable DTO exposed on the request object.
+ * Contains only read-only state -- never the full CircuitBreaker instance.
+ */
+export interface CircuitBreakerRequestInfo {
+  readonly name: string;
+  readonly state: CircuitBreakerState;
+  readonly canAttempt: boolean;
 }
 
 export const UseCircuitBreaker = (options: CircuitBreakerGuardOptions) =>
@@ -49,11 +60,18 @@ export class CircuitBreakerGuard implements CanActivate {
 
     if (!cb.canAttempt()) {
       throw new ServiceUnavailableException(
-        `Circuit breaker '${options.name}' is open — service unavailable`,
+        `Circuit breaker '${options.name}' is open -- service unavailable`,
       );
     }
 
-    (context.switchToHttp().getRequest() as Record<string, unknown>)['circuitBreaker'] = cb;
+    // Expose only an immutable DTO, never the full CircuitBreaker instance
+    const request = context.switchToHttp().getRequest() as Record<string, unknown>;
+    const info: CircuitBreakerRequestInfo = {
+      name: cb.getMetrics().name,
+      state: cb.getState(),
+      canAttempt: true,
+    };
+    request['circuitBreaker'] = info;
     return true;
   }
 }

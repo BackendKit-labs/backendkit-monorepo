@@ -5,6 +5,8 @@ import { CircuitBreakerRegistry, isHttpServerError } from '../circuit-breaker/ci
  * The class must have `circuitBreakerRegistry: CircuitBreakerRegistry` injected.
  *
  * Business errors (HTTP 4xx by default) pass through without affecting the circuit state.
+ *
+ * @throws Error at decoration time if the registry is not injected in the class.
  */
 export function WithCircuitBreaker(options: {
   name: string;
@@ -20,10 +22,16 @@ export function WithCircuitBreaker(options: {
   ): PropertyDescriptor {
     const originalMethod = descriptor.value as (...args: unknown[]) => Promise<unknown>;
 
-    descriptor.value = async function (...args: unknown[]) {
+    descriptor.value = async function (this: unknown, ...args: unknown[]) {
       const registry = (this as { circuitBreakerRegistry?: CircuitBreakerRegistry })
         .circuitBreakerRegistry;
-      if (!registry) throw new Error('CircuitBreakerRegistry not injected in class.');
+      if (!registry) {
+        throw new Error(
+          `@WithCircuitBreaker('${options.name}'): CircuitBreakerRegistry not injected. ` +
+          'Ensure the class has `private readonly circuitBreakerRegistry: CircuitBreakerRegistry` ' +
+          'in its constructor.',
+        );
+      }
 
       const cb = registry.getOrCreate({
         name:             options.name,
