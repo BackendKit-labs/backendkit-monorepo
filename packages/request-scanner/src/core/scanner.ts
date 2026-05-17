@@ -15,8 +15,10 @@ export class WafScanner {
     const overrides = options.rules ?? {};
 
     const builtIn = BUILT_IN_RULES.filter(r => {
-      // Explicit option overrides the rule's own `enabled` flag
-      if (r.category in overrides) return overrides[r.category];
+      if (r.category in overrides) {
+        const override = overrides[r.category];
+        return override === undefined ? r.enabled : override;
+      }
       return r.enabled;
     });
 
@@ -35,19 +37,15 @@ export class WafScanner {
     const threats: WafThreat[] = [];
 
     for (const { field, value } of fields) {
-      const input = value.length > this.maxStringLength
-        ? value.slice(0, this.maxStringLength)
-        : value;
-
       for (const rule of this.activeRules) {
-        if (rule.pattern.test(input)) {
+        if (rule.pattern.test(value)) {
           threats.push({
             ruleId:   rule.id,
             category: rule.category,
             severity: rule.severity,
             location,
             field,
-            value: input.slice(0, 120),
+            value: value.slice(0, 120),
           });
         }
       }
@@ -57,9 +55,15 @@ export class WafScanner {
   }
 
   private extractStrings(data: unknown, path: string, depth: number): FieldValue[] {
-    if (depth > this.maxDepth)                          return [];
-    if (data === null || data === undefined)            return [];
-    if (typeof data === 'string')                       return [{ field: path || '(root)', value: data }];
+    if (depth > this.maxDepth)                                 return [];
+    if (data === null || data === undefined)                   return [];
+    if (Buffer.isBuffer(data))                                 return [];
+    if (typeof data === 'string') {
+      const value = data.length > this.maxStringLength
+        ? data.slice(0, this.maxStringLength)
+        : data;
+      return [{ field: path || '(root)', value }];
+    }
     if (typeof data === 'number' || typeof data === 'boolean') return [];
 
     if (Array.isArray(data)) {

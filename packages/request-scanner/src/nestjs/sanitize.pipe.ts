@@ -34,7 +34,7 @@ export class SanitizePipe implements PipeTransform {
     const result = this.scanner.scan(value, this.target);
 
     if (!result.clean) {
-      const worst = result.threats.sort((a, b) => {
+      const worst = result.threats.slice().sort((a, b) => {
         const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
         return order[a.severity] - order[b.severity];
       })[0];

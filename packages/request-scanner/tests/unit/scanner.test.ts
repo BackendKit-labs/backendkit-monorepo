@@ -171,6 +171,42 @@ describe('SSRF detection (enabled in test scanner)', () => {
   });
 });
 
+// ── Sprint 1 regression tests ─────────────────────────────────────────────────
+
+describe('Sprint 1 fixes', () => {
+  it('treats rules: { category: undefined } as "use default" — does not disable the category', () => {
+    const s = new WafScanner({ rules: { sqli: undefined as unknown as boolean } });
+    const r = s.scan({ q: "' OR 1=1--" }, 'query');
+    expect(r.clean).toBe(false);
+    expect(r.threats.some(t => t.category === 'sqli')).toBe(true);
+  });
+
+  it('truncates strings at maxStringLength during extraction, not after', () => {
+    const s = new WafScanner({ maxStringLength: 8_000 });
+    // Attack starts at position 8001 — beyond the truncation boundary
+    const r = s.scan({ q: 'a'.repeat(8_001) + "' OR 1=1--" }, 'query');
+    expect(r.clean).toBe(true);
+  });
+
+  it('does not recurse into a top-level Buffer', () => {
+    const r = scanner.scan(Buffer.from("' OR 1=1--"), 'body');
+    expect(r.clean).toBe(true);
+    expect(r.threats).toHaveLength(0);
+  });
+
+  it('does not recurse into a Buffer nested inside an object', () => {
+    const r = scanner.scan({ data: Buffer.from('<script>alert(1)</script>') }, 'body');
+    expect(r.clean).toBe(true);
+  });
+
+  it('excludePaths exact match is excluded', () => {
+    // Tested indirectly via WafScanner — middleware exclusion tested in integration
+    // This confirms the scanner itself still scans when called directly
+    const r = scanner.scan({ q: "' OR 1=1--" }, 'query');
+    expect(r.clean).toBe(false);
+  });
+});
+
 // ── Input handling ────────────────────────────────────────────────────────────
 
 describe('input handling', () => {

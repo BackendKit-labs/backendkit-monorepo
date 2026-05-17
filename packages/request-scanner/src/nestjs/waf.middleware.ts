@@ -64,7 +64,9 @@ export class WafMiddleware implements NestMiddleware {
   }
 
   private isExcluded(path: string): boolean {
-    return (this.options.excludePaths ?? []).some(p => path.startsWith(p));
+    return (this.options.excludePaths ?? []).some(
+      p => path === p || path.startsWith(p.endsWith('/') ? p : `${p}/`),
+    );
   }
 
   private pickWorst(threats: WafThreat[]): WafThreat {

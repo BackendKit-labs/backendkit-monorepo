@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.1.6
+
+### Fixed
+
+- **`excludePaths` over-matching** -- `startsWith` was replaced with an exact-or-prefix-segment check (`path === p || path.startsWith(p + '/')`). Previously, excluding `/api` also excluded `/api-admin` and `/api-secret`, creating a WAF bypass vector for any attacker who knew an excluded path prefix.
+- **`rules: { category: undefined }` disabling category** -- passing `undefined` as an override value now falls back to the rule's own `enabled` default instead of being coerced to falsy. Previously, `new WafScanner({ rules: { sqli: undefined } })` silently disabled all SQLi detection.
+- **Memory DoS via large strings** -- strings are now truncated to `maxStringLength` inside `extractStrings()` before being stored. Previously the full string was held in the `fields[]` array regardless of size; truncation only applied to the regex test input.
+- **`Buffer` byte-by-byte recursion** -- `extractStrings` now returns early on `Buffer.isBuffer(data)`. Previously, passing a `Buffer` caused `Object.entries()` to enumerate every byte as a separate indexed key, generating one recursion per byte.
+- **`SanitizePipe` mutated `threats` array via `.sort()`** -- fixed to use `slice().sort()` matching the already-correct behavior in `WafMiddleware`.
+
+---
+
 ## [2026-05-17] -- `@backendkit-labs/bulkhead` and `@backendkit-labs/circuit-breaker` v0.2.0
 
 ### Fixed
