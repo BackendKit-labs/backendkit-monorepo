@@ -48,6 +48,7 @@ On startup, `SeedService` automatically populates the in-memory store with 5 pro
 | `GET` | `/health` | Overall health + circuit breaker / bulkhead summaries |
 | `GET` | `/health/circuit-breakers` | All circuit breaker metrics |
 | `GET` | `/health/bulkheads` | All bulkhead metrics |
+| `GET` | `/health/auto-learning` | Auto-learning loop state and current tuned config |
 | `GET` | `/products` | List all products |
 | `GET` | `/products/:id` | Get product by ID |
 | `POST` | `/products` | Create a product |
@@ -114,7 +115,7 @@ curl -X POST http://localhost:3000/orders \
 | `@backendkit-labs/observability` | Every service — structured logging (`LoggerService`), metrics (`MetricsService`), correlation IDs, performance tracking (`@TrackPerformance`), global exception filter |
 | `@backendkit-labs/result` | `ProductsService`, `InventoryService`, `PaymentsService`, `ShippingService` — `ok()`/`fail()` for typed error handling without exceptions |
 | `@backendkit-labs/request-scanner` | `WebhooksController` — `SanitizePipe` on the webhook endpoint; `WafMiddleware` applied globally (excluding `/health` and `/sim`) |
-| `@backendkit-labs/auto-learning` | Referenced in dependencies; ready for integration in adaptive threshold tuning scenarios |
+| `@backendkit-labs/auto-learning` | `AutoLearningModule.forRoot()` (global, 30 s feedback loop) — `@AutoLearn()` on `POST /orders`, `POST /products`, `POST /customers`; adapters auto-tune CB and bulkhead thresholds; `GET /health/auto-learning` exposes current tuned config |
 
 ---
 
@@ -176,6 +177,7 @@ AppModule
 ├── ObservabilityModule (global logger, metrics, correlation IDs)
 ├── CircuitBreakerModule (global circuit breaker registry)
 ├── BulkheadModule (global bulkhead registry)
+├── AutoLearningModule (global — 30 s feedback loop, tunes CB + bulkhead; @AutoLearn on POST routes)
 ├── WafModule (global WAF middleware, excludes /health and /sim)
 ├── PipelineModule (order-fulfillment pipeline, 6 steps)
 ├── HttpClientsModule (payment-gateway + shipping-provider clients)
