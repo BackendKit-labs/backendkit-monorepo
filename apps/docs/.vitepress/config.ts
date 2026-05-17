@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title:       'BackendKit Labs',
-  description: 'Reusable, enterprise-grade Node.js libraries',
+  description: 'Composable building blocks for resilient Node.js backends.',
   lang:        'en-US',
   base:        '/backendkit-monorepo/',
 
@@ -25,10 +25,12 @@ export default defineConfig({
           { text: 'Observability',      link: '/packages/observability' },
           { text: 'Pipeline',           link: '/packages/pipeline' },
           { text: 'HTTP Client',        link: '/packages/http-client' },
-          { text: 'Request Scanner',        link: '/packages/request-scanner' },
+          { text: 'Request Scanner',    link: '/packages/request-scanner' },
+          { text: 'Auto-Learning',      link: '/packages/auto-learning' },
           { text: 'Console Animations', link: '/packages/console-animations' },
         ],
       },
+      { text: 'Blog', link: '/blog/', activeMatch: '/blog/' },
     ],
 
     sidebar: {
@@ -50,8 +52,20 @@ export default defineConfig({
             { text: 'Observability',      link: '/packages/observability' },
             { text: 'Pipeline',           link: '/packages/pipeline' },
             { text: 'HTTP Client',        link: '/packages/http-client' },
-            { text: 'Request Scanner',        link: '/packages/request-scanner' },
+            { text: 'Request Scanner',    link: '/packages/request-scanner' },
+            { text: 'Auto-Learning',      link: '/packages/auto-learning' },
             { text: 'Console Animations', link: '/packages/console-animations' },
+          ],
+        },
+      ],
+      '/blog/': [
+        {
+          text:  'Blog',
+          items: [
+            { text: 'All posts',                              link: '/blog/' },
+            { text: 'From try/catch to explicit errors',      link: '/blog/try-catch-to-result' },
+            { text: 'Circuit breaker & business errors',      link: '/blog/circuit-breaker-business-errors' },
+            { text: 'Why we built our own Result type',       link: '/blog/why-result' },
           ],
         },
       ],
