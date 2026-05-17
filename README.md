@@ -1,6 +1,16 @@
-# BackendKit Monorepo
+# BackendKit Labs
 
-Reusable, enterprise-grade Node.js libraries by [BackendKit Labs](https://github.com/BackendKit-labs).
+Composable building blocks for resilient Node.js backends — built from production experience with distributed systems.
+
+**7 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
+
+> Community in early formation. Your use cases shape the roadmap — open an issue, start a discussion.
+
+---
+
+## Why BackendKit?
+
+Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. BackendKit gives you a coherent system where `Result`, circuit breaker, retry, pipeline, and observability speak the same language — and `auto-learning` tunes them automatically based on real traffic.
 
 ---
 
@@ -31,7 +41,7 @@ Reusable, enterprise-grade Node.js libraries by [BackendKit Labs](https://github
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| [`@backendkit-labs/result`](./packages/result) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/result?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/result) | Type-safe Result monad — generic errors, observability, resilience, Flow pipeline + NestJS integration |
+| [`@backendkit-labs/result`](./packages/result) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/result?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/result) | Type-safe Result monad — explicit errors, resilience combinators, Flow pipeline + NestJS integration |
 | [`@backendkit-labs/pipeline`](./packages/pipeline) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/pipeline?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/pipeline) | Type-safe async pipeline (Chain of Responsibility) — stop-on-first / collect-all modes, conditional steps, observability hooks + NestJS integration |
 | [`@backendkit-labs/console-animations`](./packages/console-animations) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/console-animations?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/console-animations) | Terminal animations for Node.js CLI applications |
 
@@ -55,6 +65,12 @@ npm run typecheck
 # Lint
 npm run lint
 ```
+
+---
+
+## Contributing
+
+Issues, questions, and PRs are welcome — especially real use cases that expose gaps in the current design. See [GitHub Discussions](https://github.com/BackendKit-labs/backendkit-monorepo/discussions) to start a conversation.
 
 ---
 
