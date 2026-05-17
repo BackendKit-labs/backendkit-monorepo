@@ -29,9 +29,15 @@
     "docs:build": "npm run build   --workspace=apps/docs",
     "docs:preview": "npm run preview --workspace=apps/docs"
   },
+  "overrides": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "turbo": "^2.0.0"
   },
   "engines": {
     "node": ">=18"

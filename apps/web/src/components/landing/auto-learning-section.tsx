@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 
 const steps = [
@@ -83,9 +84,8 @@ export default function AutoLearningSection() {
         {/* Feedback loop */}
         <div className="flex flex-col lg:flex-row items-stretch gap-3 lg:gap-0 mb-12">
           {steps.map((step, i) => (
-            <>
+            <React.Fragment key={step.label}>
               <div
-                key={step.label}
                 className="relative flex-1 group rounded-2xl bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06] p-7 hover:border-gray-200 dark:hover:border-white/[0.12] transition-all duration-300 overflow-hidden"
               >
                 {/* Top accent */}
@@ -119,8 +119,8 @@ export default function AutoLearningSection() {
                 <p className="text-sm text-[#94a3b8] leading-relaxed">{step.description}</p>
               </div>
 
-              {i < steps.length - 1 && <ArrowRight key={`arrow-${i}`} />}
-            </>
+              {i < steps.length - 1 && <ArrowRight />}
+            </React.Fragment>
           ))}
         </div>
 
