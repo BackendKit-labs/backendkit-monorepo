@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 const installCommands = [
   { pkg: 'result', cmd: 'npm install @backendkit-labs/result' },
@@ -146,12 +147,12 @@ export default function InstallSection() {
                 </svg>
                 View on GitHub
               </a>
-              <a
+              <Link
                 href="/docs/"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] transition-all duration-200"
               >
                 Read the docs
-              </a>
+              </Link>
               <a
                 href="https://github.com/BackendKit-labs/backendkit-monorepo/discussions"
                 target="_blank"
