@@ -476,6 +476,18 @@ export class AppModule {}
 
 Protects individual endpoints declaratively. Returns `503 Service Unavailable` when the circuit is `OPEN`.
 
+When the circuit is `CLOSED` or `HALF_OPEN`, the guard attaches a `CircuitBreakerRequestInfo` object to `request['circuitBreaker']` so downstream handlers can read the circuit state:
+
+```typescript
+import type { CircuitBreakerRequestInfo } from '@backendkit-labs/circuit-breaker/nestjs';
+
+// Inside a handler or middleware:
+const info = request['circuitBreaker'] as CircuitBreakerRequestInfo;
+// { name: 'stripe-api', state: 'closed', canAttempt: true }
+```
+
+This is an **immutable snapshot** — it does not expose `execute()` or any mutating methods.
+
 ```typescript
 import {
   UseCircuitBreaker,
@@ -533,7 +545,7 @@ export class ReportsController {
 }
 ```
 
-Returns `503 Service Unavailable` when a circuit is `OPEN`. Uses `isHttpServerError` by default.
+Returns `503 Service Unavailable` when a circuit is `OPEN`, and `408 Request Timeout` when a handler exceeds **30 seconds**. Uses `isHttpServerError` by default.
 
 ### Method Decorator
 

@@ -146,10 +146,12 @@ export class OrdersService {
   constructor(private readonly correlation: CorrelationIdService) {}
 
   async processOrder(id: string) {
-    // Always returns the ID for the current request context
+    // Returns the ID for the current request context, or 'no-context' when
+    // called outside a context (e.g. background jobs, bootstrap code).
     const cid = this.correlation.get();
 
-    // Or undefined when called outside a context
+    // Returns undefined when called outside a context — use this when you need
+    // to distinguish "no active context" from a real correlation ID.
     const maybeId = this.correlation.getOrUndefined();
 
     // OTel trace/span IDs (undefined when OTel not installed)
@@ -159,7 +161,7 @@ export class OrdersService {
 }
 ```
 
-The `CorrelationInterceptor` automatically seeds the context from the incoming `x-correlation-id` header (or generates a fresh UUID) and echoes the ID back in the response header.
+The `CorrelationInterceptor` automatically seeds the context from the incoming `x-correlation-id` header (or generates a fresh UUID) and echoes the ID back in the response header. Incoming values are validated against an allowlist (`[a-zA-Z0-9\-_:]{1,64}`) — invalid values are replaced with a fresh UUID.
 
 ---
 

@@ -215,7 +215,7 @@ export class OrderService {
 
 ### `pipeline(options?)`
 
-Creates a new pipeline builder.
+Creates a new pipeline builder. Throws `TypeError` at `run()` time if `mode` is not `'stop-on-first'` or `'collect-all'`.
 
 ```typescript
 const p = pipeline<TContext, TError>(options?);
@@ -241,8 +241,9 @@ pipeline<Ctx, Err>({
     logger.error(`[pipeline] ✗ ${stepName}`, error);
   },
 
-  onComplete(ctx, durationMs) {
+  onComplete(ctx, durationMs, metadata) {
     metrics.timing('pipeline.total', durationMs);
+    // metadata: { executedSteps: string[], failures: PipelineStepFailure<Err>[] }
   },
 });
 ```
@@ -262,7 +263,7 @@ p.pipe(new StockStep())
 
 ### `.pipeIf(condition, step)`
 
-Adds a step that runs only when `condition(ctx)` returns `true`. The condition receives the context **after** all previous steps have transformed it.
+Adds a step that runs only when `condition(ctx)` returns `true`. The condition receives the context **after** all previous steps have transformed it. If the condition throws, it is treated as a step failure (same behaviour as the step itself failing).
 
 ```typescript
 p.pipe(new BaseStep())
