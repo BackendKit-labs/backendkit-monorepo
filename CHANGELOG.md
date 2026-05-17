@@ -11,6 +11,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- `@backendkit-labs/circuit-breaker` v0.3.0 · `@backendkit-labs/observability` v0.2.0 · `@backendkit-labs/pipeline` v0.3.0
+
+### Security
+
+#### `@backendkit-labs/circuit-breaker` v0.3.0
+
+- **Concurrency safety (`AsyncMutex`)** — `execute()` and internal state-mutating methods (`onSuccess`, `onError`, `record`) now acquire a FIFO mutex before touching shared state (`window[]`, counters). Concurrent calls could previously corrupt the sliding window.
+- **`CircuitBreakerRequestInfo` immutable DTO on request** — the guard no longer exposes the full `CircuitBreaker` instance on `request['circuitBreaker']`. Any middleware or handler could previously call `execute()`, `reset()`, or `updateConfig()` on the circuit. Replaced with an immutable snapshot `{ name, state, canAttempt }`.
+
+### Fixed
+
+#### `@backendkit-labs/circuit-breaker` v0.3.0
+
+- **Interceptor timeout silently returned `0`** — `race([next.handle(), timer(n)])` resolved with the number `0` after the timeout window because `timer(n)` emits `0` on completion, not an error. Replaced with `next.handle().pipe(timeout(n))` which correctly throws `TimeoutError` → `RequestTimeoutException (408)`.
+- **`onStateChange` exceptions crashed the state machine** — callback errors are now caught and silently discarded so a buggy observer never corrupts circuit state.
+- **`updateConfig` accepted a new `name`** — callers could rename a running circuit breaker, breaking registry lookups. `name` is now ignored in `updateConfig`.
+- **Log injection in `CircuitBreakerService`** — circuit breaker names are sanitized (strips `\n` and `\r`) before being embedded in log messages.
+- **ESLint typed rules required `parserOptions.project`** — `no-floating-promises` and `require-await` failed with a parser error; added `languageOptions.parserOptions.project: true`.
+
+### Added
+
+#### `@backendkit-labs/circuit-breaker` v0.3.0
+
+- **`CircuitBreakerRequestInfo`** — new type exported from `/nestjs`: `{ name: string; state: CircuitBreakerState; canAttempt: boolean }`. Replaces the full instance on `request['circuitBreaker']`.
+
+---
+
+#### `@backendkit-labs/observability` v0.2.0
+
+### Changed
+
+- **`CorrelationIdService.get()`** — returns the constant string `'no-context'` when called outside a request context, instead of a fresh `randomUUID()` on every call (which was not useful for correlation). Use `getOrUndefined()` when you need to distinguish "no active context" from a real ID.
+- **Incoming `x-correlation-id` sanitization** — `CorrelationInterceptor` validates the header value against `[a-zA-Z0-9\-_:]{1,64}` before accepting it. Invalid values (too long, forbidden characters) are replaced with a fresh UUID.
+
+### Fixed
+
+- **`WinstonHttpTransport` payload pollution** — `_timestamp` was embedded directly in the log entry object and sent to the remote endpoint as part of the JSON payload. Moved to an out-of-band `WeakMap<LogEntry, number>`.
+- **`isFailure` checked wrong Axios field** — both `WinstonHttpTransport` and `MetricsService` checked `error.status` (always `undefined` on Axios errors) instead of `error.response?.status`.
+- **`SpanShim` not exported** — the interface was referenced in tests via `import('…').SpanShim` but was not exported from `otel.ts`; added `export`.
+- **Fire-and-forget test in `otel.test.ts`** — `import(…).then(…)` had no `return`; assertions inside `.then()` were silently ignored on failure.
+
+### Added
+
+- **`CorrelationIdService.getOrUndefined()`** — returns `string | undefined`; for callers that need to distinguish "outside context" from a real correlation ID without relying on the `'no-context'` sentinel.
+- **New unit test suites** — `correlation.interceptor.test.ts`, `otel.test.ts`, `winston-http.transport.test.ts`, `all-exceptions.filter.test.ts`, `logger.service.test.ts`, `metrics.service.test.ts` (80 tests total).
+
+---
+
+#### `@backendkit-labs/pipeline` v0.3.0
+
+### Changed
+
+- **`onComplete` receives `metadata` as third argument** — signature is now `(ctx, durationMs, metadata: PipelineExecutionMetadata)` where `metadata` is `{ executedSteps: string[], failures: PipelineStepFailure<TError>[] }`. Existing two-argument callbacks are unaffected at runtime.
+- **Invalid `mode` now throws `TypeError`** — `pipeline({ mode: 'bad-value' }).run(ctx)` throws `TypeError: Invalid pipeline mode: 'bad-value'` instead of silently defaulting to `'stop-on-first'`.
+- **`pipeIf` condition errors treated as step failure** — if the condition function throws, the step is recorded as failed with the thrown value as `cause`. The pipeline respects the configured mode (`stop-on-first` stops; `collect-all` continues).
+
+### Added
+
+- **`PipelineExecutionMetadata`** — new type exported from the package root.
+- **`PipelineModule` startup validation** — `forRoot()` validates each step definition at module initialization time and throws an actionable error if a step is missing `handle()` or is not a class, instead of failing silently at runtime.
+- **New test suites** — `pipeline.module.test.ts` (unit), `pipeline-nestjs.test.ts` (integration); extended `pipeline.test.ts` with mode validation, condition error, invalid step result, and context mutation tests.
+
+---
+
 ## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.3.0
 
 ### Fixed

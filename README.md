@@ -2,7 +2,7 @@
 
 Composable building blocks for resilient Node.js backends — built from production experience with distributed systems.
 
-**7 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
+**9 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
 
 > Community in early formation. Your use cases shape the roadmap — open an issue, start a discussion.
 
@@ -29,7 +29,7 @@ Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. Back
 | Package | Version | Description |
 |---------|---------|-------------|
 | [`@backendkit-labs/http-client`](./packages/http-client) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/http-client?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/http-client) | Production-grade HTTP client — axios + circuit breaker + retry + Result responses + cancellation + NestJS integration |
-| [`@backendkit-labs/request-scanner`](./packages/request-scanner) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/request-scanner?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/request-scanner) | Web Application Firewall — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection + NestJS integration |
+| [`@backendkit-labs/request-scanner`](./packages/request-scanner) | [![GitHub Packages](https://img.shields.io/badge/github%20packages-v0.3.0-2ea44f?style=flat-square&logo=github)](https://github.com/BackendKit-labs/backendkit-monorepo/pkgs/npm/request-scanner) | Web Application Firewall — SQLi, XSS, Path Traversal, Command Injection, NoSQL Injection, SSRF detection + NestJS integration · Published to **GitHub Packages** |
 
 ### Observability
 
