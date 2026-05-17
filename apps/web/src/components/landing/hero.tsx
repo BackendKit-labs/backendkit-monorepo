@@ -78,8 +78,8 @@ export default function Hero() {
 
             {/* Subtitle */}
             <p className="text-[#94a3b8] text-lg leading-relaxed max-w-lg animate-fade-in-up stagger-2">
-              Battle-tested, composable building blocks for Node.js.
-              Framework-agnostic cores with optional NestJS integration.
+              Composable building blocks for resilient Node.js backends — built from production experience with distributed systems.
+              Framework-agnostic cores with optional NestJS integration and adaptive auto-tuning.
             </p>
 
             {/* CTAs */}

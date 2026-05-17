@@ -63,11 +63,11 @@ export default function Footer() {
               <LogoIcon />
               <div>
                 <div className="font-semibold text-white text-sm">BackendKit Labs</div>
-                <div className="text-xs text-[#94a3b8]">Enterprise-grade Node.js libraries</div>
+                <div className="text-xs text-[#94a3b8]">Composable resilience for Node.js backends</div>
               </div>
             </div>
             <p className="text-xs text-[#64748b] max-w-xs leading-relaxed">
-              Battle-tested, composable building blocks for Node.js backends.
+              Built from production experience with distributed systems. Community in early formation.
             </p>
           </div>
 

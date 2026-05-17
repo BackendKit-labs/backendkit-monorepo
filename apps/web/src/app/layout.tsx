@@ -12,9 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'BackendKit Labs — Enterprise-grade Node.js libraries',
+  title: 'BackendKit Labs — Composable resilience for Node.js backends',
   description:
-    'Battle-tested, composable building blocks for Node.js. Framework-agnostic cores with optional NestJS integration.',
+    'Composable building blocks for resilient Node.js backends. Explicit errors, adaptive retries, observable failures — framework-agnostic with optional NestJS integration.',
   keywords: [
     'nodejs',
     'typescript',
@@ -23,13 +23,16 @@ export const metadata: Metadata = {
     'circuit breaker',
     'bulkhead',
     'observability',
+    'resilience',
+    'auto-learning',
+    'adaptive resilience',
     'backend',
     'libraries',
   ],
   authors: [{ name: 'Mairon José Cuello Martínez' }],
   openGraph: {
     title: 'BackendKit Labs',
-    description: 'Enterprise-grade Node.js libraries',
+    description: 'Composable resilience for Node.js backends — explicit errors, adaptive retries, observable failures.',
     url: 'https://backendkitlabs.dev',
     siteName: 'BackendKit Labs',
     type: 'website',
@@ -37,7 +40,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'BackendKit Labs',
-    description: 'Enterprise-grade Node.js libraries',
+    description: 'Composable resilience for Node.js backends — explicit errors, adaptive retries, observable failures.',
   },
 };
 

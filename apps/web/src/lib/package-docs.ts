@@ -524,7 +524,7 @@ export class ApiController {
     version: '0.1.3',
     icon: 'AN',
     color: '#ec4899',
-    tagline: 'Enterprise-grade terminal animations for Node.js CLI tools.',
+    tagline: 'Production-ready terminal animations for Node.js CLI tools.',
     description:
       '17 built-in animation presets — spinners, progress bars, matrix, fire, particle effects, and more. Fluent AnimationBuilder API, named instance registry, and full lifecycle control. Designed for production CLI tools that need clear operator feedback during long-running async operations.',
     highlights: [
