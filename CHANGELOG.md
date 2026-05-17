@@ -11,6 +11,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- `@backendkit-labs/auto-learning` v0.2.0
+
+### Fixed
+
+#### `@backendkit-labs/auto-learning` v0.2.0
+
+**Sprint 1 — Critical bugs**
+- **`FeedbackLoop`** -- `previousConfig` was captured after `tune()` instead of before, so `configChanges` diff was always empty `{}`.
+- **`AutoLearningInterceptor`** -- replaced `tap()` with `tap({next, error})` so patterns are recorded on the error path too; skips non-HTTP execution contexts.
+- **`AnomalyDetector`** -- inverted `error_rate` logic: now alerts when a 5xx arrives at an endpoint whose baseline `errorRate` is below the threshold (healthy endpoint). Previous logic was backwards.
+- **`AnomalyDetector`** -- deduplicated `unknown_endpoint` reports per `method:path` via a `seenUnknown` Set so N patterns for the same new endpoint produce exactly 1 anomaly instead of N.
+
+**Sprint 2 — Bounded storage & memory safety**
+- **`InMemoryStorage`** -- added FIFO eviction caps (`maxPatterns` / `maxAnomalies` / `maxCycles`) to prevent unbounded memory growth.
+- **`InMemoryStorage`** -- fixed `getAggregates` grouping key to use `\x00` separator so parameterized paths like `/users/:id` are preserved correctly.
+- **`PatternRegistry.getStats`** -- replaced `Math.min/max` spread with an explicit loop to avoid `RangeError` on large arrays (>~10k elements).
+- **`FeedbackLoop.start`** -- guarded async `setInterval` callback with an `isProcessing` mutex to prevent overlapping cycles.
+- **`AutoLearningInterceptor`** -- strips query string from `req.url` so cardinality is bounded to route templates.
+- Exported `InMemoryStorageLimits` type from the package root.
+
+**Sprint 3 — Lifecycle & consistency**
+- **`ConfigTuner`** -- added `cooldownMs` to `ConfigTunerConfig` (replaces hardcoded 60 000 ms); extracted `computeNext` and `diffSections` private helpers.
+- **`FeedbackLoop` / `ConfigTuner`** -- `onCycle` / `onConfigChange` now return an `() => void` unsubscribe function.
+- **`AutoLearningAdaptersService`** -- implements `OnApplicationBootstrap` (starts loop) and `OnModuleDestroy` (stops loop, unsubscribes config listener); `autoStart: false` opt-out available.
+- **`FeedbackLoop.runOnce`** -- captures a single `windowEnd` timestamp passed to both `getPatterns` and `getAggregates` so both steps use the same window boundary.
+- **`FeedbackLoop`** -- logs a warning when `saveAnomaly` fails instead of silently discarding the `Result`.
+
+**Sprint 4 — API improvements**
+- **`LearningError`** -- converted flat struct to a proper discriminated union; each variant (`StorageError`, `InsufficientDataError`, etc.) is exported from the package root so callers can narrow exhaustively.
+- **`AnomalyDetector.analyze`** -- now returns `AnomalyReport[]` instead of `AnomalyReport | null` so latency and `error_rate` anomalies are both captured for the same pattern; `batchAnalyze` spreads the result array.
+- **`AutoLearningInterceptor`** -- added `trackParams` and `trackBody` options: `req.params` / `req.body` are captured into `pattern.metadata`, merged with `customMetadata`.
+
+---
+
 ## [2026-05-17] -- Bug fix batch: `http-client`, `result`, `pipeline` → v0.2.0
 
 ### Fixed
