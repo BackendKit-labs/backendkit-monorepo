@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "moduleResolution": "node",
+    "paths": {
+      "@backendkit-labs/circuit-breaker/nestjs": ["./node_modules/@backendkit-labs/circuit-breaker/dist/nestjs/index"],
+      "@backendkit-labs/bulkhead/nestjs": ["./node_modules/@backendkit-labs/bulkhead/dist/nestjs/index"],
+      "@backendkit-labs/pipeline/nestjs": ["./node_modules/@backendkit-labs/pipeline/dist/nestjs/index"],
+      "@backendkit-labs/request-scanner/nestjs": ["./node_modules/@backendkit-labs/request-scanner/dist/nestjs/index"],
+      "@backendkit-labs/http-client/nestjs": ["./node_modules/@backendkit-labs/http-client/dist/nestjs/index"]
+    }
+  }
+}
