@@ -1,91 +1,189 @@
 ---
 title: Getting Started
-description: Introduction to BackendKit Labs — reusable, enterprise-grade Node.js libraries.
+description: From zero to a resilient Node.js service in 5 minutes — Result, Circuit Breaker, and the composition story.
 ---
 
 # Getting Started
 
-BackendKit Labs is a monorepo of production-ready Node.js libraries. Every package ships with a framework-agnostic TypeScript core and an optional NestJS integration layer — so you can adopt as much or as little as you need.
+BackendKit Labs is a suite of composable building blocks for resilient Node.js backends. Each package solves one problem; together they share a common error model so they wire up without glue code.
 
-## Design philosophy
+This guide takes you from `npm install` to a working, resilient service — with explicit errors, a circuit breaker, and no `try/catch`.
 
-**Composable over monolithic.** Each package solves one problem and solves it well. You can use `@backendkit-labs/result` without `@backendkit-labs/circuit-breaker`, or combine them freely.
+---
 
-**Framework-agnostic core.** The core of every package has zero runtime dependencies and works in any Node.js project. NestJS bindings (modules, guards, interceptors, decorators) live in a separate `/nestjs` subpath export and are tree-shaken from the core bundle.
+## What you'll build
 
-**Types first.** TypeScript is not an afterthought. Every API is designed to make the type system guide you toward correct usage.
+A function that calls an external API, returns typed results, and automatically stops hammering the API when it's down — without a single `try/catch`.
 
-## Packages
+**Time:** ~5 minutes  
+**Requirements:** Node.js 18+, TypeScript
 
-| Package | Version | Description |
-|---------|---------|-------------|
-| [`@backendkit-labs/result`](/packages/result) | `0.1.1` | Type-safe Result monad — generic errors, composable transformations, resilience, NestJS integration |
-| [`@backendkit-labs/circuit-breaker`](/packages/circuit-breaker) | `0.1.0` | Sliding-window circuit breaker with business vs infrastructure error classification |
-| [`@backendkit-labs/bulkhead`](/packages/bulkhead) | `0.1.0` | Concurrency limiting — framework-agnostic core + NestJS guard, interceptor, middleware |
-| [`@backendkit-labs/observability`](/packages/observability) | `0.1.0` | Structured logging, metrics, correlation ID propagation, OTel support for NestJS |
-| [`@backendkit-labs/pipeline`](/packages/pipeline) | `0.1.0` | Type-safe async pipeline (Chain of Responsibility) — stop-on-first / collect-all, conditional steps, NestJS integration |
-| [`@backendkit-labs/http-client`](/packages/http-client) | `0.1.0` | Production-grade HTTP client — axios + circuit breaker + retry + Result responses + pipeline middleware + NestJS integration |
-| [`@backendkit-labs/request-scanner`](/packages/request-scanner) | `0.1.5` | Web Application Firewall — 23 built-in rules, SQLi / XSS / Path Traversal / NoSQL / SSRF + NestJS integration |
-| [`@backendkit-labs/console-animations`](/packages/console-animations) | `0.1.2` | Terminal animations for Node.js CLI applications |
+---
 
-## Choosing a package
-
-**Start with `result` if** your codebase uses `try/catch` everywhere and errors are invisible in function signatures. It unlocks a composable, type-safe error handling model that works with anything.
-
-**Add `circuit-breaker` if** you call external dependencies (APIs, databases, third-party services). It prevents a slow or failing dependency from taking your entire service down.
-
-**Add `bulkhead` if** you need to protect a shared resource (DB connection pool, external API rate limit) from being overwhelmed by concurrent requests.
-
-**Add `observability` if** you're building a NestJS service and want structured logging, request correlation, metrics, and performance tracing configured in a single `forRoot()` call.
-
-**Add `pipeline` if** you need composable, typed middleware chains — pre-request auth, validation, transformation — with stop-on-first or collect-all error semantics.
-
-**Add `http-client` if** you make outbound HTTP calls and want circuit breaker, retry, and typed errors without try/catch.
-
-**Add `request-scanner` if** you need WAF-level protection against SQLi, XSS, and other injection attacks at the request boundary.
-
-**Add `console-animations` if** you're building a CLI tool and want professional terminal animations with CI detection baked in.
-
-## Installation
-
-Each package is independent. Install only what you need:
+## Step 1 — Install
 
 ```bash
-# Core resilience primitives
-npm install @backendkit-labs/result
-npm install @backendkit-labs/circuit-breaker
-npm install @backendkit-labs/bulkhead
-
-# Middleware and HTTP
-npm install @backendkit-labs/pipeline
-npm install @backendkit-labs/http-client axios
-
-# Security
-npm install @backendkit-labs/request-scanner
-
-# NestJS observability stack
-npm install @backendkit-labs/observability
-
-# CLI tools
-npm install @backendkit-labs/console-animations
+npm install @backendkit-labs/result @backendkit-labs/circuit-breaker
 ```
 
-For NestJS subpath exports, you also need the peer dependencies:
+---
+
+## Step 2 — Explicit errors with Result
+
+`Result<T, E>` is the foundation. Instead of throwing, functions return a value that's either `ok` or `fail` — and the compiler forces you to handle both.
+
+```typescript
+import { ok, fail, run, match } from '@backendkit-labs/result';
+
+// Constructors
+const success = ok(42);          // { ok: true,  value: 42 }
+const failure = fail('oops');    // { ok: false, error: 'oops' }
+
+// Wrap any throwable async call
+const result = await run(() => fetch('https://api.example.com/users/1'));
+
+// Handle both branches — exhaustively
+const message = match(result, {
+  ok:   (res)   => `Got response: ${res.status}`,
+  fail: (error) => `Failed: ${error.message}`,
+});
+```
+
+No uncaught exceptions. The type system tells you whether `.value` or `.error` is available.
+
+---
+
+## Step 3 — Add a Circuit Breaker
+
+A circuit breaker watches your calls and opens when too many fail — stopping further calls so a degraded dependency doesn't cascade into your service.
+
+```typescript
+import { CircuitBreaker } from '@backendkit-labs/circuit-breaker';
+
+const cb = new CircuitBreaker({
+  name:              'user-api',
+  failureThreshold:  50,   // open after 50% failures in the window
+  minimumCalls:      5,    // need at least 5 calls before evaluating
+  slidingWindowSize: 10,   // track the last 10 calls
+  openTimeoutMs:     5000, // wait 5s before probing again
+  isFailure: (err) => !(err instanceof ValidationError), // business errors don't count
+});
+```
+
+`isFailure` is the key insight: it lets you classify which errors are infrastructure failures (that should trip the circuit) versus business errors (like 404 Not Found, which are expected and should be transparent).
+
+---
+
+## Step 4 — Compose them together
+
+Here's where both packages click. `cb.execute()` already returns a `Promise<T>` — wrap it in `run()` and you get `Result<T, E>` with circuit breaker protection and no `try/catch`:
+
+```typescript
+import { run, match } from '@backendkit-labs/result';
+import { CircuitBreaker, CircuitBreakerOpenError } from '@backendkit-labs/circuit-breaker';
+
+class ValidationError extends Error {}
+
+const cb = new CircuitBreaker({
+  name:             'user-api',
+  failureThreshold: 50,
+  minimumCalls:     5,
+  slidingWindowSize: 10,
+  openTimeoutMs:    5000,
+  isFailure: (err) => !(err instanceof ValidationError),
+});
+
+async function getUser(id: string) {
+  return run(() =>
+    cb.execute(() => fetch(`https://api.example.com/users/${id}`).then(r => r.json()))
+  );
+}
+
+// Usage — no try/catch anywhere
+const result = await getUser('123');
+
+match(result, {
+  ok:   (user) => console.log('User:', user.name),
+  fail: (err)  => {
+    if (err instanceof CircuitBreakerOpenError) {
+      console.log('Circuit open — serving from cache');
+    } else {
+      console.log('API error:', err.message);
+    }
+  },
+});
+```
+
+The circuit breaker and the Result type speak the same language: errors are values, classified explicitly, handled exhaustively.
+
+---
+
+## Step 5 — Handle failure modes
+
+Use the `fallback` parameter on `cb.execute()` for inline recovery:
+
+```typescript
+const result = await run(() =>
+  cb.execute(
+    () => fetchUser(id),
+    (err) => err instanceof CircuitBreakerOpenError
+      ? getCachedUser(id)   // circuit open → serve cache
+      : getDefaultUser(),   // infra failure → safe default
+  )
+);
+```
+
+Or observe state changes to alert when the circuit opens:
+
+```typescript
+const cb = new CircuitBreaker({
+  name: 'user-api',
+  // ...
+  onStateChange: (from, to, metrics) => {
+    if (to === 'open') {
+      logger.warn(`Circuit ${metrics.name} opened — failure rate: ${metrics.failureRate}%`);
+    }
+  },
+});
+```
+
+---
+
+## What you have now
+
+With ~20 lines of application code you have:
+
+- **Explicit errors** — no silent exceptions, every failure path is in the type signature
+- **Circuit breaker** — the API gets isolated when it degrades; your service stays up
+- **Business vs infrastructure classification** — validation errors don't trip the circuit
+- **Typed fallback** — you know exactly which failure mode triggered the fallback
+
+---
+
+## Next steps
+
+### Go deeper on these packages
+- [Result — full API reference](/packages/result) — `map`, `flatMap`, `andThen`, `retry`, `withTimeout`, `parallel`
+- [Circuit Breaker — full API reference](/packages/circuit-breaker) — slow call detection, `CircuitBreakerRegistry`, `HALF_OPEN` probing
+
+### Add more resilience
+- [Bulkhead](/packages/bulkhead) — limit concurrency to a downstream; queue the overflow
+- [HTTP Client](/packages/http-client) — axios wrapper where every call returns `Result<T, E>`, circuit breaker and retry built in
+
+### Close the feedback loop
+- [Auto-Learning](/packages/auto-learning) — monitors real traffic and automatically adjusts your circuit breaker thresholds, bulkhead concurrency, and timeouts
+
+### NestJS integration
+Every package has a `/nestjs` subpath with modules, guards, interceptors, and decorators. Import only what you use — everything else is tree-shaken.
 
 ```bash
 npm install @nestjs/common @nestjs/core rxjs
 ```
 
-## Combining packages
-
-The libraries are designed to work together. A typical NestJS service might use all of them:
-
 ```typescript
 // app.module.ts
-import { Module }              from '@nestjs/common';
 import { CircuitBreakerModule } from '@backendkit-labs/circuit-breaker/nestjs';
 import { BulkheadModule }       from '@backendkit-labs/bulkhead/nestjs';
-import { ResultModule }         from '@backendkit-labs/result/nestjs';
 import { ObservabilityModule }  from '@backendkit-labs/observability';
 
 @Module({
@@ -93,48 +191,27 @@ import { ObservabilityModule }  from '@backendkit-labs/observability';
     ObservabilityModule.forRoot({ serviceName: 'my-api', environment: 'production' }),
     CircuitBreakerModule,
     BulkheadModule,
-    ResultModule,
   ],
 })
 export class AppModule {}
 ```
 
-A service layer using `result` + `circuit-breaker` together:
+---
 
-```typescript
-@Injectable()
-export class PaymentService {
-  private readonly cb = new CircuitBreaker({
-    name:             'stripe',
-    failureThreshold: 40,
-    isFailure:        isHttpServerError,
-  });
+## All packages
 
-  @WithMetrics({ operation: 'payment.charge', tags: ['stripe'] })
-  async charge(dto: ChargeDto): Promise<RichResult<Payment, PaymentError>> {
-    return track(
-      () => this.cb.execute(() => this.stripe.charges.create(dto)),
-      { operation: 'stripe.charge' },
-    );
-  }
-}
-```
+| Package | Version | What it solves |
+|---------|---------|----------------|
+| [`@backendkit-labs/result`](/packages/result) | `0.2.0` | Explicit, typed errors — no try/catch |
+| [`@backendkit-labs/circuit-breaker`](/packages/circuit-breaker) | `0.2.0` | Stops cascading failures from external dependencies |
+| [`@backendkit-labs/bulkhead`](/packages/bulkhead) | `0.2.0` | Concurrency limiting and queue-based load shedding |
+| [`@backendkit-labs/pipeline`](/packages/pipeline) | `0.2.0` | Typed async middleware chains — stop-on-first or collect-all |
+| [`@backendkit-labs/http-client`](/packages/http-client) | `0.2.0` | HTTP client where every call returns Result — retry + CB built in |
+| [`@backendkit-labs/observability`](/packages/observability) | `0.1.1` | Structured logging, metrics, correlation ID, OTel for NestJS |
+| [`@backendkit-labs/request-scanner`](/packages/request-scanner) | `0.1.5` | Embedded WAF — SQLi, XSS, NoSQL injection and more |
+| [`@backendkit-labs/auto-learning`](/packages/auto-learning) | `0.1.1` | Auto-tunes CB, bulkhead, and HTTP client from real traffic |
+| [`@backendkit-labs/console-animations`](/packages/console-animations) | `0.1.3` | Terminal animations for Node.js CLI tools |
 
-## Source code
+---
 
-All packages live in the [`BackendKit-labs/backendkit-monorepo`](https://github.com/BackendKit-labs/backendkit-monorepo) repository on GitHub.
-
-```
-backendkit-monorepo/
-├── packages/
-│   ├── result/
-│   ├── circuit-breaker/
-│   ├── bulkhead/
-│   ├── observability/
-│   ├── pipeline/
-│   ├── http-client/
-│   ├── request-scanner/
-│   └── console-animations/
-└── apps/
-    └── docs/          ← you are here
-```
+Questions? [Open a Discussion](https://github.com/BackendKit-labs/backendkit-monorepo/discussions) — Q&A is the right place before filing an issue.
