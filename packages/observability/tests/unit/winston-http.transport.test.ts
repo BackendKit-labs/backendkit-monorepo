@@ -149,16 +149,13 @@ describe('WinstonHttpTransport', () => {
   // ── M5: Buffer TTL 5 min ─────────────────────────────────────────
 
   it('discards entries older than 5 minutes on flush', async () => {
-    const oldTimestamp = Date.now() - 310_000; // 5 min 10 sec ago
-    const freshTimestamp = Date.now() - 60_000; // 1 min ago
+    const oldEntry   = { level: 'info', message: 'old entry' };
+    const freshEntry = { level: 'info', message: 'fresh entry' };
 
-    // Push entries directly into buffer to bypass log()
-    (transport as any).buffer = [
-      { level: 'info', message: 'old entry', _timestamp: oldTimestamp },
-      { level: 'info', message: 'fresh entry', _timestamp: freshTimestamp },
-    ];
+    (transport as any).buffer = [oldEntry, freshEntry];
+    (transport as any).entryTimes.set(oldEntry,   Date.now() - 310_000);
+    (transport as any).entryTimes.set(freshEntry, Date.now() - 60_000);
 
-    // Flush will fail (mock rejects), so entries stay in buffer after filtering
     mockPost.mockRejectedValue(new Error('flush error'));
     await (transport as any).flush();
 
@@ -170,15 +167,13 @@ describe('WinstonHttpTransport', () => {
 
   it('keeps entries within 5 min TTL and sends them', async () => {
     mockPost.mockResolvedValue({ status: 200 });
-    const recentTimestamp = Date.now() - 120_000; // 2 min ago
+    const recentEntry = { level: 'info', message: 'recent' };
 
-    (transport as any).buffer = [
-      { level: 'info', message: 'recent', _timestamp: recentTimestamp },
-    ];
+    (transport as any).buffer = [recentEntry];
+    (transport as any).entryTimes.set(recentEntry, Date.now() - 120_000);
 
     await (transport as any).flush();
 
-    // After successful flush, buffer should be empty (entries were sent)
     const buffer = (transport as any).buffer as any[];
     expect(buffer).toHaveLength(0);
   });

@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
   RequestTimeoutException,
 } from '@nestjs/common';
-import { Observable, firstValueFrom, race, timer } from 'rxjs';
+import { Observable, firstValueFrom, TimeoutError, timeout } from 'rxjs';
 import { CircuitBreakerRegistry, isHttpServerError } from '../circuit-breaker/circuit-breaker.registry.js';
 import { CircuitBreakerOpenError } from '../circuit-breaker/circuit-breaker.js';
 
@@ -29,10 +29,7 @@ export class CircuitBreakerInterceptor implements NestInterceptor {
     try {
       const result = await cb.execute(() =>
         firstValueFrom(
-          race([
-            next.handle(),
-            timer(DEFAULT_TIMEOUT_MS),
-          ]),
+          next.handle().pipe(timeout(DEFAULT_TIMEOUT_MS)),
         ),
       );
       return new Observable(sub => { sub.next(result); sub.complete(); });
@@ -42,7 +39,7 @@ export class CircuitBreakerInterceptor implements NestInterceptor {
           'Service temporarily unavailable -- circuit breaker is open',
         );
       }
-      if (error instanceof Error && error.message === 'Timeout has occurred') {
+      if (error instanceof TimeoutError) {
         throw new RequestTimeoutException('Handler timed out');
       }
       throw error;

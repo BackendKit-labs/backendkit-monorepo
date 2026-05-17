@@ -71,7 +71,7 @@ describe('otel.ts', () => {
   it('noopSpan implements SpanShim without throwing', () => {
     // The noopSpan inside otel.ts should not throw on any method.
     // We import and use the module to verify.
-    import('../../src/internal/otel.js?version=8').then(({ getTracer }) => {
+    return import('../../src/internal/otel.js?version=8').then(({ getTracer }) => {
       const tracer = getTracer('test');
       const span = tracer.startSpan('test-span');
       expect(() => {

@@ -65,8 +65,8 @@ export class MetricsService implements OnModuleDestroy {
       ...m.circuitBreaker,
       name:      'MetricsService',
       isFailure: (error: unknown) => {
-        const result = error as { status?: number };
-        return result && typeof result.status === 'number' ? result.status >= 400 : true;
+        const status = (error as { response?: { status?: number } }).response?.status;
+        return status !== undefined ? status >= 400 : true;
       },
       onStateChange: (from, to, metrics) => {
         if (to === CircuitBreakerState.OPEN) {

@@ -33,7 +33,7 @@ export const runInOtelContext = async <T>(span: unknown, fn: () => Promise<T>): 
   return otel.context.with(otel.trace.setSpan(otel.context.active(), span), fn);
 };
 
-interface SpanShim {
+export interface SpanShim {
   setAttribute(key: string, value: unknown): void;
   setAttributes(attrs: Record<string, unknown>): void;
   recordException(err: Error): void;

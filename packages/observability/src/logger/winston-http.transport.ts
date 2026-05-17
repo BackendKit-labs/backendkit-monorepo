@@ -66,7 +66,8 @@ export class WinstonHttpTransport extends TransportStream {
   private readonly maxBufferSize: number;
   private readonly maxEntryAgeMs = 300_000; // 5 min
   private readonly fallbackLogger = new Logger(WinstonHttpTransport.name);
-  private readonly retryCounts = new WeakMap<LogEntry, number>();
+  private readonly retryCounts  = new WeakMap<LogEntry, number>();
+  private readonly entryTimes   = new WeakMap<LogEntry, number>();
   private readonly maxRetries = 5;
   private readonly flushTimer:   ReturnType<typeof setInterval>;
 
@@ -107,8 +108,8 @@ export class WinstonHttpTransport extends TransportStream {
       ...opts.circuitBreaker,
       name:      'WinstonHttpTransport',
       isFailure: (error: unknown) => {
-        const result = error as { status?: number };
-        return result && typeof result.status === 'number' ? result.status >= 400 : true;
+        const status = (error as { response?: { status?: number } }).response?.status;
+        return status !== undefined ? status >= 400 : true;
       },
     });
 
@@ -124,7 +125,9 @@ export class WinstonHttpTransport extends TransportStream {
     this.emit('logged', info);
 
     if (this.buffer.length < this.maxBufferSize) {
-      this.buffer.push({ ...info, _timestamp: Date.now() } as LogEntry);
+      const entry = { ...info } as LogEntry;
+      this.entryTimes.set(entry, Date.now());
+      this.buffer.push(entry);
     }
     // silently drop when full — buffer-full warn would cause infinite recursion
 
@@ -147,7 +150,7 @@ export class WinstonHttpTransport extends TransportStream {
     // Discard entries older than maxEntryAgeMs
     const now = Date.now();
     this.buffer = this.buffer.filter(
-      (e) => now - ((e as unknown as { _timestamp?: number })._timestamp ?? now) < this.maxEntryAgeMs,
+      (e) => now - (this.entryTimes.get(e) ?? now) < this.maxEntryAgeMs,
     );
 
     const batch = this.buffer.splice(0, this.batchSize);
