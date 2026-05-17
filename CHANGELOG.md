@@ -11,6 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- Bug fix batch: `http-client`, `result`, `pipeline` → v0.2.0
+
+### Fixed
+
+#### `@backendkit-labs/http-client` v0.2.0
+
+- **`HttpClientModule.forRootAsync`** -- fixed silent "No provider" failure for every `@InjectHttpClient()` call when using the async registration path. `forRootAsync` previously built only a single `HTTP_CLIENT_INSTANCES` array provider and never registered the individual token providers. `HttpClientModuleAsyncOptions` now requires a `clients` field declaring tokens at definition time; `forRootAsync` creates one factory provider per token following the standard NestJS pattern.
+
+#### `@backendkit-labs/result` v0.2.0
+
+- **`any([])`** -- threw `undefined` at runtime when called with an empty array (uninitialized `last!`); now throws a clear error.
+- **`parallel()` with `concurrency ≤ 0`** -- caused an infinite loop; now throws a clear error.
+- **`withTimeout()`** -- never cleared its internal timer on resolution, leaking the handle; fixed with `try/finally` + `clearTimeout`.
+- **`retry()` / `retryWithBackoff()` with `attempts < 1`** -- threw `undefined`; now throw a clear error.
+
+#### `@backendkit-labs/pipeline` v0.2.0
+
+- **Observability hooks** (`onStep`, `onError`, `onStepComplete`, `onComplete`) -- a throwing hook callback could convert a pipeline success into an unhandled rejection or mask the real result. All hooks are now wrapped in `try/catch` so observer errors are swallowed and never corrupt pipeline state.
+
+---
+
 ## [2026-05-15] -- `@backendkit-labs/request-scanner` v0.1.5 (rename from http-shield)
 
 ### Changed
