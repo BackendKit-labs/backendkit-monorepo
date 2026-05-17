@@ -8,6 +8,8 @@ on:
 jobs:
   publish:
     name: Publish
+    # request-scanner publishes to GitHub Packages via publish-request-scanner.yml — skip it here
+    if: ${{ !startsWith(github.ref_name, 'request-scanner@') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
