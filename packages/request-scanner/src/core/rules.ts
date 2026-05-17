@@ -23,7 +23,9 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'sqli',
     severity:    'critical',
     description: 'Tautology / boolean-based injection (OR/AND bypass)',
-    pattern:     /(?:'|")\s*(?:OR|AND)\s+|(?:\s+|\b)(?:OR|AND)\s+\d+\s*=\s*\d+/i,
+    // First branch requires a SQL expression after OR/AND (comparison, string equality, NULL/TRUE/FALSE)
+    // to avoid false positives on quoted English text like `"Or maybe later"` or `"And another thing"`.
+    pattern:     /(?:'|")\s*(?:OR|AND)\s+(?:\d+\s*[=<>!]|(?:'|")[^'"]{0,50}(?:'|")\s*=|NULL\b|TRUE\b|FALSE\b|\w+\s*[=<>!])|(?:\s+|\b)(?:OR|AND)\s+\d+\s*=\s*\d+/i,
     enabled:     true,
   },
   {
@@ -76,7 +78,10 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'sqli',
     severity:    'medium',
     description: 'Inline comment used to bypass WHERE clauses',
-    pattern:     /(?:'|")\s*(?:--|#|\/\*)/i,
+    // `#` is narrowed with `(?=\s|$)` so URL fragments like `'https://x.com#section'`
+    // no longer trigger. MySQL `#` comments always start with `#` followed by whitespace or EOL.
+    // Note: `1'#nospace` (no space after hash) is a known accepted false negative.
+    pattern:     /(?:'|")\s*(?:--|\/\*|#(?=\s|$))/i,
     enabled:     true,
   },
 
@@ -94,7 +99,15 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'xss',
     severity:    'high',
     description: 'Inline event handler attribute (on*=)',
-    pattern:     /\bon\w+\s*=/i,
+    // Two branches: any on*= inside an HTML tag, OR known dangerous events standalone.
+    // Plain `\bon\w+\s*=` caused false positives on query params like `online=`, `once=`, `onlyMe=`.
+    pattern:     re(
+      '<[^>]{0,300}\\bon\\w+\\s*=',
+      '|\\bon(?:click|dbl', 'click|error|load|unload|submit|reset|change|focus|blur|input|invalid',
+      '|mouse(?:over|out|down|up|move|enter|leave)|key(?:down|up|press)',
+      '|scroll|resize|select|copy|cut|paste|drag(?:start|end|over)?|drop',
+      '|wheel|touch(?:start|end|move)|context', 'menu|before', 'unload|popstate|hash', 'change)\\s*=',
+    ),
     enabled:     true,
   },
   {
@@ -195,7 +208,16 @@ export const BUILT_IN_RULES: WafRule[] = [
     category:    'cmd-injection',
     severity:    'critical',
     description: 'Command substitution via backticks or $(...)',
-    pattern:     /`[^`]{1,200}`|\$\([^)]{1,200}\)/,
+    // Backtick branch now requires the content to start with a known shell command to avoid
+    // false positives on markdown inline code like `useState` or `npm install`.
+    // The $(...) branch remains broad — it is rarely used in legitimate user-facing text.
+    pattern:     re(
+      '`\\s*(?:cat|ls|dir|type|pwd|who',
+      'ami|id|uname|hostname|ifc',
+      'onfig|ipconfig|wget|curl|nc|netcat|pyth',
+      'on\\d?|perl|ruby|bash|sh|cmd|powers',
+      'hell|php)\\b[^`]{0,150}`|\\$\\([^)]{1,200}\\)',
+    ),
     enabled:     true,
   },
   {

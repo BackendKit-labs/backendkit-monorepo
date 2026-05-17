@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.1.7
+
+### Fixed
+
+- **`xss-002` false positives on common query params** — `\bon\w+\s*=` was replaced with a two-branch pattern: any `on*=` inside an explicit HTML tag (`<[^>]*\bon\w+=`), OR a curated list of known HTML event names for standalone cases. Params like `online=`, `once=`, `onlyMe=`, `oneTime=` no longer trigger a 403.
+- **`sqli-001` false positives on quoted English text** — the first branch `(?:'|")\s*(?:OR|AND)\s+` was tightened to require a SQL expression after `OR/AND` (`\d+=`, `'str'=`, `NULL`, `TRUE`, `FALSE`, `col=`). Text like `"Or maybe later"` and `"And one more thing"` no longer trigger.
+- **`cmd-002` false positives on markdown inline code** — the backtick branch now requires the content to start with a known shell binary (same list as `cmd-001`). Inline code like `` `useState` `` or `` `npm install` `` no longer triggers. The `$(...)` branch is unchanged.
+- **`sqli-007` false positives on URL fragments** — `#` is narrowed with `(?=\s|$)` so `'https://example.com#section'` no longer triggers. MySQL `#` comments followed by a word character (e.g., `1'#nospace`) are an accepted false negative documented in code.
+
+### Added
+
+- 26 new tests: must-pass benign inputs for all four fixed rules + must-detect regression coverage to guard against future regressions.
+
+---
+
 ## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.1.6
 
 ### Fixed

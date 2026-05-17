@@ -171,6 +171,135 @@ describe('SSRF detection (enabled in test scanner)', () => {
   });
 });
 
+// ── Sprint 2 — must-pass benign inputs ───────────────────────────────────────
+
+describe('Sprint 2: benign inputs must not be blocked (false-positive guard)', () => {
+  describe('xss-002: query params starting with "on" must not trigger', () => {
+    it('online=true', () => {
+      const r = scanner.scan({ online: 'true' }, 'query');
+      expect(r.threats.filter(t => t.ruleId === 'xss-002')).toHaveLength(0);
+    });
+
+    it('once=1', () => {
+      const r = scanner.scan({ once: '1' }, 'query');
+      expect(r.threats.filter(t => t.ruleId === 'xss-002')).toHaveLength(0);
+    });
+
+    it('onlyMe=yes and oneTime=5', () => {
+      const r = scanner.scan({ onlyMe: 'yes', oneTime: '5' }, 'query');
+      expect(r.threats.filter(t => t.ruleId === 'xss-002')).toHaveLength(0);
+    });
+  });
+
+  describe('sqli-001: quoted English text with Or/And must not trigger', () => {
+    it('"Or maybe later"', () => {
+      const r = scanner.scan({ desc: '"Or maybe later"' }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'sqli-001')).toHaveLength(0);
+    });
+
+    it('"And one more thing"', () => {
+      const r = scanner.scan({ note: '"And one more thing"' }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'sqli-001')).toHaveLength(0);
+    });
+
+    it("'or so they say'", () => {
+      const r = scanner.scan({ comment: "'or so they say'" }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'sqli-001')).toHaveLength(0);
+    });
+
+    it("'and another thing'", () => {
+      const r = scanner.scan({ text: "'and another thing'" }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'sqli-001')).toHaveLength(0);
+    });
+  });
+
+  describe('cmd-002: markdown inline code must not trigger', () => {
+    it('`useState` hook reference', () => {
+      const r = scanner.scan({ bio: 'Use `useState` and `useEffect` hooks' }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'cmd-002')).toHaveLength(0);
+    });
+
+    it('`npm install` in description', () => {
+      const r = scanner.scan({ desc: 'Run `npm install` first' }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'cmd-002')).toHaveLength(0);
+    });
+  });
+
+  describe('sqli-007: URL fragments must not trigger', () => {
+    it("'https://example.com#section'", () => {
+      const r = scanner.scan({ url: "'https://example.com#section'" }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'sqli-007')).toHaveLength(0);
+    });
+
+    it('"https://example.com#heading"', () => {
+      const r = scanner.scan({ link: '"https://example.com#heading"' }, 'body');
+      expect(r.threats.filter(t => t.ruleId === 'sqli-007')).toHaveLength(0);
+    });
+  });
+});
+
+describe('Sprint 2: attacks still detected after false-positive fixes', () => {
+  it('sqli-001: OR tautology still detected', () => {
+    expect(scanner.scan({ q: "' OR 1=1--" }, 'query').threats.some(t => t.ruleId === 'sqli-001')).toBe(true);
+  });
+
+  it('sqli-001: AND tautology still detected', () => {
+    expect(scanner.scan({ q: "' AND 1=1--" }, 'query').threats.some(t => t.ruleId === 'sqli-001')).toBe(true);
+  });
+
+  it('sqli-001: OR NULL still detected', () => {
+    expect(scanner.scan({ q: "' OR NULL--" }, 'query').threats.some(t => t.ruleId === 'sqli-001')).toBe(true);
+  });
+
+  it("sqli-001: OR 'a'='a still detected", () => {
+    expect(scanner.scan({ q: "' OR 'a'='a" }, 'query').threats.some(t => t.ruleId === 'sqli-001')).toBe(true);
+  });
+
+  it('xss-002: onerror in img tag still detected', () => {
+    expect(scanner.scan({ img: '<img src=x onerror=alert(1)>' }, 'body').threats.some(t => t.ruleId === 'xss-002')).toBe(true);
+  });
+
+  it('xss-002: standalone onclick= still detected', () => {
+    expect(scanner.scan({ h: 'onclick=malicious()' }, 'body').threats.some(t => t.ruleId === 'xss-002')).toBe(true);
+  });
+
+  it('xss-002: standalone onerror= still detected', () => {
+    expect(scanner.scan({ h: 'onerror=alert(1)' }, 'body').threats.some(t => t.ruleId === 'xss-002')).toBe(true);
+  });
+
+  it('cmd-002: `whoami` still detected', () => {
+    expect(scanner.scan({ name: '`whoami`' }, 'body').threats.some(t => t.ruleId === 'cmd-002')).toBe(true);
+  });
+
+  it('cmd-002: `id` still detected', () => {
+    expect(scanner.scan({ name: '`id`' }, 'body').threats.some(t => t.ruleId === 'cmd-002')).toBe(true);
+  });
+
+  it('cmd-002: `cat /etc/passwd` still detected', () => {
+    expect(scanner.scan({ f: '`cat /etc/passwd`' }, 'body').threats.some(t => t.ruleId === 'cmd-002')).toBe(true);
+  });
+
+  it('cmd-002: $(id) substitution still detected', () => {
+    expect(scanner.scan({ name: '$(id)' }, 'body').threats.some(t => t.ruleId === 'cmd-002')).toBe(true);
+  });
+
+  it('sqli-007: -- comment still detected', () => {
+    expect(scanner.scan({ id: "1'--" }, 'query').threats.some(t => t.ruleId === 'sqli-007')).toBe(true);
+  });
+
+  it('sqli-007: # comment with space still detected', () => {
+    expect(scanner.scan({ id: "1'# rest" }, 'query').threats.some(t => t.ruleId === 'sqli-007')).toBe(true);
+  });
+
+  it('sqli-007: # at end of string still detected', () => {
+    expect(scanner.scan({ id: "1'#" }, 'query').threats.some(t => t.ruleId === 'sqli-007')).toBe(true);
+  });
+
+  it('sqli-007: /* comment still detected', () => {
+    expect(scanner.scan({ id: "1'/*" }, 'query').threats.some(t => t.ruleId === 'sqli-007')).toBe(true);
+  });
+});
+
 // ── Sprint 1 regression tests ─────────────────────────────────────────────────
 
 describe('Sprint 1 fixes', () => {
