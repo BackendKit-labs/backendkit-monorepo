@@ -20,6 +20,17 @@ A function that calls an external API, returns typed results, and automatically 
 
 ---
 
+## Playground
+
+Prefer to try before installing? Open the examples directly in your browser:
+
+| Example | What it shows |
+|---------|--------------|
+| [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz_small.svg)](https://stackblitz.com/github/BackendKit-labs/backendkit-monorepo/tree/master/examples/result-basic) [Result basics](https://stackblitz.com/github/BackendKit-labs/backendkit-monorepo/tree/master/examples/result-basic) | `ok`, `fail`, `run`, `match`, `retry`, `withTimeout` |
+| [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz_small.svg)](https://stackblitz.com/github/BackendKit-labs/backendkit-monorepo/tree/master/examples/result-circuit-breaker) [Result + CircuitBreaker](https://stackblitz.com/github/BackendKit-labs/backendkit-monorepo/tree/master/examples/result-circuit-breaker) | Full composition — business vs infra errors, state transitions, fallback |
+
+---
+
 ## Step 1 — Install
 
 ```bash

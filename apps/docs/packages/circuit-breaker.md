@@ -25,6 +25,12 @@ NestJS peer dependencies (only for the `/nestjs` subpath):
 npm install @nestjs/common @nestjs/core rxjs
 ```
 
+## Playground
+
+Try the full composition story — Result + CircuitBreaker — in your browser:
+
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/BackendKit-labs/backendkit-monorepo/tree/master/examples/result-circuit-breaker)
+
 ## Quick Start
 
 ```typescript

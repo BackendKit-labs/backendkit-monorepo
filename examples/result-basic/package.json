@@ -1,0 +1,17 @@
+{
+  "name": "backendkit-result-basic",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "BackendKit Result — basic usage example",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@backendkit-labs/result": "latest"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  }
+}
