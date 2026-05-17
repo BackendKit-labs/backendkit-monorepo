@@ -1,6 +1,6 @@
 ---
 title: HTTP Client
-description: Production-grade HTTP client built on axios — Result-based API, circuit breaker, retry with backoff, request cancellation, and pipeline middleware.
+description: Axios wrapper for Node.js where every request returns Result<T, E> — built-in retry, circuit breaker, cancellation, and NestJS integration.
 ---
 
 # @backendkit-labs/http-client
@@ -9,14 +9,14 @@ description: Production-grade HTTP client built on axios — Result-based API, c
 [![License](https://img.shields.io/npm/l/@backendkit-labs/http-client?style=flat-square)](https://github.com/BackendKit-labs/backendkit-monorepo/blob/master/LICENSE)
 [![Node](https://img.shields.io/node/v/@backendkit-labs/http-client?style=flat-square)](https://nodejs.org)
 
-> Production-grade HTTP client built on axios. Every method returns `Result<HttpResponse<T>, HttpClientError>` — no try/catch required.
+> HTTP client for Node.js where every call returns `Result<T, E>` — retry, circuit breaker, cancellation, and middleware built in.
 
-Integrates a circuit breaker, retry with exponential backoff, request cancellation, and pre-request pipeline middleware. Optional NestJS DI integration for named, independently configured clients.
+The standard pattern for HTTP calls is: call, catch, rethrow, forget. `http-client` flips it: every response is an explicit `Result` — successes and failures live in the same type, the compiler forces you to handle both, and infrastructure concerns (retry, circuit breaking) are wired at construction time, not spread across call sites.
 
 ## Installation
 
 ```bash
-npm install @backendkit-labs/http-client axios
+npm install @backendkit-labs/http-client
 ```
 
 NestJS peer dependencies (only for the `/nestjs` subpath):
@@ -29,22 +29,19 @@ npm install @nestjs/common @nestjs/core rxjs
 
 ```typescript
 import { HttpClient } from '@backendkit-labs/http-client';
+import { match } from '@backendkit-labs/result';
 
-const client = new HttpClient({
-  baseURL: 'https://api.example.com',
-  timeout: 10_000,
+const http = new HttpClient({ baseURL: 'https://api.example.com' });
+
+const result = await http.get<User>('/users/42');
+
+match(result, {
+  ok:   (res) => console.log(res.data.name, res.status),
+  fail: (err) => console.error(err.type, err.status, err.message),
 });
-
-const result = await client.get<User>('/users/42');
-
-if (result.ok) {
-  console.log(result.value.data);    // User
-  console.log(result.value.status);  // 200
-} else {
-  console.error(result.error.type);    // 'http' | 'network' | 'timeout' | ...
-  console.error(result.error.status);  // 404, 500, undefined (for network errors)
-}
 ```
+
+No `try/catch`. No uncaught promise rejections. The type tells you whether `.value` or `.error` is available.
 
 ## Error Types
 
@@ -52,64 +49,75 @@ All failures are returned as `HttpClientError` — never thrown.
 
 ```typescript
 type HttpErrorType =
-  | 'http'          // received a response with a non-2xx status code
-  | 'network'       // request never reached the server (ECONNREFUSED, ENOTFOUND, ...)
-  | 'timeout'       // axios timeout or circuit breaker slow-call threshold exceeded
-  | 'cancelled'     // cancelled via cancelRequest() or cancelAll()
-  | 'circuit-open'; // circuit breaker rejected the request before it was sent
+  | 'http'          // server returned a non-2xx response
+  | 'network'       // no response received (ECONNREFUSED, DNS failure, ...)
+  | 'timeout'       // request exceeded the timeout deadline
+  | 'circuit-open'  // circuit breaker OPEN — request was not sent
+  | 'cancelled';    // cancelled via cancelRequest() or cancelAll()
 
 interface HttpClientError {
   type:     HttpErrorType;
   message:  string;
-  status?:  number;           // HTTP status (http errors only)
-  data?:    unknown;          // response body (http errors only)
-  cause?:   unknown;          // original axios error
+  status?:  number;   // HTTP status code (only for 'http' errors)
+  data?:    unknown;  // response body from the server (only for 'http' errors)
+  cause?:   unknown;  // original error object
 }
 ```
 
-:::info No try/catch
-Because all errors are encoded in the return type, you never need a try/catch around HTTP calls. The compiler enforces that you handle both `ok` and `!ok` branches.
+:::tip No try/catch needed
+All errors are encoded in the return type. The TypeScript compiler enforces that you handle both `ok` and `!ok` branches — there are no uncaught exceptions.
 :::
+
+### Routing on error type
+
+```typescript
+const result = await http.post<Order>('/orders', body);
+
+match(result, {
+  ok: (res) => processOrder(res.data),
+  fail: (err) => {
+    switch (err.type) {
+      case 'http':          return handleApiError(err.status!, err.data);
+      case 'network':       return scheduleRetry();
+      case 'timeout':       return reportSlaBreach();
+      case 'circuit-open':  return serveCachedOrder();
+      case 'cancelled':     return; // user navigated away
+    }
+  },
+});
+```
 
 ## Configuration Reference
 
 ```typescript
 new HttpClient({
-  // Base request config
-  baseURL:  'https://api.example.com',
-  timeout:  10_000,                           // ms — default: 30_000
-  headers:  { 'X-API-Key': process.env.API_KEY },
+  baseURL: 'https://api.example.com',
+  timeout: 10_000,                       // ms — default: 10 000ms
+  headers: { 'X-API-Key': process.env.API_KEY },
 
-  // Retry with exponential backoff
   retry: {
-    attempts:    3,                           // max total attempts (including the first)
-    delayMs:     100,                         // initial delay between retries
-    maxDelayMs:  5_000,                       // cap on backoff delay
-    jitter:      true,                        // full jitter to spread retries
-    shouldRetry: (err) =>
-      err.type === 'network' || err.type === 'timeout',
+    attempts:    3,       // retries AFTER the first attempt (3 retries = 4 total calls)
+    delayMs:     100,     // initial delay between retries — default: 100ms
+    maxDelayMs:  5_000,   // cap on exponential backoff — default: 5 000ms
+    jitter:      true,    // full jitter to spread retries — default: true
+    // default shouldRetry: network errors, timeouts, and HTTP 5xx
+    shouldRetry: (err, attempt) =>
+      err.type === 'network' ||
+      err.type === 'timeout' ||
+      (err.type === 'http' && (err.status ?? 0) >= 500),
   },
 
-  // Circuit breaker
   circuitBreaker: {
-    failureThreshold:  50,    // % of calls that must fail to open
-    minimumCalls:      5,     // calls required before threshold is evaluated
-    slidingWindowSize: 10,    // count-based window size
-    openTimeoutMs:     30_000,
+    failureThreshold:  50,     // open after 50% failures in the window
+    minimumCalls:       5,     // calls required before evaluation
+    slidingWindowSize: 10,     // count-based sliding window
+    openTimeoutMs:  30_000,    // wait before probing again
   },
 
-  // Pre-request pipeline middleware (executed in order before every request)
+  // Pre-request middleware — run before every call, in order
   steps: [authStep, correlationIdStep],
 })
 ```
-
-### Retry jitter
-
-| `jitter` value | Behaviour |
-|---|---|
-| `false` / omitted | Deterministic backoff — no randomness |
-| `true` | Full jitter: `random(0, computedDelay)` — best for high-concurrency scenarios |
-| `0.0–1.0` | Partial jitter: `delay ± (delay × factor)` — preserves backoff shape with light noise |
 
 ## HTTP Methods
 
@@ -122,43 +130,106 @@ interface HttpResponse<T> {
   headers: Record<string, string>;
 }
 
-client.get<T>(url, config?)
-client.post<T>(url, body?, config?)
-client.put<T>(url, body?, config?)
-client.patch<T>(url, body?, config?)
-client.delete<T>(url, config?)
+http.get<T>(url, config?)
+http.post<T>(url, body?, config?)
+http.put<T>(url, body?, config?)
+http.patch<T>(url, body?, config?)
+http.delete<T>(url, config?)
 ```
 
-`config` accepts any axios request config properties (`params`, `headers`, `signal`, `cancelKey`, etc.) in addition to the per-request options below.
+### Per-request config
 
 ```typescript
-// Typed POST with query params
-const result = await client.post<Order>('/orders', dto, {
+interface RequestConfig {
+  headers?:       Record<string, string>;
+  params?:        Record<string, unknown>;
+  timeout?:       number;        // overrides the client-level default for this call
+  cancelKey?:     string;        // key for programmatic cancellation
+  correlationId?: string;
+}
+```
+
+```typescript
+const result = await http.post<Order>('/orders', dto, {
   params:  { dryRun: true },
   headers: { 'Idempotency-Key': uuid() },
+  timeout: 5_000,
 });
 ```
 
 ## Request Cancellation
 
-Requests can be cancelled by a string key. Multiple requests may share the same key — all are cancelled together.
+Cancel a request by key — registered synchronously before the network call fires, so it's safe to cancel even before the request starts.
 
 ```typescript
-// Start a polling request with a stable key
-client.get('/events/poll', { cancelKey: 'events-poll' });
+// Start a long-running request with a stable key
+const promise = http.get('/reports/generate', { cancelKey: 'report' });
 
-// Cancel it elsewhere (route change, component unmount, etc.)
-client.cancelRequest('events-poll');
+// Cancel from anywhere (route change, user action, component unmount)
+http.cancelRequest('report');
 
-// Cancel every in-flight request
-client.cancelAll();
+const result = await promise;
+// result.ok === false, result.error.type === 'cancelled'
+
+// Cancel all in-flight requests at once
+http.cancelAll();
 ```
 
-Cancelled requests resolve with `result.ok === false` and `result.error.type === 'cancelled'` — they do not throw.
+Multiple requests may share the same `cancelKey` — all are cancelled together.
+
+## Retry
+
+Retry is disabled by default (`attempts: 0`). Enable it in the constructor:
+
+```typescript
+const http = new HttpClient({
+  baseURL: 'https://flaky-service.example.com',
+  retry: {
+    attempts: 3,      // 3 retries = up to 4 total attempts
+    delayMs:  200,    // 200ms → 400ms → 800ms (exponential, capped at maxDelayMs)
+    jitter:   true,   // spread retries — prevents thundering herd
+  },
+});
+```
+
+The default `shouldRetry` retries `network`, `timeout`, and `http` errors with status ≥ 500. HTTP 4xx responses are never retried — they are explicit rejection from the server.
+
+Override `shouldRetry` to adjust:
+
+```typescript
+retry: {
+  attempts: 2,
+  shouldRetry: (error, attempt) =>
+    error.type !== 'cancelled' &&      // never retry cancellations
+    error.status !== 401,              // don't retry auth failures
+}
+```
+
+## Circuit Breaker
+
+When `circuitBreaker` is configured, the client wraps every request through `@backendkit-labs/circuit-breaker`. Only HTTP 5xx, network, and timeout errors count against the threshold — 4xx responses are transparent.
+
+```typescript
+const http = new HttpClient({
+  baseURL: 'https://payment-api.example.com',
+  circuitBreaker: {
+    failureThreshold:  40,    // open at 40% failures
+    minimumCalls:       5,
+    slidingWindowSize: 10,
+    openTimeoutMs:  15_000,   // probe again after 15s
+  },
+});
+
+const result = await http.post<Charge>('/charges', dto);
+
+if (!result.ok && result.error.type === 'circuit-open') {
+  // Payment API is degraded — serve from cache or queue the charge
+}
+```
 
 ## Pipeline Middleware
 
-`steps` in the config are `PipelineStep<HttpCtx, HttpClientError>` instances from [`@backendkit-labs/pipeline`](/packages/pipeline). They run before every request and can modify the request context (URL, headers, body, params).
+`steps` run before every request and can read or mutate `HttpCtx` — useful for auth token injection, correlation ID propagation, or request signing. Steps use the `PipelineStep<TContext, TError>` interface from [`@backendkit-labs/pipeline`](/packages/pipeline).
 
 ```typescript
 import { Ok, Err } from '@backendkit-labs/pipeline';
@@ -166,81 +237,93 @@ import type { PipelineStep, StepResult } from '@backendkit-labs/pipeline';
 import type { HttpCtx, HttpClientError } from '@backendkit-labs/http-client';
 
 const authStep: PipelineStep<HttpCtx, HttpClientError> = {
-  stepName: 'auth',
+  stepName: 'inject-auth',
   async handle(ctx): Promise<StepResult<HttpCtx, HttpClientError>> {
     const token = await tokenStore.get();
-    if (!token) return Err({ type: 'network', message: 'No auth token available' });
-    return Ok({
-      ...ctx,
-      headers: { ...ctx.headers, Authorization: `Bearer ${token}` },
-    });
+    if (!token) return Err({ type: 'network', message: 'No auth token' });
+    return Ok({ ...ctx, headers: { ...ctx.headers, Authorization: `Bearer ${token}` } });
   },
 };
 
-const correlationIdStep: PipelineStep<HttpCtx, HttpClientError> = {
-  stepName: 'correlation-id',
+const correlationStep: PipelineStep<HttpCtx, HttpClientError> = {
+  stepName: 'inject-correlation-id',
   async handle(ctx): Promise<StepResult<HttpCtx, HttpClientError>> {
     return Ok({
       ...ctx,
-      headers: { ...ctx.headers, 'X-Correlation-ID': correlationStore.get() ?? uuid() },
+      headers: { ...ctx.headers, 'X-Correlation-ID': ctx.correlationId ?? crypto.randomUUID() },
     });
   },
 };
 
-const client = new HttpClient({
+const http = new HttpClient({
   baseURL: 'https://api.example.com',
-  steps:   [authStep, correlationIdStep],
+  steps:   [authStep, correlationStep],  // steps run in order
 });
 ```
 
-If any middleware step returns `Err`, the request is not sent and the error is returned immediately.
+If a step returns `Err`, the request is not sent — the error is returned immediately as a `fail` result.
+
+### `HttpCtx` — the mutable request context
+
+```typescript
+interface HttpCtx {
+  url:            string;
+  method:         string;
+  data?:          unknown;
+  headers:        Record<string, string>;
+  params?:        Record<string, unknown>;
+  timeout?:       number;
+  cancelKey?:     string;
+  correlationId?: string;
+}
+```
 
 ## Observability
 
 ```typescript
-const metrics = client.getMetrics();
+const metrics = http.getMetrics();
 // {
-//   requests:     142,   // total requests attempted
-//   success:      130,
-//   failed:        8,
-//   cancelled:     2,
-//   circuitOpen:   1,    // rejected before sending (circuit open)
-//   retried:      12,    // total retry attempts across all requests
+//   requests:    142,  // total calls attempted
+//   success:     130,  // 2xx responses
+//   failed:        8,  // any non-ok result
+//   cancelled:     2,  // cancelled via cancelRequest/cancelAll
+//   circuitOpen:   1,  // rejected by open circuit breaker (not sent)
+//   retried:      12,  // total retry attempts (not counting the initial call)
 // }
 
-const cbState = client.getCircuitBreakerState();
-// 'closed' | 'open' | 'half_open' | undefined (if circuit breaker not configured)
-
-const cbMetrics = client.getCircuitBreakerMetrics();
-// Full CircuitBreakerMetrics object — see @backendkit-labs/circuit-breaker
+// Returns undefined if circuitBreaker was not configured
+http.getCircuitBreakerState();    // CircuitBreakerState | undefined
+http.getCircuitBreakerMetrics();  // CircuitBreakerMetrics | undefined
 ```
+
+## `defineHttpClient` — Named Clients
+
+Use `defineHttpClient` to create typed injection tokens for multiple named clients:
+
+```typescript
+// tokens.ts
+import { defineHttpClient } from '@backendkit-labs/http-client';
+
+export const PaymentsApi  = defineHttpClient('payments-api');
+export const InventoryApi = defineHttpClient('inventory-api');
+```
+
+These tokens are used with the NestJS module below, and can also be used as keys in any manual DI container.
 
 ## NestJS Integration
 
-### Define client tokens
+### `HttpClientModule.forRoot()`
 
 ```typescript
-// http-client.tokens.ts
-import { defineHttpClient } from '@backendkit-labs/http-client';
-
-export const PAYMENTS_API  = defineHttpClient('payments-api');
-export const INVENTORY_API = defineHttpClient('inventory-api');
-```
-
-`defineHttpClient(name)` returns an injection token typed to `HttpClient`. The `name` is used in error messages and metrics.
-
-### Register with `HttpClientModule`
-
-```typescript
-// app.module.ts
 import { HttpClientModule } from '@backendkit-labs/http-client/nestjs';
+import { PaymentsApi, InventoryApi } from './tokens';
 
 @Module({
   imports: [
     HttpClientModule.forRoot({
       clients: [
         {
-          token:  PAYMENTS_API,
+          token:  PaymentsApi,
           config: {
             baseURL: 'https://payments.example.com',
             timeout: 15_000,
@@ -249,7 +332,7 @@ import { HttpClientModule } from '@backendkit-labs/http-client/nestjs';
           },
         },
         {
-          token:  INVENTORY_API,
+          token:  InventoryApi,
           config: {
             baseURL: 'https://inventory.example.com',
             timeout: 5_000,
@@ -263,78 +346,99 @@ import { HttpClientModule } from '@backendkit-labs/http-client/nestjs';
 export class AppModule {}
 ```
 
-### Inject and use
+`HttpClientModule` is a **global module** — clients registered in `AppModule` are available everywhere without re-importing.
+
+### `HttpClientModule.forRootAsync()` — config from `ConfigService`
 
 ```typescript
-// checkout.service.ts
+HttpClientModule.forRootAsync({
+  clients:    [PaymentsApi, InventoryApi],   // declare which tokens to register
+  imports:    [ConfigModule],
+  inject:     [ConfigService],
+  useFactory: (config: ConfigService): HttpClientModuleOptions => ({
+    clients: [
+      {
+        token:  PaymentsApi,
+        config: {
+          baseURL: config.get('PAYMENTS_API_URL'),
+          timeout: config.get<number>('PAYMENTS_TIMEOUT_MS'),
+        },
+      },
+      {
+        token:  InventoryApi,
+        config: { baseURL: config.get('INVENTORY_API_URL') },
+      },
+    ],
+  }),
+});
+```
+
+### `@InjectHttpClient(token)` — inject into services
+
+```typescript
+import { Injectable } from '@nestjs/common';
 import { InjectHttpClient } from '@backendkit-labs/http-client/nestjs';
+import type { HttpClient } from '@backendkit-labs/http-client';
+import { match } from '@backendkit-labs/result';
+import { PaymentsApi, InventoryApi } from './tokens';
 
 @Injectable()
 export class CheckoutService {
   constructor(
-    @InjectHttpClient(PAYMENTS_API)  private readonly payments: HttpClient,
-    @InjectHttpClient(INVENTORY_API) private readonly inventory: HttpClient,
+    @InjectHttpClient(PaymentsApi)  private readonly payments: HttpClient,
+    @InjectHttpClient(InventoryApi) private readonly inventory: HttpClient,
   ) {}
 
   async checkout(cart: Cart) {
-    const stockResult = await this.inventory.get<StockCheck>(`/stock/${cart.skuId}`);
-    if (!stockResult.ok) return stockResult; // propagate error
+    const stock = await this.inventory.get<StockCheck>(`/stock/${cart.skuId}`);
+    if (!stock.ok) return stock; // propagate inventory error upstream
 
-    if (stockResult.value.data.available < cart.quantity) {
-      return Err({ type: 'http', message: 'Insufficient stock', status: 409 });
+    if (stock.value.data.available < cart.quantity) {
+      return fail({ type: 'http' as const, message: 'Insufficient stock', status: 409 });
     }
 
     return this.payments.post<Order>('/orders', {
-      skuId:    cart.skuId,
-      quantity: cart.quantity,
-      userId:   cart.userId,
+      skuId: cart.skuId, quantity: cart.quantity, userId: cart.userId,
     });
   }
 }
 ```
 
-## TypeScript Configuration
+## Composition with `@backendkit-labs/result`
 
-### Modern bundler (`moduleResolution: bundler` or `node16`)
+Because every call already returns `Result`, it composes directly with the full toolkit:
 
-Subpath exports resolve automatically — no extra configuration needed.
+```typescript
+import { flatMapAsync, withTimeout } from '@backendkit-labs/result';
 
-```json
-{
-  "compilerOptions": {
-    "moduleResolution": "bundler"
-  }
-}
-```
+// Chain calls — second only fires if first succeeds
+const order = await flatMapAsync(
+  await http.get<User>(`/users/${userId}`),
+  (userRes) => http.post<Order>('/orders', { userId: userRes.data.id }),
+);
 
-### Legacy `node` moduleResolution
-
-Add a path alias for the NestJS subpath:
-
-```json
-{
-  "compilerOptions": {
-    "moduleResolution": "node",
-    "paths": {
-      "@backendkit-labs/http-client/nestjs": [
-        "./node_modules/@backendkit-labs/http-client/dist/nestjs/index"
-      ]
-    }
-  }
-}
+// Apply a hard deadline across all retries
+const report = await withTimeout(
+  () => http.get<Report>('/reports/heavy'),
+  30_000,
+  { type: 'timeout' as const, message: 'Report generation exceeded 30s SLA' },
+);
 ```
 
 ## Architecture
 
 ```
-@backendkit-labs/http-client              (core — peer dep: axios >=1.0.0)
-  HttpClient                              axios wrapper — Result-based methods
-  HttpClientError                         typed error union (http/network/timeout/...)
-  HttpResponse<T>                         typed response envelope
-  HttpCtx                                 pipeline middleware context type
-  defineHttpClient(name)                  typed injection token factory
+@backendkit-labs/http-client          (core — peer dep: axios)
+  HttpClient                          main class — all methods return Result<T, E>
+  CancelManager                       per-key and bulk request cancellation
+  defineHttpClient(name)              named token factory for DI
+  HttpClientToken                     typed injection token class
 
-@backendkit-labs/http-client/nestjs       (optional NestJS layer)
-  HttpClientModule                        NestJS module — .forRoot() registration
-  InjectHttpClient(token)                 parameter decorator for DI
+  HttpClientError                     discriminated union: http | network | timeout | circuit-open | cancelled
+  HttpResponse<T>                     { data, status, headers }
+  HttpCtx                             mutable context object passed through middleware steps
+
+@backendkit-labs/http-client/nestjs  (optional NestJS layer)
+  HttpClientModule                    global DynamicModule — forRoot() / forRootAsync()
+  @InjectHttpClient(token)            parameter decorator for constructor injection
 ```
