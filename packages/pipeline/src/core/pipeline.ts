@@ -1,14 +1,75 @@
 import type {
+  PipelineMode,
   PipelineOptions,
   PipelineRunResult,
   PipelineStep,
   PipelineStepFailure,
+  StepResult,
 } from './types.js';
 
 interface StepEntry<TContext, TError> {
   instance:   PipelineStep<TContext, TError>;
   name:       string;
   condition?: (ctx: TContext) => boolean;
+}
+
+interface ExecutionState<TContext, TError> {
+  readonly mode:          PipelineMode;
+  readonly start:         number;
+  readonly executedSteps: string[];
+  readonly failures:      PipelineStepFailure<TError>[];
+  ctx:                    TContext;
+}
+
+const VALID_MODES: readonly PipelineMode[] = ['stop-on-first', 'collect-all'];
+
+function normalizeMode(mode: unknown): PipelineMode {
+  if (mode === 'stop-on-first' || mode === 'collect-all') {
+    return mode;
+  }
+  throw new TypeError(
+    `Invalid pipeline mode "${String(mode)}". Expected one of: ${VALID_MODES.map(m => `"${m}"`).join(', ')}`,
+  );
+}
+
+function isStepResult<TContext, TError>(
+  value: unknown,
+): value is StepResult<TContext, TError> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'ok' in value &&
+    typeof (value as Record<string, unknown>).ok === 'boolean'
+  );
+}
+
+function buildErrorResult<TContext, TError>(
+  state: ExecutionState<TContext, TError>,
+  failedStep: string,
+  cause: TError,
+): PipelineRunResult<TContext, TError> {
+  return {
+    ok: false,
+    error: {
+      mode:          state.mode,
+      failedStep,
+      cause,
+      executedSteps: [...state.executedSteps],
+      durationMs:    Date.now() - state.start,
+      failures:      [...state.failures],
+    },
+  };
+}
+
+function buildSuccessResult<TContext, TError>(
+  state: ExecutionState<TContext, TError>,
+): PipelineRunResult<TContext, TError> {
+  return {
+    ok: true,
+    value:         state.ctx,
+    executedSteps: [...state.executedSteps],
+    durationMs:    Date.now() - state.start,
+  };
 }
 
 export class Pipeline<TContext, TError = unknown> {
@@ -37,65 +98,111 @@ export class Pipeline<TContext, TError = unknown> {
   }
 
   async run(initialCtx: TContext): Promise<PipelineRunResult<TContext, TError>> {
-    const start = Date.now();
-    const { mode = 'stop-on-first', onStep, onStepComplete, onError, onComplete } = this.options;
-    const executedSteps: string[]                      = [];
-    const failures:      PipelineStepFailure<TError>[] = [];
-    let   ctx = initialCtx;
+    const state: ExecutionState<TContext, TError> = {
+      mode:          normalizeMode(this.options.mode ?? 'stop-on-first'),
+      start:         Date.now(),
+      executedSteps: [],
+      failures:      [],
+      ctx:           initialCtx,
+    };
 
-    for (const { instance, name, condition } of this.entries) {
-      if (condition && !condition(ctx)) continue;
+    const { onStep, onStepComplete, onError, onComplete } = this.options;
 
-      try { await onStep?.(name, ctx); } catch { /* noop */ }
-      const stepStart  = Date.now();
-      const stepResult = await instance.handle(ctx);
-      const stepMs     = Date.now() - stepStart;
+    for (const entry of this.entries) {
+      const shouldContinue = await this.#executeEntry(entry, state, { onStep, onStepComplete, onError });
+      if (!shouldContinue) {
+        return buildErrorResult(state, state.failures[state.failures.length - 1].step, state.failures[state.failures.length - 1].cause);
+      }
+    }
 
-      if (!stepResult.ok) {
-        try { await onError?.(name, stepResult.error); } catch { /* noop */ }
-        failures.push({ step: name, cause: stepResult.error });
+    if (state.failures.length > 0) {
+      return buildErrorResult(state, state.failures[0].step, state.failures[0].cause);
+    }
 
-        if (mode === 'stop-on-first') {
-          return {
-            ok:    false,
-            error: {
-              mode,
-              failedStep:    name,
-              cause:         stepResult.error,
-              executedSteps: [...executedSteps],
-              durationMs:    Date.now() - start,
-              failures,
-            },
-          };
+    const durationMs = Date.now() - state.start;
+    try {
+      await onComplete?.(state.ctx, durationMs, {
+        executedSteps: [...state.executedSteps],
+        failures:      [...state.failures],
+      });
+    } catch { /* noop */ }
+
+    return buildSuccessResult(state);
+  }
+
+  async #executeEntry(
+    entry: StepEntry<TContext, TError>,
+    state: ExecutionState<TContext, TError>,
+    hooks: {
+      onStep?:         (stepName: string, ctx: TContext) => void | Promise<void>;
+      onStepComplete?: (stepName: string, ctx: TContext, durationMs: number) => void | Promise<void>;
+      onError?:        (stepName: string, error: TError) => void | Promise<void>;
+    },
+  ): Promise<boolean> {
+    const { instance, name, condition } = entry;
+    const { onStep, onStepComplete, onError } = hooks;
+
+    // Evaluate condition — treat thrown exceptions as pipeline failures
+    if (condition) {
+      let shouldRun: boolean;
+      try {
+        shouldRun = condition(state.ctx);
+      } catch (cause) {
+        const error = cause instanceof Error ? cause : new Error(String(cause));
+        state.failures.push({ step: name, cause: error as unknown as TError });
+
+        if (state.mode === 'stop-on-first') {
+          return false; // signal caller to stop
         }
 
-        // collect-all: record the failed step and continue
-        executedSteps.push(name);
-        continue;
+        state.executedSteps.push(name);
+        return true; // continue to next entry
       }
 
-      ctx = stepResult.value;
-      executedSteps.push(name);
-      try { await onStepComplete?.(name, ctx, stepMs); } catch { /* noop */ }
+      if (!shouldRun) return true; // skip step, continue
     }
 
-    if (failures.length > 0) {
-      return {
-        ok:    false,
-        error: {
-          mode,
-          failedStep:    failures[0].step,
-          cause:         failures[0].cause,
-          executedSteps: [...executedSteps],
-          durationMs:    Date.now() - start,
-          failures,
-        },
-      };
+    try { await onStep?.(name, state.ctx); } catch { /* noop */ }
+
+    const stepStart = Date.now();
+    const rawResult = await instance.handle(state.ctx);
+    const stepMs    = Date.now() - stepStart;
+
+    // Validate step return value shape
+    if (!isStepResult<TContext, TError>(rawResult)) {
+      const error = new TypeError(
+        `Step "${name}" returned an invalid value. Expected a StepResult (object with "ok" boolean), got ${typeof rawResult}`,
+      );
+      try { await onError?.(name, error as unknown as TError); } catch { /* noop */ }
+      state.failures.push({ step: name, cause: error as unknown as TError });
+
+      if (state.mode === 'stop-on-first') {
+        return false;
+      }
+
+      state.executedSteps.push(name);
+      return true;
     }
 
-    const durationMs = Date.now() - start;
-    try { await onComplete?.(ctx, durationMs); } catch { /* noop */ }
-    return { ok: true, value: ctx, executedSteps: [...executedSteps], durationMs };
+    const stepResult = rawResult;
+
+    if (!stepResult.ok) {
+      try { await onError?.(name, stepResult.error); } catch { /* noop */ }
+      state.failures.push({ step: name, cause: stepResult.error });
+
+      if (state.mode === 'stop-on-first') {
+        return false;
+      }
+
+      state.executedSteps.push(name);
+      return true;
+    }
+
+    state.ctx = stepResult.value;
+    state.executedSteps.push(name);
+    try { await onStepComplete?.(name, state.ctx, stepMs); } catch { /* noop */ }
+
+    return true;
   }
 }
 

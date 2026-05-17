@@ -4,9 +4,9 @@ import { CorrelationIdService }     from '../../src/correlation/correlation.serv
 describe('CorrelationIdService', () => {
   const svc = new CorrelationIdService();
 
-  it('returns a UUID when called outside any context', () => {
+  it('returns "no-context" when called outside any context', () => {
     const id = svc.get();
-    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(id).toBe('no-context');
   });
 
   it('returns undefined outside context via getOrUndefined', () => {
@@ -59,5 +59,22 @@ describe('CorrelationIdService', () => {
   it('returns undefined for trace context when OTel is not installed', () => {
     // OTel is not available in test env
     expect(svc.getTraceContext()).toBeUndefined();
+  });
+
+  // ── F1: get() returns 'no-context' (not a random UUID) ──────────
+
+  it('returns "no-context" string — not a UUID — outside context', () => {
+    const id = svc.get();
+    expect(id).toBe('no-context');
+    // Verify it is NOT a UUID-like string
+    expect(id).not.toMatch(/^[a-f0-9-]{36}$/i);
+  });
+
+  it('returns "no-context" after context ends', () => {
+    svc.run('temp-id', () => {
+      expect(svc.get()).toBe('temp-id');
+    });
+    // After run() completes, context is restored
+    expect(svc.get()).toBe('no-context');
   });
 });

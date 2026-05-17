@@ -65,9 +65,10 @@ export class LoggerService implements NestLoggerService {
   }
 
   /** Log with additional arbitrary metadata. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  logWithMeta(level: string, message: string, meta: Record<string, any>): void {
-    this.winston.log(level, message, { ...this.buildMeta(), ...meta });
+  logWithMeta(level: string, message: string, meta: Record<string, unknown>): void {
+    const validLevels = ['error', 'warn', 'info', 'debug', 'verbose'];
+    const safeLevel = validLevels.includes(level) ? level : 'info';
+    this.winston.log(safeLevel, message, { ...this.buildMeta(), ...meta });
   }
 
   private buildMeta(context?: string): Record<string, unknown> {

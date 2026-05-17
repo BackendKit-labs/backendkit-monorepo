@@ -5,10 +5,13 @@ import {
   ExecutionContext,
   CallHandler,
   ServiceUnavailableException,
+  RequestTimeoutException,
 } from '@nestjs/common';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, TimeoutError, timeout } from 'rxjs';
 import { CircuitBreakerRegistry, isHttpServerError } from '../circuit-breaker/circuit-breaker.registry.js';
 import { CircuitBreakerOpenError } from '../circuit-breaker/circuit-breaker.js';
+
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 @Injectable()
 export class CircuitBreakerInterceptor implements NestInterceptor {
@@ -24,13 +27,20 @@ export class CircuitBreakerInterceptor implements NestInterceptor {
     });
 
     try {
-      const result = await cb.execute(() => firstValueFrom(next.handle()));
+      const result = await cb.execute(() =>
+        firstValueFrom(
+          next.handle().pipe(timeout(DEFAULT_TIMEOUT_MS)),
+        ),
+      );
       return new Observable(sub => { sub.next(result); sub.complete(); });
     } catch (error) {
       if (error instanceof CircuitBreakerOpenError) {
         throw new ServiceUnavailableException(
-          'Service temporarily unavailable — circuit breaker is open',
+          'Service temporarily unavailable -- circuit breaker is open',
         );
+      }
+      if (error instanceof TimeoutError) {
+        throw new RequestTimeoutException('Handler timed out');
       }
       throw error;
     }

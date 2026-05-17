@@ -1,3 +1,4 @@
+import { Logger }                                      from '@nestjs/common';
 import TransportStream, { TransportStreamOptions }    from 'winston-transport';
 import axios, { AxiosInstance }                        from 'axios';
 import * as http                                       from 'node:http';
@@ -60,9 +61,14 @@ const TRANSPORT_CB_DEFAULTS: Omit<CircuitBreakerConfig, 'name' | 'isFailure'> = 
 export class WinstonHttpTransport extends TransportStream {
   private readonly client:       AxiosInstance;
   private readonly cb:           CircuitBreaker;
-  private readonly buffer:       LogEntry[] = [];
+  private buffer:       LogEntry[] = [];
   private readonly batchSize:    number;
   private readonly maxBufferSize: number;
+  private readonly maxEntryAgeMs = 300_000; // 5 min
+  private readonly fallbackLogger = new Logger(WinstonHttpTransport.name);
+  private readonly retryCounts  = new WeakMap<LogEntry, number>();
+  private readonly entryTimes   = new WeakMap<LogEntry, number>();
+  private readonly maxRetries = 5;
   private readonly flushTimer:   ReturnType<typeof setInterval>;
 
   constructor(opts: WinstonHttpTransportOptions) {
@@ -86,11 +92,25 @@ export class WinstonHttpTransport extends TransportStream {
       },
     });
 
+    // Redact sensitive headers from error output
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.config?.headers?.Authorization) {
+          error.config.headers.Authorization = 'Bearer ***REDACTED***';
+        }
+        return Promise.reject(error);
+      },
+    );
+
     this.cb = new CircuitBreaker({
       ...TRANSPORT_CB_DEFAULTS,
       ...opts.circuitBreaker,
       name:      'WinstonHttpTransport',
-      isFailure: () => true,
+      isFailure: (error: unknown) => {
+        const status = (error as { response?: { status?: number } }).response?.status;
+        return status !== undefined ? status >= 400 : true;
+      },
     });
 
     this.flushTimer = setInterval(
@@ -102,10 +122,12 @@ export class WinstonHttpTransport extends TransportStream {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override log(info: any, callback: () => void): void {
-    setImmediate(() => this.emit('logged', info));
+    this.emit('logged', info);
 
     if (this.buffer.length < this.maxBufferSize) {
-      this.buffer.push(info as LogEntry);
+      const entry = { ...info } as LogEntry;
+      this.entryTimes.set(entry, Date.now());
+      this.buffer.push(entry);
     }
     // silently drop when full — buffer-full warn would cause infinite recursion
 
@@ -125,19 +147,29 @@ export class WinstonHttpTransport extends TransportStream {
   private async flush(): Promise<void> {
     if (this.buffer.length === 0) return;
 
+    // Discard entries older than maxEntryAgeMs
+    const now = Date.now();
+    this.buffer = this.buffer.filter(
+      (e) => now - (this.entryTimes.get(e) ?? now) < this.maxEntryAgeMs,
+    );
+
     const batch = this.buffer.splice(0, this.batchSize);
 
     try {
       await this.cb.execute(() => this.client.post('', batch));
     } catch (err) {
-      // Re-queue the batch (whether CB was open or the request failed)
+      // Re-queue with retry limit to prevent infinite re-enqueue
+      const retryable = batch.filter(entry => {
+        const retries = this.retryCounts.get(entry) ?? 0;
+        if (retries >= this.maxRetries) return false;
+        this.retryCounts.set(entry, retries + 1);
+        return true;
+      });
       const room = this.maxBufferSize - this.buffer.length;
-      if (room > 0) this.buffer.unshift(...batch.slice(0, room));
+      if (room > 0) this.buffer.unshift(...retryable.slice(0, room));
 
       if (!(err instanceof CircuitBreakerOpenError)) {
-        // Network errors are worth logging; CB-open state was already surfaced
-        // via onStateChange in the CircuitBreaker itself
-        console.error(`[WinstonHttpTransport] flush failed — re-queued ${batch.length} entries`, err);
+        this.fallbackLogger.warn(`flush failed — re-queued ${retryable.length}/${batch.length} entries`, (err as Error).message);
       }
     }
   }

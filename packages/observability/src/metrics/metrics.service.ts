@@ -27,8 +27,11 @@ export class MetricsService implements OnModuleDestroy {
   private readonly client:        AxiosInstance | null = null;
   private readonly cb:            CircuitBreaker | null = null;
   private readonly logger =       new Logger(MetricsService.name);
-  private readonly buffer:        MetricEvent[] = [];
+  private buffer:        MetricEvent[] = [];
   private readonly maxBufferSize: number = 5_000;
+  private readonly maxEntryAgeMs = 300_000; // 5 min
+  private readonly retryCounts = new WeakMap<MetricEvent, number>();
+  private readonly maxRetries = 5;
   private readonly flushTimer:    ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -61,7 +64,10 @@ export class MetricsService implements OnModuleDestroy {
       ...TRANSPORT_CB_DEFAULTS,
       ...m.circuitBreaker,
       name:      'MetricsService',
-      isFailure: () => true,
+      isFailure: (error: unknown) => {
+        const status = (error as { response?: { status?: number } }).response?.status;
+        return status !== undefined ? status >= 400 : true;
+      },
       onStateChange: (from, to, metrics) => {
         if (to === CircuitBreakerState.OPEN) {
           this.logger.warn(
@@ -113,25 +119,41 @@ export class MetricsService implements OnModuleDestroy {
   /** Flush on graceful shutdown. */
   async onModuleDestroy(): Promise<void> {
     if (this.flushTimer) clearInterval(this.flushTimer);
-    await this.flush();
+    try {
+      await this.flush();
+    } catch {
+      // Flush already handles errors internally; nothing to do here
+    }
   }
 
   private async flush(): Promise<void> {
     if (!this.client || this.buffer.length === 0) return;
+
+    // Discard entries older than maxEntryAgeMs
+    const now = Date.now();
+    this.buffer = this.buffer.filter(
+      (e) => now - new Date(e.timestamp).getTime() < this.maxEntryAgeMs,
+    );
 
     const batch = this.buffer.splice(0, 500);
 
     try {
       await this.cb!.execute(() => this.client!.post('', batch));
     } catch (err) {
-      // Re-queue in both cases (CB open or network error)
+      // Re-queue with retry limit to prevent infinite re-enqueue
+      const retryable = batch.filter(entry => {
+        const retries = this.retryCounts.get(entry) ?? 0;
+        if (retries >= this.maxRetries) return false;
+        this.retryCounts.set(entry, retries + 1);
+        return true;
+      });
       const room = this.maxBufferSize - this.buffer.length;
-      if (room > 0) this.buffer.unshift(...batch.slice(0, room));
+      if (room > 0) this.buffer.unshift(...retryable.slice(0, room));
 
       if (!(err instanceof CircuitBreakerOpenError)) {
         this.logger.warn(
-          `[MetricsService] flush failed — re-queueing ${batch.length} events`,
-          err,
+          `[MetricsService] flush failed — re-queueing ${retryable.length}/${batch.length} events`,
+          (err as Error).message,
         );
       }
     }

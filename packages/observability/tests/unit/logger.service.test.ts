@@ -85,4 +85,51 @@ describe('LoggerService', () => {
       service: 'test-service',
     }));
   });
+
+  // ── F3: logWithMeta level validation against whitelist ───────────
+
+  it('logWithMeta accepts valid level "error"', () => {
+    svc.logWithMeta('error', 'err msg', { errCode: 1 });
+    expect(winstonMock.log).toHaveBeenCalledWith('error', 'err msg', expect.any(Object));
+  });
+
+  it('logWithMeta accepts valid level "warn"', () => {
+    svc.logWithMeta('warn', 'warn msg', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('warn', 'warn msg', expect.any(Object));
+  });
+
+  it('logWithMeta accepts valid level "info"', () => {
+    svc.logWithMeta('info', 'info msg', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('info', 'info msg', expect.any(Object));
+  });
+
+  it('logWithMeta accepts valid level "debug"', () => {
+    svc.logWithMeta('debug', 'debug msg', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('debug', 'debug msg', expect.any(Object));
+  });
+
+  it('logWithMeta accepts valid level "verbose"', () => {
+    svc.logWithMeta('verbose', 'verbose msg', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('verbose', 'verbose msg', expect.any(Object));
+  });
+
+  it('logWithMeta falls back to "info" for invalid level', () => {
+    svc.logWithMeta('trace', 'trace msg', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('info', 'trace msg', expect.any(Object));
+  });
+
+  it('logWithMeta falls back to "info" for empty level', () => {
+    svc.logWithMeta('', 'empty level', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('info', 'empty level', expect.any(Object));
+  });
+
+  it('logWithMeta falls back to "info" for uppercase level', () => {
+    svc.logWithMeta('ERROR', 'uppercase', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('info', 'uppercase', expect.any(Object));
+  });
+
+  it('logWithMeta falls back to "info" for unknown level string', () => {
+    svc.logWithMeta('silly', 'silly msg', {});
+    expect(winstonMock.log).toHaveBeenCalledWith('info', 'silly msg', expect.any(Object));
+  });
 });

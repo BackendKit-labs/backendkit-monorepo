@@ -7,10 +7,10 @@ export enum CircuitBreakerState {
 export interface CircuitBreakerConfig {
   name: string;
 
-  /** % of calls in the sliding window that must fail to open the circuit (0–100). Default: 50 */
+  /** % of calls in the sliding window that must fail to open the circuit (0-100). Default: 50 */
   failureThreshold: number;
 
-  /** % of calls in the sliding window that are slow to open the circuit (0–100). Default: 100 (disabled) */
+  /** % of calls in the sliding window that are slow to open the circuit (0-100). Default: 100 (disabled) */
   slowCallThreshold: number;
 
   /** Duration in ms above which a successful call is considered slow. Default: 60000 */
@@ -32,8 +32,8 @@ export interface CircuitBreakerConfig {
    * Classifies whether a thrown error counts as an infrastructure failure
    * (opens the circuit) or a business error (transparent pass-through).
    *
-   * Return `true`  → infrastructure error — counted against the circuit.
-   * Return `false` → business error — the circuit treats the call as a success.
+   * Return `true`  -> infrastructure error -- counted against the circuit.
+   * Return `false` -> business error -- the circuit treats the call as a success.
    *
    * Default: all errors count as infrastructure failures.
    *
@@ -49,7 +49,7 @@ export interface CircuitBreakerConfig {
    *
    * @example
    * onStateChange: (from, to, metrics) => {
-   *   logger.warn(`Circuit ${metrics.name}: ${from} → ${to}`);
+   *   logger.warn(`Circuit ${metrics.name}: ${from} -> ${to}`);
    *   if (to === CircuitBreakerState.OPEN) alerting.trigger(metrics);
    * }
    */
@@ -75,7 +75,7 @@ export interface CircuitBreakerMetrics {
 
 export class CircuitBreakerOpenError extends Error {
   constructor(name: string) {
-    super(`Circuit breaker '${name}' is OPEN — calls not permitted`);
+    super(`Circuit breaker '${name}' is OPEN -- calls not permitted`);
     this.name = 'CircuitBreakerOpenError';
   }
 }
@@ -93,6 +93,34 @@ export const DEFAULT_CIRCUIT_BREAKER_CONFIG: Omit<CircuitBreakerConfig, 'name'> 
   isFailure: () => true,
 };
 
+/**
+ * Simple mutex for serializing async access to shared state.
+ * Uses a queue of resolvers to ensure FIFO ordering.
+ */
+class AsyncMutex {
+  private locked = false;
+  private queue: Array<() => void> = [];
+
+  async acquire(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift()!;
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
 export class CircuitBreaker {
   private state: CircuitBreakerState = CircuitBreakerState.CLOSED;
   private window: CallOutcome[] = [];
@@ -106,37 +134,40 @@ export class CircuitBreaker {
   private slowCalls = 0;
   private notPermittedCalls = 0;
 
+  private readonly mutex = new AsyncMutex();
+
   constructor(private config: CircuitBreakerConfig) {
     this.validateConfig(config);
   }
 
   updateConfig(partial: Partial<Omit<CircuitBreakerConfig, 'name'>>): void {
-    const merged = { ...this.config, ...partial };
+    // Prevent overwriting 'name' at runtime
+    const merged = { ...this.config, ...partial, name: this.config.name };
     this.validateConfig(merged);
     this.config = merged;
   }
 
   private validateConfig(config: CircuitBreakerConfig): void {
     if (config.failureThreshold < 0 || config.failureThreshold > 100) {
-      throw new RangeError(`CircuitBreaker '${config.name}': failureThreshold must be 0–100, got ${config.failureThreshold}`);
+      throw new RangeError(`CircuitBreaker '${config.name}': failureThreshold must be 0-100, got ${config.failureThreshold}`);
     }
     if (config.slowCallThreshold < 0 || config.slowCallThreshold > 100) {
-      throw new RangeError(`CircuitBreaker '${config.name}': slowCallThreshold must be 0–100, got ${config.slowCallThreshold}`);
+      throw new RangeError(`CircuitBreaker '${config.name}': slowCallThreshold must be 0-100, got ${config.slowCallThreshold}`);
     }
     if (config.slidingWindowSize < 1) {
-      throw new RangeError(`CircuitBreaker '${config.name}': slidingWindowSize must be ≥ 1, got ${config.slidingWindowSize}`);
+      throw new RangeError(`CircuitBreaker '${config.name}': slidingWindowSize must be >= 1, got ${config.slidingWindowSize}`);
     }
     if (config.minimumCalls < 1) {
-      throw new RangeError(`CircuitBreaker '${config.name}': minimumCalls must be ≥ 1, got ${config.minimumCalls}`);
+      throw new RangeError(`CircuitBreaker '${config.name}': minimumCalls must be >= 1, got ${config.minimumCalls}`);
     }
     if (config.halfOpenMaxCalls < 1) {
-      throw new RangeError(`CircuitBreaker '${config.name}': halfOpenMaxCalls must be ≥ 1, got ${config.halfOpenMaxCalls}`);
+      throw new RangeError(`CircuitBreaker '${config.name}': halfOpenMaxCalls must be >= 1, got ${config.halfOpenMaxCalls}`);
     }
     if (config.openTimeoutMs < 1) {
-      throw new RangeError(`CircuitBreaker '${config.name}': openTimeoutMs must be ≥ 1, got ${config.openTimeoutMs}`);
+      throw new RangeError(`CircuitBreaker '${config.name}': openTimeoutMs must be >= 1, got ${config.openTimeoutMs}`);
     }
     if (config.slowCallDurationMs < 1) {
-      throw new RangeError(`CircuitBreaker '${config.name}': slowCallDurationMs must be ≥ 1, got ${config.slowCallDurationMs}`);
+      throw new RangeError(`CircuitBreaker '${config.name}': slowCallDurationMs must be >= 1, got ${config.slowCallDurationMs}`);
     }
   }
 
@@ -154,35 +185,51 @@ export class CircuitBreaker {
    * const data = await cb.execute(
    *   () => fetchFromApi(id),
    *   (err) => err instanceof CircuitBreakerOpenError
-   *     ? cache.get(id)          // circuit open  → serve cache
-   *     : defaultResponse(id),   // infra failure → safe default
+   *     ? cache.get(id)          // circuit open  -> serve cache
+   *     : defaultResponse(id),   // infra failure -> safe default
    * );
    */
   async execute<T>(
     task: () => Promise<T>,
     fallback?: (error: unknown) => T | Promise<T>,
   ): Promise<T> {
-    if (!this.canAttempt()) {
-      this.notPermittedCalls++;
-      const openError = new CircuitBreakerOpenError(this.config.name);
-      if (fallback) return fallback(openError);
-      throw openError;
+    await this.mutex.acquire();
+    try {
+      if (!this.canAttempt()) {
+        this.notPermittedCalls++;
+        const openError = new CircuitBreakerOpenError(this.config.name);
+        if (fallback) return fallback(openError);
+        throw openError;
+      }
+
+      if (this.state === CircuitBreakerState.HALF_OPEN) {
+        this.halfOpenCalls++;
+      }
+
+      this.totalCalls++;
+    } finally {
+      this.mutex.release();
     }
 
-    if (this.state === CircuitBreakerState.HALF_OPEN) {
-      this.halfOpenCalls++;
-    }
-
-    this.totalCalls++;
     const startTime = Date.now();
 
     try {
       const result = await task();
-      this.onSuccess(Date.now() - startTime);
+      await this.mutex.acquire();
+      try {
+        this.onSuccess(Date.now() - startTime);
+      } finally {
+        this.mutex.release();
+      }
       return result;
     } catch (error: unknown) {
       const isInfrastructure = this.config.isFailure(error);
-      this.onError(error);
+      await this.mutex.acquire();
+      try {
+        this.onError(error);
+      } finally {
+        this.mutex.release();
+      }
 
       if (fallback && isInfrastructure) return fallback(error);
       throw error;
@@ -218,7 +265,7 @@ export class CircuitBreaker {
         this.transitionTo(CircuitBreakerState.OPEN);
       }
     } else {
-      // Business error — transparent to the circuit breaker
+      // Business error -- transparent to the circuit breaker
       this.successfulCalls++;
       this.record('success');
     }
@@ -282,7 +329,14 @@ export class CircuitBreaker {
       this.window            = [];
     }
 
-    this.config.onStateChange?.(prev, next, this.getMetrics());
+    // Wrap onStateChange in try-catch so a faulty callback never breaks the CB
+    if (this.config.onStateChange) {
+      try {
+        this.config.onStateChange(prev, next, this.getMetrics());
+      } catch {
+        // Swallow -- callback errors must not affect circuit breaker state
+      }
+    }
   }
 
   canAttempt(): boolean {

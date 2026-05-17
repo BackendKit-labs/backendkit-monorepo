@@ -2,6 +2,13 @@ import { Injectable, Inject, Logger, OnModuleDestroy } from '@nestjs/common';
 import { CircuitBreakerRegistry } from '../circuit-breaker/circuit-breaker.registry.js';
 import { CircuitBreakerMetrics, CircuitBreakerState } from '../circuit-breaker/circuit-breaker.js';
 
+/**
+ * Sanitizes a string for safe logging -- prevents log injection via newlines.
+ */
+function sanitize(value: string): string {
+  return value.replace(/[\n\r]/g, '_');
+}
+
 @Injectable()
 export class CircuitBreakerService implements OnModuleDestroy {
   private readonly logger = new Logger(CircuitBreakerService.name);
@@ -46,7 +53,7 @@ export class CircuitBreakerService implements OnModuleDestroy {
         this.logger.warn(
           `OPEN circuit breakers: ${openCircuits.length}`,
           openCircuits.map(m => ({
-            name:        m.name,
+            name:        sanitize(m.name),
             failureRate: `${m.failureRate}%`,
             notPermitted: m.notPermittedCalls,
           })),
@@ -54,7 +61,7 @@ export class CircuitBreakerService implements OnModuleDestroy {
       }
       if (halfOpenCircuits.length > 0) {
         this.logger.log(
-          `HALF_OPEN circuit breakers probing: ${halfOpenCircuits.map(m => m.name).join(', ')}`,
+          `HALF_OPEN circuit breakers probing: ${halfOpenCircuits.map(m => sanitize(m.name)).join(', ')}`,
         );
       }
     }, 60_000);

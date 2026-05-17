@@ -180,7 +180,14 @@ describe('hooks', () => {
 
     await pipeline<Ctx, TestErr>({ onComplete }).pipe(pass('A')).run(init);
 
-    expect(onComplete).toHaveBeenCalledWith(expect.any(Object), expect.any(Number));
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Number),
+      expect.objectContaining({
+        executedSteps: ['A'],
+        failures: [],
+      }),
+    );
   });
 
   it('does not call onComplete when the pipeline fails', async () => {
@@ -275,5 +282,187 @@ describe('edge cases', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.failedStep).toBe('MyCustomName');
+  });
+});
+
+// ── mode validation (H-01) ────────────────────────────────────────────────────
+
+describe('mode validation', () => {
+  it('throws TypeError for invalid mode string', async () => {
+    // @ts-expect-error — testing runtime guard for invalid mode
+    const p = () => pipeline<Ctx, TestErr>({ mode: 'stop-all' }).pipe(pass('A')).run(init);
+    await expect(p()).rejects.toThrow(TypeError);
+    await expect(p()).rejects.toThrow(/Invalid pipeline mode/);
+  });
+
+  it('throws TypeError for non-string mode', async () => {
+    // @ts-expect-error — testing runtime guard for non-string mode
+    const p = () => pipeline<Ctx, TestErr>({ mode: 123 }).pipe(pass('A')).run(init);
+    await expect(p()).rejects.toThrow(TypeError);
+    await expect(p()).rejects.toThrow(/Invalid pipeline mode/);
+  });
+
+  it('accepts stop-on-first without error', async () => {
+    const result = await pipeline<Ctx, TestErr>({ mode: 'stop-on-first' }).pipe(pass('A')).run(init);
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts collect-all without error', async () => {
+    const result = await pipeline<Ctx, TestErr>({ mode: 'collect-all' }).pipe(pass('A')).run(init);
+    expect(result.ok).toBe(true);
+  });
+});
+
+// ── condition exceptions (H-02) ───────────────────────────────────────────────
+
+describe('condition exceptions', () => {
+  it('condition that throws is treated as failure in stop-on-first', async () => {
+    const result = await pipeline<Ctx, TestErr>()
+      .pipe(pass('A'))
+      .pipeIf(() => { throw new Error('condition exploded'); }, pass('B'))
+      .pipe(pass('C'))
+      .run(init);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.failedStep).toBe('B');
+    expect(result.error.cause).toBeInstanceOf(Error);
+    expect((result.error.cause as Error).message).toBe('condition exploded');
+    expect(result.error.executedSteps).toEqual(['A']);
+  });
+
+  it('condition that throws is treated as failure in collect-all and continues', async () => {
+    const result = await pipeline<Ctx, TestErr>({ mode: 'collect-all' })
+      .pipe(pass('A'))
+      .pipeIf(() => { throw new Error('condition exploded'); }, pass('B'))
+      .pipe(pass('C'))
+      .run(init);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.failures).toHaveLength(1);
+    expect(result.error.failures[0].step).toBe('B');
+    expect(result.error.executedSteps).toEqual(['A', 'B', 'C']);
+  });
+});
+
+// ── invalid step result (H-05) ────────────────────────────────────────────────
+
+describe('invalid step result', () => {
+  it('step returning undefined is treated as failure', async () => {
+    const step: PipelineStep<Ctx, TestErr> = {
+      stepName: 'BadStep',
+      async handle() { return undefined as unknown as StepResult<Ctx, TestErr>; },
+    };
+
+    const result = await pipeline<Ctx, TestErr>().pipe(step).run(init);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.failedStep).toBe('BadStep');
+    expect(result.error.cause).toBeInstanceOf(TypeError);
+    expect((result.error.cause as Error).message).toMatch(/invalid value/i);
+  });
+
+  it('step returning null is treated as failure', async () => {
+    const step: PipelineStep<Ctx, TestErr> = {
+      stepName: 'NullStep',
+      async handle() { return null as unknown as StepResult<Ctx, TestErr>; },
+    };
+
+    const result = await pipeline<Ctx, TestErr>().pipe(step).run(init);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.failedStep).toBe('NullStep');
+    expect(result.error.cause).toBeInstanceOf(TypeError);
+  });
+
+  it('step returning object without ok is treated as failure', async () => {
+    const step: PipelineStep<Ctx, TestErr> = {
+      stepName: 'NoOkStep',
+      async handle() { return { value: 42 } as unknown as StepResult<Ctx, TestErr>; },
+    };
+
+    const result = await pipeline<Ctx, TestErr>().pipe(step).run(init);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.failedStep).toBe('NoOkStep');
+    expect(result.error.cause).toBeInstanceOf(TypeError);
+  });
+});
+
+// ── context mutation (convention, not enforced) ───────────────────────────────
+
+describe('context mutation (convention, not enforced)', () => {
+  it('QA-M-01: mutating ctx in-place is visible to onStepComplete hook', async () => {
+    const onStepComplete = vi.fn();
+
+    await pipeline<Ctx, TestErr>({ onStepComplete })
+      .pipe({
+        stepName: 'Mutator',
+        async handle(ctx: Ctx): Promise<StepResult<Ctx, TestErr>> {
+          ctx.value = 99; // in-place mutation — not recommended but works
+          return Ok(ctx);
+        },
+      })
+      .run(init);
+
+    expect(onStepComplete).toHaveBeenCalledTimes(1);
+    const ctxArg = onStepComplete.mock.calls[0][1] as Ctx;
+    expect(ctxArg.value).toBe(99);
+  });
+
+  it('QA-M-01: mutating ctx in-place is visible to pipeIf condition of next step', async () => {
+    const condition = vi.fn((ctx: Ctx) => ctx.value === 99);
+
+    await pipeline<Ctx, TestErr>()
+      .pipe({
+        stepName: 'Mutator',
+        async handle(ctx: Ctx): Promise<StepResult<Ctx, TestErr>> {
+          ctx.value = 99; // in-place mutation — not recommended but works
+          return Ok(ctx);
+        },
+      })
+      .pipeIf(condition, pass('B'))
+      .run(init);
+
+    expect(condition).toHaveBeenCalledWith(expect.objectContaining({ value: 99 }));
+    expect(condition).toHaveReturnedWith(true);
+  });
+
+  it('QA-L-04: pipeline accepts both immutable (recommended) and mutable (works but not recommended) patterns', async () => {
+    // Immutable pattern — recommended
+    const immutableResult = await pipeline<Ctx, TestErr>()
+      .pipe({
+        stepName: 'Immutable',
+        async handle(ctx: Ctx): Promise<StepResult<Ctx, TestErr>> {
+          return Ok({ ...ctx, value: 42, log: [...ctx.log, 'immutable'] });
+        },
+      })
+      .run(init);
+
+    expect(immutableResult.ok).toBe(true);
+    if (!immutableResult.ok) return;
+    expect(immutableResult.value.value).toBe(42);
+    expect(immutableResult.value.log).toEqual(['immutable']);
+
+    // Mutable pattern — works but not recommended, no runtime guard prevents it
+    const mutableResult = await pipeline<Ctx, TestErr>()
+      .pipe({
+        stepName: 'Mutable',
+        async handle(ctx: Ctx): Promise<StepResult<Ctx, TestErr>> {
+          ctx.value = 7;   // in-place mutation
+          ctx.log.push('mutable');
+          return Ok(ctx);
+        },
+      })
+      .run(init);
+
+    expect(mutableResult.ok).toBe(true);
+    if (!mutableResult.ok) return;
+    expect(mutableResult.value.value).toBe(7);
+    expect(mutableResult.value.log).toEqual(['mutable']);
   });
 });

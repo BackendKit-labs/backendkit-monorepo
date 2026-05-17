@@ -82,4 +82,48 @@ describe('AllExceptionsFilter', () => {
     filter.catch(new Error('logged'), host as never);
     expect(logger.error).toHaveBeenCalled();
   });
+
+  // ── L2: mapped.message sanitized (supports arrays from validation pipe) ──
+
+  it('joins array message from validation pipe into string', () => {
+    const body = { message: ['name must be a string', 'age must be positive'] };
+    const host = makeHost(statusFn);
+    filter.catch(new HttpException(body, HttpStatus.BAD_REQUEST), host as never);
+
+    expect(statusFn).toHaveBeenCalledWith(expect.objectContaining({
+      message: 'name must be a string; age must be positive',
+    }));
+  });
+
+  it('converts non-string message to string', () => {
+    const body = { message: 42 };
+    const host = makeHost(statusFn);
+    filter.catch(new HttpException(body, HttpStatus.BAD_REQUEST), host as never);
+
+    expect(statusFn).toHaveBeenCalledWith(expect.objectContaining({
+      message: '42',
+    }));
+  });
+
+  it('handles string body directly', () => {
+    const host = makeHost(statusFn);
+    filter.catch(new HttpException('simple error', HttpStatus.BAD_REQUEST), host as never);
+
+    expect(statusFn).toHaveBeenCalledWith(expect.objectContaining({
+      message: 'simple error',
+    }));
+  });
+
+  it('handles HttpException with missing message field', () => {
+    // When HttpException receives an object body without a `message` field,
+    // NestJS uses the exception's own message ("Http Exception").
+    // The filter then falls back to exception.message when body.message is absent.
+    const body = { statusCode: 400, error: 'Bad Request' };
+    const host = makeHost(statusFn);
+    filter.catch(new HttpException(body, HttpStatus.BAD_REQUEST), host as never);
+
+    expect(statusFn).toHaveBeenCalledWith(expect.objectContaining({
+      message: 'Http Exception',
+    }));
+  });
 });
