@@ -1,4 +1,3 @@
-import { ok } from '@backendkit-labs/result';
 import type { Result } from '@backendkit-labs/result';
 import { EndpointPattern, TunableConfig, LearningCycleEvent } from './types.js';
 import { LearningError } from './errors.js';
