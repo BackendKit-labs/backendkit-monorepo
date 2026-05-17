@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { CircuitBreakerService } from '@backendkit-labs/circuit-breaker/nestjs';
 import { BulkheadService } from '@backendkit-labs/bulkhead/nestjs';
 import { LoggerService } from '@backendkit-labs/observability';
+import { AUTO_LEARNING_INSTANCE } from '@backendkit-labs/auto-learning/nestjs';
+import { AutoLearningCore } from '@backendkit-labs/auto-learning';
 
 @Injectable()
 export class HealthService {
@@ -9,6 +11,8 @@ export class HealthService {
     private readonly circuitBreakerService: CircuitBreakerService,
     private readonly bulkheadService: BulkheadService,
     private readonly logger: LoggerService,
+    @Inject(AUTO_LEARNING_INSTANCE)
+    private readonly autoLearning: AutoLearningCore,
   ) {}
 
   getHealth() {
@@ -40,5 +44,12 @@ export class HealthService {
     } catch {
       return {};
     }
+  }
+
+  getAutoLearningState() {
+    return {
+      running: this.autoLearning.isFeedbackLoopRunning(),
+      currentConfig: this.autoLearning.getCurrentConfig(),
+    };
   }
 }

@@ -23,7 +23,8 @@
       "@backendkit-labs/bulkhead/nestjs": ["./node_modules/@backendkit-labs/bulkhead/dist/nestjs/index"],
       "@backendkit-labs/pipeline/nestjs": ["./node_modules/@backendkit-labs/pipeline/dist/nestjs/index"],
       "@backendkit-labs/request-scanner/nestjs": ["./node_modules/@backendkit-labs/request-scanner/dist/nestjs/index"],
-      "@backendkit-labs/http-client/nestjs": ["./node_modules/@backendkit-labs/http-client/dist/nestjs/index"]
+      "@backendkit-labs/http-client/nestjs": ["./node_modules/@backendkit-labs/http-client/dist/nestjs/index"],
+      "@backendkit-labs/auto-learning/nestjs": ["./node_modules/@backendkit-labs/auto-learning/dist/nestjs/index"]
     }
   }
 }

@@ -19,4 +19,9 @@ export class HealthController {
   getBulkheads() {
     return this.healthService.getBulkheadMetrics();
   }
+
+  @Get('auto-learning')
+  getAutoLearning() {
+    return this.healthService.getAutoLearningState();
+  }
 }

@@ -11,7 +11,7 @@ const DEFAULT_TARGETS: ScanTarget[] = ['query', 'body', 'params'];
 export class WafMiddleware implements NestMiddleware {
   constructor(
     @Inject(WAF_OPTIONS) private readonly options: WafModuleOptions,
-    private readonly scanner: WafScanner,
+    @Inject(WafScanner) private readonly scanner: WafScanner,
   ) {}
 
   use(req: Request, res: Response, next: NextFunction): void {

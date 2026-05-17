@@ -12,6 +12,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { TrackPerformance } from '@backendkit-labs/observability';
+import { AutoLearn } from '@backendkit-labs/auto-learning/nestjs';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -37,6 +38,7 @@ export class ProductsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @TrackPerformance()
+  @AutoLearn()
   create(@Body() dto: CreateProductDto) {
     const result = this.productsService.create(dto);
     if (!result.ok) {

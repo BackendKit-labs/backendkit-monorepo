@@ -8,6 +8,7 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
+import { AutoLearn } from '@backendkit-labs/auto-learning/nestjs';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 
@@ -40,6 +41,7 @@ export class CustomersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @AutoLearn()
   create(@Body() dto: CreateCustomerDto) {
     return this.customersService.create(dto);
   }

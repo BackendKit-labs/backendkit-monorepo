@@ -3,6 +3,7 @@ import { ObservabilityModule } from '@backendkit-labs/observability';
 import { CircuitBreakerModule } from '@backendkit-labs/circuit-breaker/nestjs';
 import { BulkheadModule } from '@backendkit-labs/bulkhead/nestjs';
 import { WafModule, WafMiddleware } from '@backendkit-labs/request-scanner/nestjs';
+import { AutoLearningModule } from '@backendkit-labs/auto-learning/nestjs';
 import { ProductsModule } from './modules/products/products.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -24,6 +25,11 @@ import { HttpClientsModule } from './infrastructure/http-clients/http-clients.mo
     }),
     CircuitBreakerModule,
     BulkheadModule,
+    AutoLearningModule.forRoot({
+      intervalMs: 30_000,
+      autoStart: true,
+      adapters: { circuitBreaker: true, bulkhead: true },
+    }),
     WafModule.forRoot({
       mode: 'block',
       excludePaths: ['/health', '/sim'],
