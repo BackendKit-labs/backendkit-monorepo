@@ -7,10 +7,10 @@ import { WAF_OPTIONS, type WafModuleOptions } from './waf.options.js';
 /**
  * @example
  * // app.module.ts
- * import { WafModule } from '@backendkit-labs/http-shield/nestjs';
+ * import { RequestScannerModule, WafMiddleware } from '@backendkit-labs/request-scanner/nestjs';
  *
  * @Module({
- *   imports: [WafModule.forRoot({ mode: 'block', excludePaths: ['/health'] })],
+ *   imports: [RequestScannerModule.forRoot({ mode: 'block', excludePaths: ['/health'] })],
  * })
  * export class AppModule implements NestModule {
  *   configure(consumer: MiddlewareConsumer) {
@@ -42,7 +42,7 @@ export class WafModule {
       module:    WafModule,
       global:    true,
       providers: [optionsProvider, scannerProvider, WafMiddleware, SanitizePipe],
-      exports:   [WafScanner, WafMiddleware, SanitizePipe],
+      exports:   [WAF_OPTIONS, WafScanner, WafMiddleware, SanitizePipe],
     };
   }
 }

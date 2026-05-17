@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, Optional, PipeTransform } from '@nestjs/common';
 import { WafScanner } from '../core/scanner.js';
 import type { ScanTarget } from '../core/types.js';
+import { pickWorst } from '../core/utils.js';
 import { WAF_OPTIONS, type WafModuleOptions } from './waf.options.js';
 
 /**
@@ -34,15 +35,13 @@ export class SanitizePipe implements PipeTransform {
     const result = this.scanner.scan(value, this.target);
 
     if (!result.clean) {
-      const worst = result.threats.slice().sort((a, b) => {
-        const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-        return order[a.severity] - order[b.severity];
-      })[0];
-
+      const worst = pickWorst(result.threats);
       throw new BadRequestException({
+        ok:       false,
         message:  'Invalid input detected',
         code:     `WAF_${worst.category.toUpperCase().replace(/-/g, '_')}`,
         ruleId:   worst.ruleId,
+        location: this.target,
         field:    worst.field,
       });
     }

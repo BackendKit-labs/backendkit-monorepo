@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WafScanner } from '../../src/core/scanner.js';
+import { pickWorst } from '../../src/core/utils.js';
+import type { WafThreat } from '../../src/core/types.js';
 
 const scanner = new WafScanner({ rules: { ssrf: true } }); // enable all for testing
 
@@ -168,6 +170,31 @@ describe('SSRF detection (enabled in test scanner)', () => {
     const r = scanner.scan({ url: 'http://169.254.169.254/latest/meta-data/' }, 'body');
     expect(r.clean).toBe(false);
     expect(r.threats.some(t => t.ruleId === 'ssrf-003')).toBe(true);
+  });
+});
+
+// ── Sprint 4 — pickWorst utility ─────────────────────────────────────────────
+
+describe('Sprint 4: pickWorst utility', () => {
+  const make = (severity: WafThreat['severity'], ruleId: string): WafThreat => ({
+    ruleId, category: 'sqli', severity, location: 'query', field: 'q', value: '',
+  });
+
+  it('returns the critical threat when mixed severities', () => {
+    const threats = [make('medium', 'a'), make('critical', 'b'), make('high', 'c')];
+    expect(pickWorst(threats).ruleId).toBe('b');
+  });
+
+  it('returns first threat when all equal severity', () => {
+    const threats = [make('high', 'x'), make('high', 'y')];
+    expect(pickWorst(threats).ruleId).toBe('x');
+  });
+
+  it('does not mutate the original array', () => {
+    const threats = [make('medium', 'a'), make('critical', 'b')];
+    const before = threats.map(t => t.ruleId);
+    pickWorst(threats);
+    expect(threats.map(t => t.ruleId)).toEqual(before);
   });
 });
 

@@ -2,6 +2,7 @@ import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { WafScanner } from '../core/scanner.js';
 import type { ScanTarget, WafThreat } from '../core/types.js';
+import { pickWorst } from '../core/utils.js';
 import { WAF_OPTIONS, type WafModuleOptions } from './waf.options.js';
 
 const DEFAULT_TARGETS: ScanTarget[] = ['query', 'body', 'params'];
@@ -36,7 +37,7 @@ export class WafMiddleware implements NestMiddleware {
     this.options.onThreat?.(threats, req);
 
     if (mode === 'block') {
-      const worst = this.pickWorst(threats);
+      const worst = pickWorst(threats);
       const code  = `WAF_${worst.category.toUpperCase().replace(/-/g, '_')}`;
       res.status(403).json({
         ok:       false,
@@ -44,6 +45,7 @@ export class WafMiddleware implements NestMiddleware {
         code,
         ruleId:   worst.ruleId,
         location: worst.location,
+        field:    worst.field,
       });
       return;
     }
@@ -78,8 +80,4 @@ export class WafMiddleware implements NestMiddleware {
     );
   }
 
-  private pickWorst(threats: WafThreat[]): WafThreat {
-    const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-    return threats.slice().sort((a, b) => order[a.severity] - order[b.severity])[0];
-  }
 }

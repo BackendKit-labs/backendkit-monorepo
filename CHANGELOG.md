@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.3.0
+
+### Fixed
+
+- **`pickWorst` logic duplicated** — extracted to `core/utils.ts` and shared by `WafMiddleware` and `SanitizePipe`. Both blocking paths now use the same implementation.
+- **Inconsistent error shapes between middleware and pipe** — unified to `{ ok, message, code, ruleId, location, field }`:
+  - Middleware 403 now includes `field` (which field triggered the worst threat).
+  - Pipe 400 now includes `ok: false` and `location` (the scanned target).
+- **`WAF_OPTIONS` not exported from `WafModule`** — added to `exports[]` so consuming modules can inject the options token directly.
+- **JSDoc referenced old package name** — updated `WafModule` example from `@backendkit-labs/http-shield/nestjs` to `@backendkit-labs/request-scanner/nestjs`.
+
+### Added
+
+- **`RequestScanner*` aliases** — `RequestScannerModule`, `RequestScannerMiddleware`, `RequestScannerPipe`, `RequestScannerOptions`, `REQUEST_SCANNER_OPTIONS` exported from `@backendkit-labs/request-scanner/nestjs`. The `Waf*` names remain for backwards compatibility.
+- 3 new tests for the `pickWorst` utility (severity ordering, tie-breaking, non-mutation).
+
+---
+
 ## [2026-05-17] -- `@backendkit-labs/request-scanner` v0.2.0
 
 ### Fixed
