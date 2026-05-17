@@ -26,6 +26,14 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Debug environment
+        run: |
+          echo "PWD: $(pwd)"
+          echo "npm version: $(npm --version)"
+          ls -la package-lock.json
+          head -5 package-lock.json
 
       - name: Install dependencies
         run: npm ci
