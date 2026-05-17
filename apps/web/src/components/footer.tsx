@@ -80,6 +80,14 @@ export default function Footer() {
               Packages
             </a>
             <a
+              href="https://github.com/BackendKit-labs/backendkit-monorepo/discussions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkCls}
+            >
+              Discussions
+            </a>
+            <a
               href="https://github.com/BackendKit-labs/backendkit-monorepo"
               target="_blank"
               rel="noopener noreferrer"

@@ -70,7 +70,10 @@ npm run lint
 
 ## Contributing
 
-Issues, questions, and PRs are welcome — especially real use cases that expose gaps in the current design. See [GitHub Discussions](https://github.com/BackendKit-labs/backendkit-monorepo/discussions) to start a conversation.
+Issues, questions, and PRs are welcome — especially real use cases that expose gaps in the current design.
+
+- **[GitHub Discussions](https://github.com/BackendKit-labs/backendkit-monorepo/discussions)** — questions, ideas, and show & tell
+- **[Open issues](https://github.com/BackendKit-labs/backendkit-monorepo/issues)** — bugs and tasks, including `good first issue` picks
 
 ---
 

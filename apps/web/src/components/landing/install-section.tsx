@@ -152,6 +152,14 @@ export default function InstallSection() {
               >
                 Read the docs
               </a>
+              <a
+                href="https://github.com/BackendKit-labs/backendkit-monorepo/discussions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] transition-all duration-200"
+              >
+                Join the discussion
+              </a>
             </div>
           </div>
         </div>
