@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-17] -- `@backendkit-labs/bulkhead` and `@backendkit-labs/circuit-breaker` v0.2.0
+
+### Fixed
+
+#### `@backendkit-labs/bulkhead` v0.2.0
+
+- **Queue timeout race** -- the timeout handler now only rejects and increments `timedOutCalls` when the item is still in the queue; spurious fires after `processQueue` dequeues the item are now no-ops.
+- **`processQueue`** -- clears each entry's `timeoutId` immediately on dequeue, preventing the timer from firing against a task that is already running.
+- **`HttpBulkheadMiddleware`** -- validates `parseInt` results with `Number.isNaN` and falls back to safe defaults, preventing `NaN` concurrency/queue limits from silently corrupting all bulkhead comparisons.
+
+#### `@backendkit-labs/circuit-breaker` v0.2.0
+
+- **Config validation** -- `CircuitBreaker` constructor and `updateConfig` now validate all numeric fields: `failureThreshold` / `slowCallThreshold` (0–100), `slidingWindowSize`, `minimumCalls`, `halfOpenMaxCalls`, `openTimeoutMs`, `slowCallDurationMs` (≥1). Invalid values previously caused silent `NaN` in failure-rate calculations.
+- **Redundant `syncState`** -- removed the duplicate `syncState()` call at the top of `execute()`; `canAttempt()` already calls it, so it was running twice per request.
+
+---
+
 ## [2026-05-17] -- `@backendkit-labs/auto-learning` v0.2.0
 
 ### Fixed
