@@ -15,7 +15,8 @@
   "description": "Monorepo for BackendKit Labs - Reusable backend libraries",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "benchmarks"
   ],
   "scripts": {
     "build": "turbo run build",
@@ -25,6 +26,7 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write \"packages/*/src/**/*.ts\"",
     "clean": "turbo run clean",
+    "bench": "npm run bench --workspace=benchmarks",
     "changelog": "node scripts/changelog.mjs",
     "docs:dev": "npm run dev     --workspace=apps/docs",
     "docs:build": "npm run build   --workspace=apps/docs",

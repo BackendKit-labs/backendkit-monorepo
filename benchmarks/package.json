@@ -1,0 +1,24 @@
+{
+  "name": "backendkit-benchmarks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Performance benchmarks — BackendKit vs popular alternatives",
+  "type": "module",
+  "scripts": {
+    "bench":                  "tsx run.ts",
+    "bench:circuit-breaker":  "tsx circuit-breaker/vs-opossum.bench.ts",
+    "bench:result":           "tsx result/vs-neverthrow.bench.ts && tsx result/vs-trycatch.bench.ts"
+  },
+  "dependencies": {
+    "@backendkit-labs/circuit-breaker": "*",
+    "@backendkit-labs/result": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "neverthrow": "^8.0.0",
+    "opossum": "^8.0.0",
+    "tinybench": "^2.9.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
