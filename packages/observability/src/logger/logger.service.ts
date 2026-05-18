@@ -21,12 +21,10 @@ export class LoggerService implements NestLoggerService {
           winston.format.timestamp(),
           winston.format.colorize(),
           winston.format.printf(({ level, message, timestamp, ...meta }) => {
-            const { service: _s, environment: _e, context, correlationId } =
-              meta as Record<string, unknown>;
-
-            const ctxPart  = context ? ` [${String(context)}]` : '';
-            const corrPart = typeof correlationId === 'string' && correlationId !== 'no-context'
-              ? ` [${correlationId}]`
+            const m = meta as Record<string, unknown>;
+            const ctxPart  = m['context'] ? ` [${String(m['context'])}]` : '';
+            const corrPart = typeof m['correlationId'] === 'string' && m['correlationId'] !== 'no-context'
+              ? ` [${m['correlationId']}]`
               : '';
 
             return `${timestamp} [${level}]${ctxPart}${corrPart} ${message}`;
