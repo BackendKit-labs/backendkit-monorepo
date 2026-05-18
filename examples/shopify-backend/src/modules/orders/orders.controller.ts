@@ -28,8 +28,8 @@ export class OrdersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @TrackPerformance()
   @AutoLearn()
+  @TrackPerformance()
   async createOrder(@Body() dto: CreateOrderDto) {
     return this.ordersService.createOrder(dto);
   }

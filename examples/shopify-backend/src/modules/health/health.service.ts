@@ -54,9 +54,12 @@ export class HealthService {
   }
 
   getAutoLearningState() {
+    const statsResult = this.autoLearning.patternRegistry.getStats();
+    const patternStats = statsResult.ok ? statsResult.value : null;
     return {
       running: this.autoLearning.isFeedbackLoopRunning(),
       currentConfig: this.autoLearning.getCurrentConfig(),
+      patternStats,
     };
   }
 }
