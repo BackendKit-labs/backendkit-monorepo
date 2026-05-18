@@ -10,7 +10,7 @@
     "start:prod": "node dist/main"
   },
   "dependencies": {
-    "@backendkit-labs/auto-learning": "^0.2.0",
+    "@backendkit-labs/auto-learning": "^0.3.0",
     "@backendkit-labs/bulkhead": "0.2.0",
     "@backendkit-labs/circuit-breaker": "0.3.0",
     "@backendkit-labs/http-client": "0.2.0",

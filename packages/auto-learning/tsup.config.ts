@@ -2,8 +2,9 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: {
-    index: 'src/index.ts',
-    'nestjs/index': 'src/nestjs/index.ts',
+    index:            'src/index.ts',
+    'nestjs/index':   'src/nestjs/index.ts',
+    'adapters/redis': 'src/adapters/redis.ts',
   },
   format: ['esm', 'cjs'],
   target: 'node18',

@@ -1,6 +1,6 @@
 {
   "name": "@backendkit-labs/auto-learning",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
@@ -24,6 +24,11 @@
       "types": "./dist/nestjs/index.d.ts",
       "import": "./dist/nestjs/index.js",
       "require": "./dist/nestjs/index.cjs"
+    },
+    "./adapters/redis": {
+      "types": "./dist/adapters/redis.d.ts",
+      "import": "./dist/adapters/redis.js",
+      "require": "./dist/adapters/redis.cjs"
     }
   },
   "files": [
