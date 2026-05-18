@@ -57,6 +57,9 @@ jobs:
       - name: Build
         run: npx turbo run build --filter=./packages/${{ steps.pkg.outputs.dir }}
 
+      - name: Generate CHANGELOG
+        run: node scripts/changelog.mjs ${{ steps.pkg.outputs.dir }}
+
       - name: Publish to npm
         working-directory: packages/${{ steps.pkg.outputs.dir }}
         run: npm publish --provenance --access public

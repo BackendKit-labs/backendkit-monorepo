@@ -25,6 +25,7 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write \"packages/*/src/**/*.ts\"",
     "clean": "turbo run clean",
+    "changelog": "node scripts/changelog.mjs",
     "docs:dev": "npm run dev     --workspace=apps/docs",
     "docs:build": "npm run build   --workspace=apps/docs",
     "docs:preview": "npm run preview --workspace=apps/docs"
