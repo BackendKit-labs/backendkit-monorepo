@@ -177,6 +177,8 @@ In `collect-all` mode, `cause` is the error from the first step that failed, and
 All hooks are optional. Pass them in the `pipeline()` options object.
 
 ```typescript
+import type { PipelineExecutionMetadata } from '@backendkit-labs/pipeline';
+
 pipeline<Ctx, Err>({
   mode: 'stop-on-first',
 
@@ -195,8 +197,10 @@ pipeline<Ctx, Err>({
     logger.warn(`Step failed: ${stepName}`, error);
   },
 
-  onComplete(ctx: Ctx, durationMs: number): void {
+  onComplete(ctx: Ctx, durationMs: number, metadata: PipelineExecutionMetadata): void {
     // Called when the pipeline completes successfully
+    // metadata.executedSteps — names of all steps that ran
+    // metadata.failures      — errors collected in collect-all mode
     metrics.record('pipeline.duration', durationMs);
   },
 })
