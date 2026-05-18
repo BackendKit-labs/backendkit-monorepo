@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2026-05-18] -- `@backendkit-labs/observability` v0.2.1
+
+### Fixed
+
+#### `@backendkit-labs/observability` v0.2.1
+
+- **Console log format** — el transport de consola ahora produce una sola línea estructurada por entrada: `{timestamp} [{level}] [{context}] [{correlationId}] {message}`. Los campos `service` y `environment` se omiten en consola (son estáticos por proceso y generan ruido); el `correlationId` se omite cuando es `no-context` (logs de bootstrap de Nest). El transport HTTP sigue emitiendo JSON completo para agregadores de logs.
+
+---
+
 ## [2026-05-17] -- `@backendkit-labs/circuit-breaker` v0.3.0 · `@backendkit-labs/observability` v0.2.0 · `@backendkit-labs/pipeline` v0.3.0
 
 ### Security
