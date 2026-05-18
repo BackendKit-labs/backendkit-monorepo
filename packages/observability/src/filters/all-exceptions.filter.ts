@@ -51,11 +51,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const span          = getActiveSpan();
     span?.recordException(exception instanceof Error ? exception : new Error(String(exception)));
 
-    this.logger.error(
-      mapped.message,
-      exception instanceof Error ? exception.stack : undefined,
-      AllExceptionsFilter.name,
-    );
+    const trace = exception instanceof Error
+      ? exception.stack
+      : `[non-Error thrown] ${JSON.stringify(exception)}`;
+    this.logger.error(mapped.message, trace, AllExceptionsFilter.name);
 
     res.status(mapped.statusCode).json({
       ok:            false,

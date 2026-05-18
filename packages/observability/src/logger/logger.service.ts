@@ -26,8 +26,8 @@ export class LoggerService implements NestLoggerService {
             const corrPart = typeof m['correlationId'] === 'string' && m['correlationId'] !== 'no-context'
               ? ` [${m['correlationId']}]`
               : '';
-
-            return `${timestamp} [${level}]${ctxPart}${corrPart} ${message}`;
+            const base = `${timestamp} [${level}]${ctxPart}${corrPart} ${message}`;
+            return typeof m['trace'] === 'string' ? `${base}\n${m['trace']}` : base;
           }),
         ),
       }),

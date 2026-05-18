@@ -14,6 +14,7 @@ import { AutoLearningCore } from '../core/auto-learning-core.js';
 @Injectable()
 export class AutoLearningInterceptor implements NestInterceptor {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
     @Inject(AUTO_LEARNING_INSTANCE)
     private readonly core: AutoLearningCore,

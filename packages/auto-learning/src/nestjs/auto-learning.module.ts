@@ -1,5 +1,5 @@
 import { DynamicModule, Module, Provider, LoggerService } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { AutoLearningCore, AutoLearningCoreOptions } from '../core/auto-learning-core.js';
 import { AutoLearningInterceptor } from './auto-learning.interceptor.js';
 import { AutoLearningAdaptersService } from './auto-learning-adapters.service.js';
@@ -33,6 +33,7 @@ export type AutoLearningModuleOptions = {
 export class AutoLearningModule {
   static forRoot(options: AutoLearningModuleOptions = {}): DynamicModule {
     const providers: Provider[] = [
+      Reflector,
       {
         provide: AUTO_LEARNING_OPTIONS,
         useValue: options,
@@ -58,7 +59,9 @@ export class AutoLearningModule {
       },
       {
         provide: APP_INTERCEPTOR,
-        useClass: AutoLearningInterceptor,
+        useFactory: (reflector: Reflector, core: AutoLearningCore) =>
+          new AutoLearningInterceptor(reflector, core),
+        inject: [Reflector, AUTO_LEARNING_INSTANCE],
       },
       AutoLearningAdaptersService,
     ];
