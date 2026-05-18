@@ -3,11 +3,11 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import {
-  AllExceptionsFilter,
   CorrelationInterceptor,
   PerformanceInterceptor,
   LoggerService,
 } from '@backendkit-labs/observability';
+import { SimAwareExceptionsFilter } from './filters/sim-aware-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -17,7 +17,7 @@ async function bootstrap() {
   const logger = app.get(LoggerService);
   app.useLogger(logger);
 
-  app.useGlobalFilters(app.get(AllExceptionsFilter));
+  app.useGlobalFilters(app.get(SimAwareExceptionsFilter));
   app.useGlobalInterceptors(app.get(CorrelationInterceptor), app.get(PerformanceInterceptor));
 
   const port = parseInt(process.env.PORT ?? '3003', 10);

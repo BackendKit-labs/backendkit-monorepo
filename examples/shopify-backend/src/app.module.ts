@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ObservabilityModule } from '@backendkit-labs/observability';
+import { SimAwareExceptionsFilter } from './filters/sim-aware-exceptions.filter';
 import { CircuitBreakerModule } from '@backendkit-labs/circuit-breaker/nestjs';
 import { BulkheadModule } from '@backendkit-labs/bulkhead/nestjs';
 import { WafModule, WafMiddleware } from '@backendkit-labs/request-scanner/nestjs';
@@ -17,6 +18,8 @@ import { SeedModule } from './modules/seed/seed.module';
 import { HttpClientsModule } from './infrastructure/http-clients/http-clients.module';
 
 @Module({
+  providers: [SimAwareExceptionsFilter],
+  exports: [SimAwareExceptionsFilter],
   imports: [
     ObservabilityModule.forRoot({
       serviceName: 'shopify-backend',
