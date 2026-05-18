@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { HttpClientModule } from '@backendkit-labs/http-client/nestjs';
 import { PAYMENT_CLIENT, SHIPPING_CLIENT } from './tokens';
 
-const port = parseInt(process.env.PORT ?? '3000', 10);
+const port = parseInt(process.env.PORT ?? '3003', 10);
 const BASE = `http://localhost:${port}`;
 
 @Module({
@@ -42,4 +42,4 @@ const BASE = `http://localhost:${port}`;
   ],
   exports: [HttpClientModule],
 })
-export class HttpClientsModule {}
+export class HttpClientsModule { }

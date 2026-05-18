@@ -18,12 +18,9 @@ async function bootstrap() {
   app.useLogger(logger);
 
   app.useGlobalFilters(app.get(AllExceptionsFilter));
-  app.useGlobalInterceptors(
-    app.get(CorrelationInterceptor),
-    app.get(PerformanceInterceptor),
-  );
+  app.useGlobalInterceptors(app.get(CorrelationInterceptor), app.get(PerformanceInterceptor));
 
-  const port = parseInt(process.env.PORT ?? '3000', 10);
+  const port = parseInt(process.env.PORT ?? '3003', 10);
   await app.listen(port);
   logger.log(`Shopify Backend running on port ${port}`, 'Bootstrap');
 }

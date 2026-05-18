@@ -1,0 +1,41 @@
+{
+  "name": "otel-integration",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BackendKit Labs — OTel integration demo: traces to Jaeger, metrics to Grafana",
+  "scripts": {
+    "build":       "nest build",
+    "start":       "node --require ./dist/instrumentation.js dist/main",
+    "start:dev":   "nest start --watch",
+    "start:prod":  "node --require ./dist/instrumentation.js dist/main"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/platform-express": "^10.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "@backendkit-labs/circuit-breaker": "0.3.0",
+    "@backendkit-labs/bulkhead": "0.2.0",
+    "@backendkit-labs/observability": "0.2.1",
+    "@backendkit-labs/auto-learning": "0.3.0",
+    "@backendkit-labs/result": "0.2.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.57.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.57.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.57.0",
+    "@opentelemetry/sdk-metrics": "^1.30.0",
+    "@opentelemetry/resources": "^1.30.0",
+    "@opentelemetry/semantic-conventions": "^1.30.0",
+    "@grpc/grpc-js": "^1.12.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.0.0",
+    "@nestjs/schematics": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.5.0"
+  }
+}

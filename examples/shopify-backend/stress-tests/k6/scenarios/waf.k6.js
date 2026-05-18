@@ -3,7 +3,7 @@ import { check } from 'k6';
 
 export const options = { vus: 5, iterations: 50 };
 
-const BASE = __ENV.BASE_URL || 'http://localhost:3000';
+const BASE = __ENV.BASE_URL || 'http://localhost:3003';
 
 const attacks = [
   { event: "'; DROP TABLE orders; --", payload: {}, source: 'sqli-test', timestamp: new Date().toISOString() },

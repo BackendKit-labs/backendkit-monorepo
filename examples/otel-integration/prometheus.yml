@@ -1,0 +1,5 @@
+global:
+  scrape_interval: 15s
+
+# Remote write receiver is the primary ingest path (from OTel Collector).
+# This config has no scrape targets — metrics arrive via remote write.

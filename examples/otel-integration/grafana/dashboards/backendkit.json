@@ -1,0 +1,74 @@
+{
+  "title": "BackendKit — OTel Demo",
+  "uid": "backendkit-demo",
+  "schemaVersion": 38,
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "HTTP Request Rate (req/s)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(http_server_duration_milliseconds_count[1m])",
+          "legendFormat": "{{http_route}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "HTTP P95 Latency (ms)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_server_duration_milliseconds_bucket[1m]))",
+          "legendFormat": "p95 {{http_route}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Circuit Breaker State",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "circuit_breaker_state",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "CLOSED",   "color": "green"  } } },
+            { "type": "value", "options": { "1": { "text": "OPEN",     "color": "red"    } } },
+            { "type": "value", "options": { "2": { "text": "HALF_OPEN","color": "yellow" } } }
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Auto-Learning Concurrency Config",
+      "gridPos": { "x": 6, "y": 8, "w": 18, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "auto_learning_config_max_concurrency",
+          "legendFormat": "maxConcurrency"
+        },
+        {
+          "expr": "auto_learning_config_timeout_ms",
+          "legendFormat": "timeoutMs"
+        }
+      ]
+    }
+  ]
+}

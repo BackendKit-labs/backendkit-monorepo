@@ -5,14 +5,14 @@ import { check, sleep } from 'k6';
 
 export const options = {
   stages: [
-    { duration: '20s', target: 5  },
+    { duration: '20s', target: 5 },
     { duration: '40s', target: 30 },
-    { duration: '20s', target: 5  },
-    { duration: '20s', target: 0  },
+    { duration: '20s', target: 5 },
+    { duration: '20s', target: 0 },
   ],
 };
 
-const BASE = __ENV.BASE_URL || 'http://localhost:3000';
+const BASE = __ENV.BASE_URL || 'http://localhost:3003';
 
 export default function () {
   // Fire an order (will fail payment at high rate)
