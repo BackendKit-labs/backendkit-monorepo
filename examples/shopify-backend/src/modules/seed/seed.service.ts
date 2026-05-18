@@ -31,7 +31,7 @@ export class SeedService implements OnApplicationBootstrap {
       },
       ['var-seed-1'],
     );
-    this.inventory.initialize('prod-seed-1', 100);
+    this.inventory.initialize('prod-seed-1', 10_000);
 
     // Product 2
     this.products.createWithId(
@@ -47,7 +47,7 @@ export class SeedService implements OnApplicationBootstrap {
       },
       ['var-seed-2a', 'var-seed-2b'],
     );
-    this.inventory.initialize('prod-seed-2', 100);
+    this.inventory.initialize('prod-seed-2', 10_000);
 
     // Product 3
     this.products.createWithId(
@@ -60,7 +60,7 @@ export class SeedService implements OnApplicationBootstrap {
       },
       ['var-seed-3'],
     );
-    this.inventory.initialize('prod-seed-3', 100);
+    this.inventory.initialize('prod-seed-3', 10_000);
 
     // Product 4
     this.products.createWithId(
@@ -73,7 +73,7 @@ export class SeedService implements OnApplicationBootstrap {
       },
       ['var-seed-4'],
     );
-    this.inventory.initialize('prod-seed-4', 100);
+    this.inventory.initialize('prod-seed-4', 10_000);
 
     // Product 5
     this.products.createWithId(
@@ -89,7 +89,7 @@ export class SeedService implements OnApplicationBootstrap {
       },
       ['var-seed-5a', 'var-seed-5b'],
     );
-    this.inventory.initialize('prod-seed-5', 100);
+    this.inventory.initialize('prod-seed-5', 10_000);
   }
 
   private seedCustomers(): void {

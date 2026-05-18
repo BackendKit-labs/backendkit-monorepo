@@ -45,6 +45,22 @@ export class InventoryRepository {
     return reservation;
   }
 
+  confirm(reservationId: string): boolean {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) return false;
+
+    const item = this.stockStore.findById(reservation.productId);
+    if (item) {
+      this.stockStore.update(reservation.productId, {
+        stock: Math.max(0, item.stock - reservation.quantity),
+        reserved: Math.max(0, item.reserved - reservation.quantity),
+      });
+    }
+
+    this.reservations.delete(reservationId);
+    return true;
+  }
+
   release(reservationId: string): boolean {
     const reservation = this.reservations.get(reservationId);
     if (!reservation) return false;

@@ -27,7 +27,9 @@ export class ShippingService {
     name: 'shipping-provider',
     failureThreshold: 40,
     openTimeoutMs: 20_000,
-    fallback: () => ({ shipmentId: null, fallback: true }),
+    // Fallback activates when CB is OPEN (e.g. after bulkhead saturation throws).
+    // Returns a degraded-mode Result so the pipeline can continue without a shipment.
+    fallback: () => ok({ shipmentId: 'degraded', trackingNumber: 'N/A' }),
   })
   @WithBulkhead({ name: 'shipping-provider', maxConcurrent: 8, timeoutMs: 10_000 })
   @TrackPerformance()

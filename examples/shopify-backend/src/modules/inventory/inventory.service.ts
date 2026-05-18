@@ -39,6 +39,16 @@ export class InventoryService {
     return ok(reservation);
   }
 
+  async confirm(reservationId: string): Promise<Result<void, string>> {
+    const confirmed = this.repository.confirm(reservationId);
+    if (!confirmed) {
+      this.logger.warn(`Reservation not found for confirm: ${reservationId}`, 'InventoryService');
+      return fail(`Reservation ${reservationId} not found`);
+    }
+    this.logger.log(`Confirmed reservation ${reservationId}`, 'InventoryService');
+    return ok(undefined);
+  }
+
   async release(reservationId: string): Promise<Result<void, string>> {
     const released = this.repository.release(reservationId);
     if (!released) {

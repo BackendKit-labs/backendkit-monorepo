@@ -158,33 +158,30 @@ export class HttpClient {
     // Raw axios call — throws on any error
     const rawCall = () => this.callAxios<T>(ctx, cancelToken);
 
-    // Circuit breaker wraps the raw call — throws CircuitBreakerOpenError when open
-    const cbCall = async (): Promise<HttpResponse<T>> => {
-      if (!this.cb) return rawCall();
-      try {
-        return await this.cb.execute(rawCall);
-      } catch (e) {
-        if (e instanceof CircuitBreakerOpenError) {
-          this._metrics.circuitOpen++;
-          const err: HttpClientError = { type: 'circuit-open', message: e.message };
-          throw err;
-        }
-        throw e;
-      }
-    };
+    // Retry wraps rawCall so transient failures are retried before the CB sees the outcome.
+    // CB then wraps the full retry chain: it counts one failure only when ALL retries are
+    // exhausted, preventing premature CB trips from recoverable transient errors.
+    const retriedCall = (): Promise<HttpResponse<T>> =>
+      this.retry.attempts > 0
+        ? this.withRetry(rawCall, this.retry)
+        : rawCall();
 
     try {
-      const response = this.retry.attempts > 0
-        ? await this.withRetry(cbCall, this.retry)
-        : await cbCall();
+      const response = this.cb
+        ? await this.cb.execute(retriedCall)
+        : await retriedCall();
 
       if (ctx.cancelKey) this.cancelMgr.delete(ctx.cancelKey);
       this._metrics.success++;
       return ok(response);
     } catch (e) {
       if (ctx.cancelKey) this.cancelMgr.delete(ctx.cancelKey);
+      if (e instanceof CircuitBreakerOpenError) {
+        this._metrics.circuitOpen++;
+        return fail({ type: 'circuit-open', message: e.message });
+      }
       const error = this.isHttpClientError(e) ? e : this.normalizeError(e);
-      if (error.type !== 'circuit-open') this._metrics.failed++;
+      this._metrics.failed++;
       return fail(error);
     }
   }
