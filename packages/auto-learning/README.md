@@ -520,7 +520,63 @@ The directory is created automatically if it doesn't exist. The file is written 
 
 Use this in production when you want to preserve learned thresholds across deploys or restarts without an external database.
 
-**Custom `StorageAdapter`:** implement the `StorageAdapter` interface to plug in Redis, PostgreSQL, or any other backend.
+### `RedisStorageAdapter`
+
+Extends `InMemoryStorage` with config persistence to Redis. Only the tuned `TunableConfig` is stored in Redis — patterns, anomalies, and cycle events remain in-memory. On startup, `loadConfigAsync()` restores the last saved config from Redis so learned thresholds survive restarts and are shared across multiple instances.
+
+Install from the dedicated subpath (keeps `ioredis` / `redis` out of your main bundle):
+
+```bash
+npm install @backendkit-labs/auto-learning
+# redis v4 client
+npm install redis
+# or ioredis
+npm install ioredis
+```
+
+```typescript
+import { RedisStorageAdapter } from '@backendkit-labs/auto-learning/adapters/redis';
+import { createClient } from 'redis';
+
+const redisClient = createClient({ url: 'redis://localhost:6379' });
+await redisClient.connect();
+
+const storage = new RedisStorageAdapter(redisClient, {
+  configKey: 'auto-learning:config',   // Redis key (default: 'auto-learning:config')
+  configTtl: 86_400,                    // seconds (default: 86400 — 24 h). omit for no expiry
+});
+
+// Restore previously learned config on startup
+await storage.loadConfigAsync();
+
+const core = AutoLearningCore.create({ storage });
+```
+
+**`RedisClient` interface** — works with `redis` v4, `ioredis`, or any client that satisfies:
+
+```typescript
+interface RedisClient {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string): Promise<unknown>;
+  setEx?(key: string, seconds: number, value: string): Promise<unknown>; // redis v4
+}
+```
+
+> `setEx` is used when present (redis v4). If absent (ioredis), `set()` is used without TTL.
+
+**NestJS usage** — pass the adapter via `coreOptions`:
+
+```typescript
+AutoLearningModule.forRoot({
+  coreOptions: {
+    storage: new RedisStorageAdapter(redisClient, { configKey: 'my-service:al-config' }),
+  },
+})
+```
+
+Use this in production with multiple replicas — all instances share the same learned `TunableConfig` and converge on the same thresholds.
+
+**Custom `StorageAdapter`:** implement the `StorageAdapter` interface to plug in PostgreSQL, DynamoDB, or any other backend.
 
 ---
 
