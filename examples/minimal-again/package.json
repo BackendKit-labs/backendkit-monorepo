@@ -1,0 +1,19 @@
+{
+  "name": "minimal-again",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal example — @backendkit-labs/again",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@backendkit-labs/again": "0.1.0",
+    "@backendkit-labs/result": "0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
