@@ -1,0 +1,91 @@
+{
+  "name": "@backendkit-labs/idempotency",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "hello@backendkitlabs.dev"
+  },
+  "description": "Idempotency key enforcement for NestJS — replay cached responses, prevent duplicate mutations, pluggable store (in-memory / Redis)",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run build && npm run test && npm run lint"
+  },
+  "keywords": [
+    "idempotency",
+    "idempotent",
+    "nestjs",
+    "redis",
+    "cache",
+    "duplicate-prevention",
+    "node",
+    "backend"
+  ],
+  "homepage": "https://backendkitlabs.dev/docs/idempotency/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BackendKit-labs/backendkit-monorepo.git",
+    "directory": "packages/idempotency"
+  },
+  "bugs": {
+    "url": "https://github.com/BackendKit-labs/backendkit-monorepo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "@nestjs/common": ">=10.0.0",
+    "@nestjs/core": ">=10.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": false
+    },
+    "@nestjs/core": {
+      "optional": false
+    },
+    "rxjs": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.59.3",
+    "vitest": "^2.0.0"
+  }
+}

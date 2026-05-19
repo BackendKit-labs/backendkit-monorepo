@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ObservabilityModule } from '@backendkit-labs/observability';
+import { IdempotencyModule } from '@backendkit-labs/idempotency';
 import { SimAwareExceptionsFilter } from './filters/sim-aware-exceptions.filter';
 import { CircuitBreakerModule } from '@backendkit-labs/circuit-breaker/nestjs';
 import { BulkheadModule } from '@backendkit-labs/bulkhead/nestjs';
@@ -37,6 +38,7 @@ import { HttpClientsModule } from './infrastructure/http-clients/http-clients.mo
       mode: 'block',
       excludePaths: ['/health', '/sim'],
     }),
+    IdempotencyModule.forRoot({ ttlSeconds: 3600, pendingStrategy: 'reject' }),
     HttpClientsModule,
     SimulationModule,
     ProductsModule,

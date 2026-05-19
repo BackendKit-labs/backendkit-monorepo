@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { TrackPerformance } from '@backendkit-labs/observability';
 import { AutoLearn } from '@backendkit-labs/auto-learning/nestjs';
+import { Idempotent } from '@backendkit-labs/idempotency';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 
@@ -28,6 +29,7 @@ export class OrdersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Idempotent()
   @AutoLearn()
   @TrackPerformance()
   async createOrder(@Body() dto: CreateOrderDto) {
