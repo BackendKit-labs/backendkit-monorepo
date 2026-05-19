@@ -2,7 +2,7 @@
 
 Composable building blocks for resilient Node.js backends — built from production experience with distributed systems.
 
-**9 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
+**10 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
 
 > Community in early formation. Your use cases shape the roadmap — open an issue, start a discussion.
 
@@ -10,7 +10,7 @@ Composable building blocks for resilient Node.js backends — built from product
 
 ## Why BackendKit?
 
-Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. BackendKit gives you a coherent system where `Result`, circuit breaker, retry, pipeline, and observability speak the same language — and `auto-learning` tunes them automatically based on real traffic.
+Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. BackendKit gives you a coherent system where `Result`, circuit breaker, idempotency, pipeline, and observability speak the same language — and `auto-learning` tunes them automatically based on real traffic.
 
 ---
 
@@ -22,6 +22,7 @@ Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. Back
 |---------|---------|-------------|
 | [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker) | Circuit Breaker — fail-fast with business vs infrastructure error classification, optional NestJS integration |
 | [`@backendkit-labs/bulkhead`](./packages/bulkhead) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/bulkhead?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/bulkhead) | Bulkhead concurrency limiting — queue-based, optional NestJS integration |
+| [`@backendkit-labs/idempotency`](./packages/idempotency) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/idempotency?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/idempotency) | Idempotency key enforcement — replay cached responses, prevent duplicate mutations, pluggable store (in-memory / Redis) |
 | [`@backendkit-labs/auto-learning`](./packages/auto-learning) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/auto-learning?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/auto-learning) | Adaptive resilience — automatically tunes circuit breakers, bulkheads, and HTTP clients based on real traffic patterns |
 
 ### HTTP & Networking
