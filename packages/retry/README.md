@@ -14,11 +14,11 @@ Self-contained runnable example — no NestJS, one file, realistic scenario.
 
 ```bash
 git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
-cd backendkit-monorepo/examples/minimal-Retry
+cd backendkit-monorepo/examples/minimal-retry
 npm install && npm start
 ```
 
-Shows a payment gateway that fails 60% of the time retried with exponential backoff + jitter. Lifecycle hooks log each attempt in real time. → [full source](https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/examples/minimal-Retry)
+Shows a payment gateway that fails 60% of the time retried with exponential backoff + jitter. Lifecycle hooks log each attempt in real time. → [full source](https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/examples/minimal-retry)
 
 ---
 
