@@ -165,7 +165,17 @@ export class Pipeline<TContext, TError = unknown> {
     try { await onStep?.(name, state.ctx); } catch { /* noop */ }
 
     const stepStart = Date.now();
-    const rawResult = await instance.handle(state.ctx);
+    let rawResult: StepResult<TContext, TError>;
+    try {
+      rawResult = await instance.handle(state.ctx);
+    } catch (cause) {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      try { await onError?.(name, error as unknown as TError); } catch { /* noop */ }
+      state.failures.push({ step: name, cause: error as unknown as TError });
+      if (state.mode === 'stop-on-first') return false;
+      state.executedSteps.push(name);
+      return true;
+    }
     const stepMs    = Date.now() - stepStart;
 
     // Validate step return value shape

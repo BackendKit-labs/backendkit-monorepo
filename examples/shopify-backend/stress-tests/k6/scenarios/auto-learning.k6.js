@@ -177,7 +177,12 @@ export function runOrders() {
       items: [{ productId: 'prod-seed-1', variantId: 'var-seed-1', quantity: 1, unitPrice: 2999 }],
       paymentMethod: 'card',
     }),
-    { headers: { 'Content-Type': 'application/json' } },
+    {
+      headers: {
+        'Content-Type':    'application/json',
+        'Idempotency-Key': `al-${__VU}-${__ITER}`,
+      },
+    },
   );
   sleep(0.3);
 }

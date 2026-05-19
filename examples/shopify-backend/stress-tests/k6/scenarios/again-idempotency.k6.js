@@ -97,6 +97,8 @@ export function setup() {
   const res = patchSimConfig({ paymentFailureRate: 0.6, shippingFailureRate: 0.0 });
   check(res, { 'setup: sim config aplicado': (r) => r.status === 200 });
   sleep(0.5);
+  // Unique prefix per test run so lifecycle keys don't collide with previous runs
+  return { runId: Date.now() };
 }
 
 export function teardown() {
@@ -166,16 +168,21 @@ export function replayFlow() {
 
 // ── Escenario 3: Ciclo de vida completo ──────────────────────────────────────
 // Demuestra que la clave se borra cuando el handler falla → cliente puede reintentar con seguridad
-export function lifecycleFlow() {
-  const key = `lifecycle-${__VU}-${__ITER}`;
+export function lifecycleFlow(data) {
+  const runId = (data && data.runId) ? data.runId : Date.now();
+  const key = `lifecycle-${runId}-${__VU}-${__ITER}`;
 
   // ── Paso 1: forzar fallo total (again agota todos sus reintentos) ──────────
   patchSimConfig({ paymentFailureRate: 1.0 });
   sleep(0.2);
 
   const failRes = postOrder(key);
+
+  // Accept 503 (ServiceUnavailable) or 500 (unhandled step throw) — both mean the handler
+  // failed and IdempotencyInterceptor deleted the key, so the next request with the same
+  // key must run the handler again (not replay).
   const handlerFailed = check(failRes, {
-    'lifecycle paso1: handler falla (503)': (r) => r.status === 503,
+    'lifecycle paso1: handler falla (5xx)': (r) => r.status === 503 || r.status === 500,
     'lifecycle paso1: NO es replay':        (r) => r.headers['Idempotent-Replayed'] !== 'true',
   });
 
@@ -190,6 +197,7 @@ export function lifecycleFlow() {
   sleep(0.3);
 
   const retryRes = postOrder(key);
+
   const retryOk = check(retryRes, {
     'lifecycle paso2: 201 (handler corrió de nuevo)': (r) => r.status === 201,
     'lifecycle paso2: NO es replay (clave fue borrada)': (r) => r.headers['Idempotent-Replayed'] !== 'true',
@@ -200,6 +208,7 @@ export function lifecycleFlow() {
 
   // ── Paso 3: misma clave de nuevo → ahora sí es replay ────────────────────
   const replayRes = postOrder(key);
+
   const replayOk = check(replayRes, {
     'lifecycle paso3: 201 replay':             (r) => r.status === 201,
     'lifecycle paso3: Idempotent-Replayed':    (r) => r.headers['Idempotent-Replayed'] === 'true',
