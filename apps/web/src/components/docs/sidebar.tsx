@@ -45,6 +45,14 @@ const packageSections: Record<string, { label: string; href: string }[]> = {
     { label: 'Examples',          href: '#examples' },
     { label: 'vs. Alternatives',  href: '#comparison' },
   ],
+  retry: [
+    { label: 'Overview',          href: '#overview' },
+    { label: 'Backoff Strategies', href: '#backoff' },
+    { label: 'Configuration',     href: '#config' },
+    { label: 'NestJS Integration', href: '#nestjs' },
+    { label: 'Idempotency',       href: '#idempotency' },
+    { label: 'Examples',          href: '#examples' },
+  ],
   observability: [
     { label: 'Overview',        href: '#overview' },
     { label: 'Module Setup',    href: '#setup' },

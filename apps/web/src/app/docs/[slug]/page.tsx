@@ -1885,6 +1885,225 @@ export class ResilienceService implements OnModuleInit {
       );
     },
   },
+
+  retry: {
+    examples: [
+      {
+        label: 'Basic',
+        filename: 'payment.service.ts',
+        code: `import { retry } from '@backendkit-labs/retry';
+
+const result = await retry(
+  () => paymentGateway.charge(orderId, amount),
+  {
+    maxAttempts: 4,
+    backoff: { type: 'exponential', baseDelay: 300, maxDelay: 5_000, jitter: 'full' },
+    hooks: {
+      beforeRetry: ({ attempt, delayMs, error }) =>
+        logger.warn(\`Payment retry \${attempt}: \${error.message} — waiting \${Math.round(delayMs)}ms\`),
+      onExhausted: ({ totalAttempts }) =>
+        metrics.increment('payment.exhausted', { attempts: totalAttempts }),
+    },
+  },
+);
+
+if (result.ok) {
+  return { transactionId: result.value.id };
+} else {
+  const { type, message, metadata } = result.error;
+  throw new PaymentException(message, { type, attempts: metadata.attempts });
+}`,
+      },
+      {
+        label: 'With integrations',
+        filename: 'inventory.service.ts',
+        code: `import { RetryEngine } from '@backendkit-labs/retry';
+import { CircuitBreaker } from '@backendkit-labs/circuit-breaker';
+import { Bulkhead } from '@backendkit-labs/bulkhead';
+
+const engine = new RetryEngine({
+  name: 'inventory-api',
+  defaultConfig: {
+    maxAttempts: 3,
+    backoff: { type: 'exponential', baseDelay: 200, maxDelay: 4_000, jitter: 'full' },
+    timeout: { attemptTimeoutMs: 3_000, globalTimeoutMs: 12_000 },
+    budget: { windowMs: 60_000, maxRetryRatio: 0.15 },
+  },
+  integrations: {
+    circuitBreaker: new CircuitBreaker({ name: 'inventory-api', failureThreshold: 50 }),
+    bulkhead: new Bulkhead({ name: 'inventory-api', maxConcurrent: 10, maxQueue: 50 }),
+  },
+});
+
+const result = await engine.execute(() => inventoryApi.get(\`/stock/\${sku}\`));
+
+if (!result.ok) {
+  const { type } = result.error;
+  if (type === 'circuit-open')      throw new ServiceUnavailableException();
+  if (type === 'bulkhead-rejected') throw new TooManyRequestsException();
+  throw new InternalServerErrorException(result.error.message);
+}`,
+      },
+      {
+        label: 'Idempotency',
+        filename: 'charge.service.ts',
+        code: `import { retry } from '@backendkit-labs/retry';
+
+// Prevents duplicate charges if a retry succeeds after the server
+// already processed the first attempt.
+const result = await retry(
+  () => stripe.charges.create({ amount, currency, customer }),
+  {
+    maxAttempts: 3,
+    backoff: { type: 'exponential', baseDelay: 500 },
+    idempotency: {
+      enabled: true,
+      key: \`charge:\${orderId}\`,  // unique per logical operation
+      ttlMs: 24 * 60 * 60 * 1000, // cache result for 24h
+    },
+  },
+);
+
+// On a retry where the server already charged: returns the cached result.
+// The customer is never double-charged.
+if (result.ok) {
+  return result.value; // Stripe charge object
+}`,
+      },
+    ],
+    content: function RetryContent({ color }) {
+      return (
+        <>
+          <section id="overview">
+            <SectionHeading id="overview">Overview</SectionHeading>
+            <P>
+              <C>retry()</C> wraps any async task and returns{' '}
+              <C>{'Result<T, RetryError>'}</C> — it <strong>never throws</strong>. Errors
+              become explicit values: the type system forces you to handle both the success
+              and failure paths at every call site.
+            </P>
+            <P>
+              The library is built in two layers. The standalone <C>retry()</C> function
+              covers 90% of use cases in two lines. <C>RetryEngine</C> is the stateful
+              core — use it when you need shared config, per-engine metrics, or duck-typed
+              integrations with circuit breaker, bulkhead, and observability.
+            </P>
+          </section>
+
+          <section id="backoff">
+            <SectionHeading id="backoff">Backoff Strategies</SectionHeading>
+            <P>
+              Three built-in strategies, all composable with <C>JitterDecorator</C>.
+              Pass a shorthand config object or a strategy instance directly.
+            </P>
+            <PropsTable
+              rows={[
+                { prop: 'fixed',       type: "{ type: 'fixed', baseDelay }",                           description: 'Same delay every retry. Predictable, good for queues.' },
+                { prop: 'linear',      type: "{ type: 'linear', baseDelay, multiplier?, maxDelay? }",   description: 'Delay grows linearly. Gentler ramp than exponential.' },
+                { prop: 'exponential', type: "{ type: 'exponential', baseDelay, multiplier?, maxDelay?, jitter? }", description: "Delay doubles each attempt. Add jitter: 'full' | 'equal' | 'decorrelated' to prevent thundering herd." },
+              ]}
+            />
+          </section>
+
+          <section id="config">
+            <SectionHeading id="config">Configuration</SectionHeading>
+            <PropsTable
+              rows={[
+                { prop: 'maxAttempts',    type: 'number',                    description: 'Total attempts including the first. maxAttempts: 3 = 1 call + 2 retries.' },
+                { prop: 'backoff',        type: 'BackoffConfig | BackoffStrategy', description: 'Delay strategy between retries.' },
+                { prop: 'retryIf',        type: '(error) => boolean',        description: 'Custom predicate — return false to stop retrying. Default: retry on 5xx, network, timeout.' },
+                { prop: 'abortIf',        type: '(error) => boolean',        description: 'Return true to abort immediately without consuming remaining attempts. Default: abort on 4xx (except 429).' },
+                { prop: 'timeout.attemptTimeoutMs', type: 'number',          description: 'Cap per-call duration. Exceeded attempts fail with type: "timeout" and are retried.' },
+                { prop: 'timeout.globalTimeoutMs',  type: 'number',          description: 'Cap the entire retry operation including delays. Abort when exceeded.' },
+                { prop: 'budget.windowMs',          type: 'number',          description: 'Sliding window for retry ratio tracking (ms).' },
+                { prop: 'budget.maxRetryRatio',     type: 'number',          description: 'Max fraction of calls that may be retries. Prevents retry storms.' },
+                { prop: 'fallback',       type: '(error) => T',              description: 'Return a default value on exhaustion instead of err(...).' },
+                { prop: 'dynamicDelay',   type: '(error, attempt) => number', description: 'Override backoff for this attempt — useful for Retry-After headers.' },
+                { prop: 'hooks',          type: 'RetryHooks',                description: 'Lifecycle hooks: beforeRetry, afterRetry, onRetrySuccess, onExhausted, onBudgetExhausted.' },
+                { prop: 'idempotency',    type: 'Partial<IdempotencyConfig>', description: 'Cache successful results and return them on duplicate calls. See Idempotency below.' },
+              ]}
+            />
+          </section>
+
+          <section id="nestjs">
+            <SectionHeading id="nestjs">NestJS Integration</SectionHeading>
+            <P>
+              Import <C>RetryModule</C> once. It registers <C>RetryService</C> and an optional
+              global <C>RetryInterceptor</C>. Use <C>@Retry()</C> on any service method — the
+              interceptor handles the retry loop without changing the method signature.
+            </P>
+            <CodeBlock
+              filename="app.module.ts"
+              code={`import { RetryModule } from '@backendkit-labs/retry/nestjs';
+
+@Module({
+  imports: [
+    RetryModule.forRoot({
+      engineConfig: {
+        name: 'default',
+        defaultConfig: {
+          maxAttempts: 3,
+          backoff: { type: 'exponential', baseDelay: 200, jitter: 'full' },
+        },
+      },
+    }),
+  ],
+})
+export class AppModule {}
+
+// payment.service.ts
+import { Retry, RetryService } from '@backendkit-labs/retry/nestjs';
+
+@Injectable()
+export class PaymentService {
+  constructor(private readonly retry: RetryService) {}
+
+  // Option 1 — inject RetryService and call .execute()
+  async charge(order: Order) {
+    const result = await this.retry.execute(
+      () => this.gateway.charge(order),
+      { maxAttempts: 4, backoff: { type: 'exponential', baseDelay: 300 } },
+    );
+    if (!result.ok) throw new ServiceUnavailableException(result.error.message);
+    return result.value;
+  }
+
+  // Option 2 — @Retry() decorator + RetryInterceptor
+  @Retry({ maxAttempts: 3, backoff: { type: 'exponential', baseDelay: 150 } })
+  async reserveStock(sku: string, qty: number) {
+    return this.inventoryApi.post('/reserve', { sku, qty });
+  }
+}`}
+            />
+          </section>
+
+          <section id="idempotency">
+            <SectionHeading id="idempotency">Idempotency</SectionHeading>
+            <P>
+              Non-idempotent operations (payment charges, email sends, inventory deductions)
+              can succeed server-side even when the response never reaches the client. A naive
+              retry would execute the operation twice. The idempotency layer prevents this: the
+              first successful result is serialized and cached; subsequent calls with the same{' '}
+              <C>key</C> return the cached value immediately — the task is never invoked again.
+            </P>
+            <PropsTable
+              rows={[
+                { prop: 'enabled',            type: 'boolean',          default: 'false',       description: 'Must be true to activate idempotency.' },
+                { prop: 'key',                type: 'string',           default: '—',           description: 'Unique key for this logical operation, e.g. "charge:order-123".' },
+                { prop: 'store',              type: 'IdempotencyStore', default: 'InMemoryIdempotencyStore', description: 'Storage backend. Implement IdempotencyStore for Redis, SQL, etc.' },
+                { prop: 'ttlMs',              type: 'number',           default: '86_400_000',  description: 'How long to keep the cached result (ms). Default: 24 h.' },
+              ]}
+            />
+            <P>
+              <C>InMemoryIdempotencyStore</C> is process-local and loses state on restart.
+              For production, implement <C>IdempotencyStore</C> backed by Redis or a database
+              so all instances share the same cache.
+            </P>
+          </section>
+        </>
+      );
+    },
+  },
 };
 
 // ── Comparison tables data ───────────────────────────────────────────────────

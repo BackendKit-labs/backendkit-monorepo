@@ -97,7 +97,7 @@ export default function LibraryShowcase() {
             Explore the libraries
           </h2>
           <p className="mt-3 text-[#64748b] text-base max-w-lg mx-auto">
-            Nine focused packages. Install only what you need — no bundled bloat.
+            Ten focused packages. Install only what you need — no bundled bloat.
           </p>
         </div>
 
