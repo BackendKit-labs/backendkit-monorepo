@@ -57,7 +57,7 @@ export const packages: Package[] = [
     icon: 'RT',
     npmName: '@backendkit-labs/retry',
     color: '#f43f5e',
-    highlights: ['Exponential backoff + jitter', 'Sliding-window budget', 'Circuit-breaker integration'],
+    highlights: ['Exponential backoff + jitter', 'Idempotency support', 'Circuit-breaker integration'],
   },
   {
     slug: 'pipeline',

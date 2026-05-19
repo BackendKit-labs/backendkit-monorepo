@@ -292,17 +292,17 @@ export class PaymentService {
     slug: 'retry',
     name: 'retry',
     npmName: '@backendkit-labs/retry',
-    version: '0.1.1',
+    version: '0.1.2',
     icon: 'RT',
     color: '#f43f5e',
     tagline: 'Enterprise retry without the boilerplate. Returns Result<T, RetryError>, never throws.',
     description:
-      'retry() wraps any async task and returns Result<T, RetryError> — it never throws. Exponential backoff with full jitter, per-attempt and global timeouts, sliding-window retry budget, and duck-typed integrations with circuit breaker, bulkhead, and observability. Works standalone or as a NestJS module.',
+      'retry() wraps any async task and returns Result<T, RetryError> — it never throws. Exponential backoff with full jitter, per-attempt and global timeouts, sliding-window retry budget, idempotency to prevent duplicate side effects, and duck-typed integrations with circuit breaker, bulkhead, and observability. Works standalone or as a NestJS module.',
     highlights: [
       'Exponential backoff with full/equal/decorrelated jitter',
       'Sliding-window retry budget (prevents retry storms)',
+      'Idempotency — cache successful results, skip duplicates',
       'Duck-typed circuit breaker + bulkhead integration',
-      'Lifecycle hooks: beforeRetry, onRetrySuccess, onExhausted',
     ],
     examples: [
       {
