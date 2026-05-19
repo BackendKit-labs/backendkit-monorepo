@@ -8,8 +8,8 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@backendkit-labs/again": "0.1.0",
-    "@backendkit-labs/result": "0.2.0"
+    "@backendkit-labs/again": "0.1.1",
+    "@backendkit-labs/result": "0.2.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

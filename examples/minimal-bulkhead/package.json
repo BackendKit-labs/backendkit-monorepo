@@ -8,7 +8,7 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@backendkit-labs/bulkhead": "0.2.0"
+    "@backendkit-labs/bulkhead": "0.2.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
