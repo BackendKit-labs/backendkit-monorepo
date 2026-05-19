@@ -14,7 +14,6 @@ const BASE = `http://localhost:${port}`;
           config: {
             baseURL: `${BASE}/sim/payment`,
             timeout: 6_000,
-            retry: { attempts: 2, delayMs: 100, jitter: true },
             circuitBreaker: {
               name: 'http:payment-gateway',
               failureThreshold: 50,
