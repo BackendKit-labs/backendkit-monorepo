@@ -3,7 +3,7 @@ import { PipelineStep, Ok, Err, StepResult } from '@backendkit-labs/pipeline';
 import { MetricsService, LoggerService } from '@backendkit-labs/observability';
 import { InjectHttpClient } from '@backendkit-labs/http-client/nestjs';
 import { HttpClient } from '@backendkit-labs/http-client';
-import { again } from '@backendkit-labs/again';
+import { retry } from '@backendkit-labs/retry';
 import { PAYMENT_CLIENT } from '../../../infrastructure/http-clients/tokens';
 import { OrderContext, OrderError } from './order-pipeline.context';
 
@@ -18,7 +18,7 @@ export class ChargePaymentStep implements PipelineStep<OrderContext, OrderError>
   ) {}
 
   async handle(ctx: OrderContext): Promise<StepResult<OrderContext, OrderError>> {
-    const result = await again(
+    const result = await retry(
       async () => {
         const r = await this.client.post<{ transactionId: string; status: string; amount: number }>(
           '/charge',

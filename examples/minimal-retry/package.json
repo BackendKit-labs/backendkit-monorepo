@@ -1,0 +1,19 @@
+{
+  "name": "minimal-retry",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal example — @backendkit-labs/retry",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@backendkit-labs/retry": "0.1.1",
+    "@backendkit-labs/result": "0.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

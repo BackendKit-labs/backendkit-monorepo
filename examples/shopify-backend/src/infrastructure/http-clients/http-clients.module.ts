@@ -14,7 +14,7 @@ const BASE = `http://localhost:${port}`;
           config: {
             baseURL: `${BASE}/sim/payment`,
             timeout: 6_000,
-            // retry y circuit breaker manejados por @backendkit-labs/again en ChargePaymentStep
+            // retry y circuit breaker manejados por @backendkit-labs/retry en ChargePaymentStep
           },
         },
         {

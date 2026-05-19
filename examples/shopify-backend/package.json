@@ -16,7 +16,7 @@
     "@backendkit-labs/http-client": "0.2.1",
     "@backendkit-labs/observability": "0.2.3",
     "@backendkit-labs/pipeline": "0.3.2",
-    "@backendkit-labs/again": "0.1.1",
+    "@backendkit-labs/retry": "0.1.1",
     "@backendkit-labs/idempotency": "0.1.2",
     "@backendkit-labs/request-scanner": "file:../../packages/request-scanner",
     "@backendkit-labs/result": "0.2.1",

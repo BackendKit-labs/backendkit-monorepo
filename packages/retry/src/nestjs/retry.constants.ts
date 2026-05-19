@@ -1,0 +1,2 @@
+﻿export const RETRY_ENGINE_TOKEN = Symbol('RETRY_ENGINE_TOKEN');
+export const RETRY_REGISTRY_TOKEN = Symbol('RETRY_REGISTRY_TOKEN');

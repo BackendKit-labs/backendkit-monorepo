@@ -22,7 +22,7 @@ Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. Back
 |---------|---------|-------------|
 | [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker) | Circuit Breaker — fail-fast with business vs infrastructure error classification, optional NestJS integration |
 | [`@backendkit-labs/bulkhead`](./packages/bulkhead) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/bulkhead?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/bulkhead) | Bulkhead concurrency limiting — queue-based, optional NestJS integration |
-| [`@backendkit-labs/again`](./packages/again) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/again?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/again) | Enterprise-grade retry — exponential backoff, sliding-window budget, error classification, duck-typed circuit-breaker/bulkhead/observability integration, optional NestJS support |
+| [`@backendkit-labs/retry`](./packages/retry) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/retry?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/retry) | Enterprise-grade retry — exponential backoff, sliding-window budget, error classification, duck-typed circuit-breaker/bulkhead/observability integration, optional NestJS support |
 | [`@backendkit-labs/idempotency`](./packages/idempotency) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/idempotency?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/idempotency) | Idempotency key enforcement — replay cached responses, prevent duplicate mutations, pluggable store (in-memory / Redis) |
 | [`@backendkit-labs/auto-learning`](./packages/auto-learning) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/auto-learning?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/auto-learning) | Adaptive resilience — automatically tunes circuit breakers, bulkheads, and HTTP clients based on real traffic patterns |
 
@@ -58,14 +58,14 @@ Each example installs its own dependencies from npm and runs with `npm start`. N
 | Example | Library | What it shows |
 |---------|---------|---------------|
 | [`examples/minimal-result`](./examples/minimal-result) | `@backendkit-labs/result` | `Result<T, E>` vs `try/catch` — typed errors, `match()`, no surprises |
-| [`examples/minimal-again`](./examples/minimal-again) | `@backendkit-labs/again` | Retry a flaky payment — exponential backoff, jitter, lifecycle hooks |
+| [`examples/minimal-retry`](./examples/minimal-retry) | `@backendkit-labs/retry` | Retry a flaky payment — exponential backoff, jitter, lifecycle hooks |
 | [`examples/minimal-circuit-breaker`](./examples/minimal-circuit-breaker) | `@backendkit-labs/circuit-breaker` | `CLOSED → OPEN → HALF_OPEN → CLOSED` lifecycle with a real state change log |
 | [`examples/minimal-bulkhead`](./examples/minimal-bulkhead) | `@backendkit-labs/bulkhead` | `Promise.all` (16 concurrent) vs bulkhead (max 3) — side by side |
 | [`examples/minimal-pipeline`](./examples/minimal-pipeline) | `@backendkit-labs/pipeline` | 3-step order pipeline — validate → charge → ship, `stop-on-first` mode |
 
 ```bash
 # Pick any example and run it
-cd examples/minimal-again
+cd examples/minimal-retry
 npm install && npm start
 ```
 

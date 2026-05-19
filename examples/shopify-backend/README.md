@@ -138,7 +138,7 @@ stress-tests/k6/scenarios/
 ├── order-flow.k6.js          # Full pipeline under load
 ├── circuit-breaker.k6.js     # Circuit breaker trip and recovery
 ├── idempotency.k6.js         # Idempotency key enforcement
-├── again-idempotency.k6.js   # Retry + idempotency lifecycle
+├── retry-idempotency.k6.js   # Retry + idempotency lifecycle
 ├── auto-learning.k6.js       # Adaptive config tuning over 3 phases
 └── waf.k6.js                 # WAF / request-scanner attack blocking
 ```
@@ -165,7 +165,7 @@ Ramps 0 → 10 → 50 → 0 VUs. Every iteration runs `POST /orders` with a uniq
 
 **What to observe:**
 - `order_pipeline_ms` (p95): target < 3 s — measures end-to-end pipeline latency under concurrency
-- `order_fail_rate`: target < 30% — with the default 20% payment failure rate, `again` retries compensate for most failures
+- `order_fail_rate`: target < 30% — with the default 20% payment failure rate, `retry` retries compensate for most failures
 
 ---
 
@@ -238,27 +238,27 @@ Runs four scenarios simultaneously:
 
 ---
 
-### 4. Retry + Idempotency lifecycle — `again-idempotency.k6.js`
+### 4. Retry + Idempotency lifecycle — `retry-idempotency.k6.js`
 
-**Library under test:** `@backendkit-labs/again` + `@backendkit-labs/idempotency`
+**Library under test:** `@backendkit-labs/retry` + `@backendkit-labs/idempotency`
 
 **Duration:** ~75 s | **Scenarios:** 3 (sequential + parallel)
 
 ```bash
-k6 run stress-tests/k6/scenarios/again-idempotency.k6.js
+k6 run stress-tests/k6/scenarios/retry-idempotency.k6.js
 ```
 
 The most revealing test — combines retry resilience with idempotency key lifecycle:
 
 | Scenario | What it proves |
 |----------|---------------|
-| `retry_resilience` | `again` retries up to 3× with exponential backoff. Gateway fails 60% → P(all 3 fail) = 21.6% → > 65% of orders succeed |
+| `retry_resilience` | `retry` retries up to 3× with exponential backoff. Gateway fails 60% → P(all 3 fail) = 21.6% → > 65% of orders succeed |
 | `idempotency_replay` | Same key sent twice. Second request returns cached response instantly (`Idempotent-Replayed: true`), never hits the payment gateway |
 | `lifecycle` | Full delete-on-failure cycle: (1) force 100% failure → key deleted → (2) same key + 0% failure → handler runs again → (3) same key again → replayed |
 
 **Key thresholds:**
-- `again_retry_success_rate` > 65%
-- `again_idempotency_replay_rate` > 85%
+- `retry_resilience_rate` > 65%
+- `idempotency_replay_rate` > 85%
 - `http_req_duration` p95 < 8 s (includes retry delays)
 
 **What to observe in the summary:**
