@@ -11,25 +11,25 @@ interface Entry {
 export class InMemoryIdempotencyStore implements IdempotencyStore {
   private readonly map = new Map<string, Entry>();
 
-  async setIfAbsent(record: IdempotencyRecord, ttlSeconds: number): Promise<IdempotencyRecord | null> {
+  setIfAbsent(record: IdempotencyRecord, ttlSeconds: number): Promise<IdempotencyRecord | null> {
     this.evict();
     const existing = this.map.get(record.key);
-    if (existing) return existing.record;
+    if (existing) return Promise.resolve(existing.record);
     this.map.set(record.key, {
       record,
       expiresAt: Date.now() + ttlSeconds * 1000,
     });
-    return null;
+    return Promise.resolve(null);
   }
 
-  async get(key: string): Promise<IdempotencyRecord | null> {
+  get(key: string): Promise<IdempotencyRecord | null> {
     this.evict();
-    return this.map.get(key)?.record ?? null;
+    return Promise.resolve(this.map.get(key)?.record ?? null);
   }
 
-  async complete(key: string, statusCode: number, body: unknown, ttlSeconds: number): Promise<void> {
+  complete(key: string, statusCode: number, body: unknown, ttlSeconds: number): Promise<void> {
     const entry = this.map.get(key);
-    if (!entry) return;
+    if (!entry) return Promise.resolve();
     entry.record = {
       ...entry.record,
       status:      'completed',
@@ -38,10 +38,12 @@ export class InMemoryIdempotencyStore implements IdempotencyStore {
       completedAt: Date.now(),
     };
     entry.expiresAt = Date.now() + ttlSeconds * 1000;
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  delete(key: string): Promise<void> {
     this.map.delete(key);
+    return Promise.resolve();
   }
 
   private evict(): void {

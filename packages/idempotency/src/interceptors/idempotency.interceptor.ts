@@ -6,7 +6,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { Reflector }          from '@nestjs/core';
-import { Observable, catchError, from, map, mergeMap } from 'rxjs';
+import { Observable, catchError, from, map, mergeMap, throwError } from 'rxjs';
 import type { Request, Response } from 'express';
 
 import {
@@ -135,7 +135,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
       ),
       catchError((err: unknown) =>
         from(this.store.delete(compositeKey)).pipe(
-          mergeMap(() => { throw err as Error; }),
+          mergeMap(() => throwError(() => err)),
         ),
       ),
     );
