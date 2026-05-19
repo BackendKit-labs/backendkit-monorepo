@@ -2,7 +2,7 @@
 
 Composable building blocks for resilient Node.js backends — built from production experience with distributed systems.
 
-**10 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
+**11 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
 
 > Community in early formation. Your use cases shape the roadmap — open an issue, start a discussion.
 
@@ -22,6 +22,7 @@ Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. Back
 |---------|---------|-------------|
 | [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker) | Circuit Breaker — fail-fast with business vs infrastructure error classification, optional NestJS integration |
 | [`@backendkit-labs/bulkhead`](./packages/bulkhead) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/bulkhead?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/bulkhead) | Bulkhead concurrency limiting — queue-based, optional NestJS integration |
+| [`@backendkit-labs/again`](./packages/again) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/again?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/again) | Enterprise-grade retry — exponential backoff, sliding-window budget, error classification, duck-typed circuit-breaker/bulkhead/observability integration, optional NestJS support |
 | [`@backendkit-labs/idempotency`](./packages/idempotency) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/idempotency?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/idempotency) | Idempotency key enforcement — replay cached responses, prevent duplicate mutations, pluggable store (in-memory / Redis) |
 | [`@backendkit-labs/auto-learning`](./packages/auto-learning) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/auto-learning?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/auto-learning) | Adaptive resilience — automatically tunes circuit breakers, bulkheads, and HTTP clients based on real traffic patterns |
 
