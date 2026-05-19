@@ -22,7 +22,7 @@ export const packageDocs: PackageDoc[] = [
     slug: 'result',
     name: 'result',
     npmName: '@backendkit-labs/result',
-    version: '0.2.0',
+    version: '0.2.1',
     icon: 'RE',
     color: '#4f7eff',
     tagline: 'Replace try/catch with typed, composable error values.',
@@ -84,7 +84,7 @@ const totalPrice = await getOrder('ord_1').then(r =>
     slug: 'circuit-breaker',
     name: 'circuit-breaker',
     npmName: '@backendkit-labs/circuit-breaker',
-    version: '0.2.0',
+    version: '0.3.1',
     icon: 'CB',
     color: '#f97316',
     tagline: 'Prevent cascading failures with intelligent error classification.',
@@ -154,7 +154,7 @@ export class PaymentService {
     slug: 'bulkhead',
     name: 'bulkhead',
     npmName: '@backendkit-labs/bulkhead',
-    version: '0.2.0',
+    version: '0.2.1',
     icon: 'BH',
     color: '#10b981',
     tagline: 'Limit concurrency. Queue the overflow. Shed excess load cleanly.',
@@ -289,10 +289,126 @@ export class PaymentService {
   },
 
   {
+    slug: 'retry',
+    name: 'retry',
+    npmName: '@backendkit-labs/retry',
+    version: '0.1.1',
+    icon: 'RT',
+    color: '#f43f5e',
+    tagline: 'Enterprise retry without the boilerplate. Returns Result<T, RetryError>, never throws.',
+    description:
+      'retry() wraps any async task and returns Result<T, RetryError> — it never throws. Exponential backoff with full jitter, per-attempt and global timeouts, sliding-window retry budget, and duck-typed integrations with circuit breaker, bulkhead, and observability. Works standalone or as a NestJS module.',
+    highlights: [
+      'Exponential backoff with full/equal/decorrelated jitter',
+      'Sliding-window retry budget (prevents retry storms)',
+      'Duck-typed circuit breaker + bulkhead integration',
+      'Lifecycle hooks: beforeRetry, onRetrySuccess, onExhausted',
+    ],
+    examples: [
+      {
+        label: 'Basic',
+        filename: 'payment.service.ts',
+        code: `import { retry } from '@backendkit-labs/retry';
+
+const result = await retry(
+  () => paymentGateway.charge(orderId, amount),
+  {
+    maxAttempts: 4,
+    backoff: { type: 'exponential', baseDelay: 300, maxDelay: 5_000, jitter: 'full' },
+    hooks: {
+      beforeRetry: ({ attempt, delayMs, error }) =>
+        logger.warn(\`Payment retry \${attempt}: \${error.message} — waiting \${Math.round(delayMs)}ms\`),
+      onExhausted: ({ totalAttempts }) =>
+        metrics.increment('payment.exhausted', { attempts: totalAttempts }),
+    },
+  },
+);
+
+if (result.ok) {
+  return { transactionId: result.value.id };
+} else {
+  const { type, message, metadata } = result.error;
+  throw new PaymentException(message, { type, attempts: metadata.attempts });
+}`,
+      },
+      {
+        label: 'With integrations',
+        filename: 'inventory.service.ts',
+        code: `import { RetryEngine } from '@backendkit-labs/retry';
+import { CircuitBreaker } from '@backendkit-labs/circuit-breaker';
+import { Bulkhead } from '@backendkit-labs/bulkhead';
+
+const cb = new CircuitBreaker({ name: 'inventory-api', failureThreshold: 50, minimumCalls: 5, slidingWindowSize: 10, openTimeoutMs: 10_000, halfOpenMaxCalls: 2 });
+const bh = new Bulkhead({ name: 'inventory-api', maxConcurrentCalls: 10, maxQueueSize: 50, queueTimeoutMs: 5_000, rejectWhenFull: false });
+
+const engine = new RetryEngine({
+  name: 'inventory-api',
+  defaultConfig: {
+    maxAttempts: 3,
+    backoff: { type: 'exponential', baseDelay: 200, maxDelay: 4_000, jitter: 'full' },
+    timeout: { attemptTimeoutMs: 3_000, globalTimeoutMs: 12_000 },
+  },
+  integrations: { circuitBreaker: cb, bulkhead: bh },
+});
+
+// Every call: bulkhead → circuit breaker check → retry on failure
+const result = await engine.execute(() => inventoryApi.get(\`/stock/\${sku}\`));
+
+if (!result.ok) {
+  const { type } = result.error;
+  if (type === 'circuit-open')    throw new ServiceUnavailableException();
+  if (type === 'bulkhead-rejected') throw new TooManyRequestsException();
+  throw new InternalServerErrorException(result.error.message);
+}`,
+      },
+      {
+        label: 'NestJS',
+        filename: 'app.module.ts',
+        code: `// app.module.ts
+import { Module } from '@nestjs/common';
+import { RetryModule } from '@backendkit-labs/retry/nestjs';
+
+@Module({
+  imports: [
+    RetryModule.forRoot({
+      engines: [
+        {
+          name: 'payment',
+          defaultConfig: {
+            maxAttempts: 3,
+            backoff: { type: 'exponential', baseDelay: 300, maxDelay: 5_000, jitter: 'full' },
+          },
+        },
+      ],
+    }),
+  ],
+})
+export class AppModule {}
+
+// payment.service.ts
+import { Injectable } from '@nestjs/common';
+import { InjectRetryEngine } from '@backendkit-labs/retry/nestjs';
+import { RetryEngine } from '@backendkit-labs/retry';
+
+@Injectable()
+export class PaymentService {
+  constructor(
+    @InjectRetryEngine('payment') private readonly engine: RetryEngine,
+  ) {}
+
+  async charge(amount: number) {
+    return this.engine.execute(() => gateway.charge(amount));
+  }
+}`,
+      },
+    ],
+  },
+
+  {
     slug: 'pipeline',
     name: 'pipeline',
     npmName: '@backendkit-labs/pipeline',
-    version: '0.2.0',
+    version: '0.3.2',
     icon: 'PL',
     color: '#06b6d4',
     tagline: 'Type-safe orchestration with stop-on-first or collect-all modes.',

@@ -14,7 +14,7 @@ export const packages: Package[] = [
   {
     slug: 'result',
     name: 'result',
-    version: '0.2.0',
+    version: '0.2.1',
     description: 'Type-safe Result monad. Replace try/catch with composable transformations.',
     longDescription:
       'Eliminate silent error paths forever. Result<T, E> makes every failure explicit in the type signature, composable with map/flatMap, and zero-overhead — no exceptions, no surprises.',
@@ -26,7 +26,7 @@ export const packages: Package[] = [
   {
     slug: 'circuit-breaker',
     name: 'circuit-breaker',
-    version: '0.2.0',
+    version: '0.3.1',
     description: 'Sliding-window circuit breaker. Business vs infra error classification.',
     longDescription:
       'Protect your services from cascading failures. Sliding-window failure tracking with configurable thresholds, half-open probing, and intelligent error classification.',
@@ -38,7 +38,7 @@ export const packages: Package[] = [
   {
     slug: 'bulkhead',
     name: 'bulkhead',
-    version: '0.2.0',
+    version: '0.2.1',
     description: 'Concurrency limiting. Isolates failures and prevents resource exhaustion.',
     longDescription:
       'Borrowed from naval architecture: isolate compartments so one breach does not sink the ship. Limit concurrent calls per service, queue excess, reject when full.',
@@ -48,9 +48,21 @@ export const packages: Package[] = [
     highlights: ['Concurrency limits', 'Queue management', 'Failure isolation'],
   },
   {
+    slug: 'retry',
+    name: 'retry',
+    version: '0.1.1',
+    description: 'Enterprise retry. Exponential backoff, sliding-window budget, circuit-breaker integration.',
+    longDescription:
+      'Never write a retry loop again. retry() returns Result<T, RetryError> and handles exponential backoff with jitter, per-attempt and global timeouts, sliding-window retry budgets, duck-typed circuit breaker and bulkhead integration, and lifecycle hooks for observability.',
+    icon: 'RT',
+    npmName: '@backendkit-labs/retry',
+    color: '#f43f5e',
+    highlights: ['Exponential backoff + jitter', 'Sliding-window budget', 'Circuit-breaker integration'],
+  },
+  {
     slug: 'pipeline',
     name: 'pipeline',
-    version: '0.2.0',
+    version: '0.3.2',
     description: 'Type-safe async Chain of Responsibility. Stop-on-first / collect-all error modes.',
     longDescription:
       'Compose complex async workflows as a sequence of typed steps. Each handler receives the typed context, returns a Result, and the pipeline handles routing, early-exit, and error aggregation.',
