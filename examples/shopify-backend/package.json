@@ -15,7 +15,7 @@
     "@backendkit-labs/circuit-breaker": "0.3.0",
     "@backendkit-labs/http-client": "0.2.1",
     "@backendkit-labs/observability": "0.2.3",
-    "@backendkit-labs/pipeline": "0.3.0",
+    "@backendkit-labs/pipeline": "0.3.1",
     "@backendkit-labs/again": "file:../../packages/again",
     "@backendkit-labs/idempotency": "file:../../packages/idempotency",
     "@backendkit-labs/request-scanner": "file:../../packages/request-scanner",
