@@ -14,6 +14,20 @@ Optional NestJS integration included — guard, interceptor, method decorator, a
 
 ---
 
+## Minimal Example
+
+Self-contained runnable example — no NestJS, one file, realistic scenario.
+
+```bash
+git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
+cd backendkit-monorepo/examples/minimal-circuit-breaker
+npm install && npm start
+```
+
+Shows the full `CLOSED → OPEN → HALF_OPEN → CLOSED` lifecycle with a simulated inventory service that goes down and recovers. State transitions logged in real time. → [full source](https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/examples/minimal-circuit-breaker)
+
+---
+
 ## Table of Contents
 
 - [Installation](#installation)

@@ -12,6 +12,20 @@ Each step in the pipeline receives the current context, transforms it, and retur
 
 ---
 
+## Minimal Example
+
+Self-contained runnable example — no NestJS, one file, realistic scenario.
+
+```bash
+git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
+cd backendkit-monorepo/examples/minimal-pipeline
+npm install && npm start
+```
+
+Shows a 3-step order pipeline (validate → charge → ship) in `stop-on-first` mode. Runs three scenarios: happy path, validation failure (payment never called), and flaky payment. → [full source](https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/examples/minimal-pipeline)
+
+---
+
 ## Installation
 
 ```bash

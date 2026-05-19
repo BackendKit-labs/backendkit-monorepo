@@ -8,6 +8,20 @@ Enterprise-grade retry library for Node.js — exponential backoff, sliding-wind
 
 ---
 
+## Minimal Example
+
+Self-contained runnable example — no NestJS, one file, realistic scenario.
+
+```bash
+git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
+cd backendkit-monorepo/examples/minimal-again
+npm install && npm start
+```
+
+Shows a payment gateway that fails 60% of the time retried with exponential backoff + jitter. Lifecycle hooks log each attempt in real time. → [full source](https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/examples/minimal-again)
+
+---
+
 ## Table of Contents
 
 - [Installation](#installation)

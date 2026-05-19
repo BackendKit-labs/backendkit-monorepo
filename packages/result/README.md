@@ -12,6 +12,20 @@ Replaces `try/catch` with an explicit, composable type that makes errors visible
 
 ---
 
+## Minimal Example
+
+Self-contained runnable example — no NestJS, one file, realistic scenario.
+
+```bash
+git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
+cd backendkit-monorepo/examples/minimal-result
+npm install && npm start
+```
+
+Shows `Result<T, E>` vs `try/catch` side by side: typed product lookup with `not-found` and `db-unavailable` error variants, handled with `match()`. → [full source](https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/examples/minimal-result)
+
+---
+
 ## Table of Contents
 
 - [Installation](#installation)

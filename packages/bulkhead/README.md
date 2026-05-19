@@ -12,6 +12,20 @@ Prevents resource exhaustion and cascading failures by limiting how many operati
 
 ---
 
+## Minimal Example
+
+Self-contained runnable example — no NestJS, one file, realistic scenario.
+
+```bash
+git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
+cd backendkit-monorepo/examples/minimal-bulkhead
+npm install && npm start
+```
+
+Shows `Promise.all` (16 concurrent) vs bulkhead (max 3 concurrent) processing the same 16 tasks side by side — with real timing output and final metrics. → [full source](https://github.com/BackendKit-labs/backendkit-monorepo/tree/master/examples/minimal-bulkhead)
+
+---
+
 ## Installation
 
 ```bash
