@@ -14,13 +14,7 @@ const BASE = `http://localhost:${port}`;
           config: {
             baseURL: `${BASE}/sim/payment`,
             timeout: 6_000,
-            circuitBreaker: {
-              name: 'http:payment-gateway',
-              failureThreshold: 50,
-              openTimeoutMs: 15_000,
-              minimumCalls: 10,
-              slidingWindowSize: 20,
-            },
+            // retry y circuit breaker manejados por @backendkit-labs/again en ChargePaymentStep
           },
         },
         {
