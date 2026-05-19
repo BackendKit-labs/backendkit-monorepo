@@ -9,23 +9,21 @@ A production-grade NestJS Shopify-like backend that demonstrates every library i
 - **Node.js 20+** (LTS recommended)
 - **k6** (for stress tests) — https://k6.io/docs/get-started/installation/
 
-> **Monorepo required.** Three packages (`again`, `idempotency`, `request-scanner`) are resolved via `file:` paths from the monorepo root. You must clone the full monorepo and build those packages before installing this example.
+> **One local package required.** Most BackendKit dependencies resolve from npm. Only `@backendkit-labs/request-scanner` is published to **GitHub Packages** (not npm), so it is consumed from the monorepo source via a `file:` path. You need to clone the monorepo and build that one package before installing.
 
 ---
 
 ## Installation
 
 ```bash
-# 1. Clone the monorepo (if you haven't already)
+# 1. Clone the monorepo
 git clone https://github.com/BackendKit-labs/backendkit-monorepo.git
 cd backendkit-monorepo
 
-# 2. Build the local packages this example depends on
-npm run build --workspace=packages/again
-npm run build --workspace=packages/idempotency
+# 2. Build the one local package (request-scanner is on GitHub Packages, not npm)
 npm run build --workspace=packages/request-scanner
 
-# 3. Install shopify-backend dependencies
+# 3. Install shopify-backend dependencies (everything else comes from npm)
 cd examples/shopify-backend
 npm install
 ```
