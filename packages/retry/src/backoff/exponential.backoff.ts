@@ -1,4 +1,4 @@
-﻿import type { BackoffStrategy, BackoffConfig, JitterType } from '../retry/types.js';
+import type { BackoffStrategy, BackoffConfig, JitterType } from '../retry/types.js';
 import { applyJitter } from './jitter.decorator.js';
 
 export class ExponentialBackoff implements BackoffStrategy {

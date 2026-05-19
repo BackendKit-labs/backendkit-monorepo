@@ -1,4 +1,4 @@
-﻿import { SetMetadata } from '@nestjs/common';
+import { SetMetadata } from '@nestjs/common';
 import type { RetryConfig } from '../retry/types.js';
 
 export const RETRY_METADATA_KEY = 'retry:config';

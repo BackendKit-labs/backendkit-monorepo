@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { Result } from '@backendkit-labs/result';
 import type { RetryConfig, RetryError } from '../retry/types.js';
 import { RetryEngine } from '../retry/retry.engine.js';

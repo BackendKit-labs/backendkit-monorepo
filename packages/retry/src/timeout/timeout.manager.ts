@@ -1,4 +1,4 @@
-﻿import type { TimeoutConfig } from '../retry/types.js';
+import type { TimeoutConfig } from '../retry/types.js';
 import { AttemptTimeoutError, GlobalTimeoutError } from './timeout.errors.js';
 
 export class TimeoutManager {

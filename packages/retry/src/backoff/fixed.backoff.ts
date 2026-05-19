@@ -1,4 +1,4 @@
-﻿import type { BackoffStrategy, BackoffConfig } from '../retry/types.js';
+import type { BackoffStrategy, BackoffConfig } from '../retry/types.js';
 
 export class FixedBackoff implements BackoffStrategy {
   constructor(private config: { baseDelay: number }) {}

@@ -1,4 +1,4 @@
-﻿import type { RetryBudgetConfig } from './types.js';
+import type { RetryBudgetConfig } from './types.js';
 
 export interface SlidingWindowBudget {
   tryConsume(): boolean;

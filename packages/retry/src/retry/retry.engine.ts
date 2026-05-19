@@ -1,4 +1,4 @@
-﻿import { type Result } from '@backendkit-labs/result';
+import { type Result } from '@backendkit-labs/result';
 import type { RetryConfig, RetryEngineConfig, RetryError, RetryMetricsSnapshot, RetryCondition, AbortCondition, RetryConditionFn, AbortConditionFn, BackoffConfig, BackoffStrategy } from './types.js';
 import { RetryExecutor } from './retry.executor.js';
 import { HookRunner } from './retry.hooks.js';

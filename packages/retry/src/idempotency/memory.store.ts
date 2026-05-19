@@ -1,4 +1,4 @@
-﻿import type { IdempotencyStore } from '../retry/types.js';
+import type { IdempotencyStore } from '../retry/types.js';
 
 interface StoreEntry {
   value: string;

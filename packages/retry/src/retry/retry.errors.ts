@@ -1,4 +1,4 @@
-﻿export class RetryExhaustedError extends Error {
+export class RetryExhaustedError extends Error {
   constructor(
     message: string,
     public readonly attempts: number,

@@ -1,4 +1,4 @@
-﻿import { type Result } from '@backendkit-labs/result';
+import { type Result } from '@backendkit-labs/result';
 import type { RetryConfig, RetryError } from './types.js';
 import { RetryRegistry } from './retry.registry.js';
 

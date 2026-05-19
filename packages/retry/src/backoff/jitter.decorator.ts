@@ -1,4 +1,4 @@
-﻿import type { BackoffStrategy, BackoffConfig, JitterType } from '../retry/types.js';
+import type { BackoffStrategy, BackoffConfig, JitterType } from '../retry/types.js';
 
 /**
  * Apply jitter to a delay value.

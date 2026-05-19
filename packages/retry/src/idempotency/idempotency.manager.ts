@@ -1,4 +1,4 @@
-﻿import type { IdempotencyConfig, IdempotencyStore } from '../retry/types.js';
+import type { IdempotencyConfig, IdempotencyStore } from '../retry/types.js';
 import { InMemoryIdempotencyStore } from './memory.store.js';
 
 export class IdempotencyManager {

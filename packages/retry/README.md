@@ -1,4 +1,4 @@
-﻿# @backendkit-labs/retry
+# @backendkit-labs/retry
 
 Enterprise-grade retry library for Node.js — exponential backoff, sliding-window budget, error classification, circuit-breaker and bulkhead integration, and optional NestJS support. Returns `Result<T, RetryError>`, never throws.
 

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { RetryEngine } from '../../src/Retry/Retry.engine.js';
 
 function makeEngine(overrides?: ConstructorParameters<typeof RetryEngine>[0]): RetryEngine {

@@ -1,4 +1,4 @@
-﻿import { Module, DynamicModule, Provider } from '@nestjs/common';
+import { Module, DynamicModule, Provider } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { RetryEngine } from '../retry/retry.engine.js';
 import { RetryRegistry } from '../retry/retry.registry.js';

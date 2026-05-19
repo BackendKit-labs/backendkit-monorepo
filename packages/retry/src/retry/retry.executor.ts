@@ -1,4 +1,4 @@
-﻿import { ok, fail, type Result } from '@backendkit-labs/result';
+import { ok, fail, type Result } from '@backendkit-labs/result';
 import type {
   RetryConfig,
   RetryError,

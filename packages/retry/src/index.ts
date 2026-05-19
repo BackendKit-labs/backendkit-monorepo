@@ -1,4 +1,4 @@
-﻿// Core
+// Core
 export { RetryEngine } from './retry/retry.engine.js';
 export { RetryRegistry } from './retry/retry.registry.js';
 export { retry } from './retry/retry.fn.js';

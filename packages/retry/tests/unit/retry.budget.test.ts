@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SlidingWindowBudgetImpl } from '../../src/Retry/Retry.budget.js';
 import type { RetryBudgetConfig } from '../../src/Retry/types.js';
 

@@ -1,4 +1,4 @@
-﻿# Architecture: @backendkit-labs/retry
+# Architecture: @backendkit-labs/retry
 
 > Design document for the retry library — enterprise-grade, zero external dependencies,
 > deeply integrated with the BackendKit Labs ecosystem (@backendkit-labs/result,

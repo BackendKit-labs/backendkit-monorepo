@@ -1,4 +1,4 @@
-﻿export class AttemptTimeoutError extends Error {
+export class AttemptTimeoutError extends Error {
   constructor(public readonly timeoutMs: number) {
     super(`Attempt timed out after ${timeoutMs}ms`);
     this.name = 'AttemptTimeoutError';

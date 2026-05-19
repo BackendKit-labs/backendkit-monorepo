@@ -1,4 +1,4 @@
-﻿import type { RetryEngineConfig, RetryMetricsSnapshot } from './types.js';
+import type { RetryEngineConfig, RetryMetricsSnapshot } from './types.js';
 import { RetryEngine } from './retry.engine.js';
 
 export class RetryRegistry {

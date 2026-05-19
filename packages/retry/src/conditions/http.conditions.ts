@@ -1,4 +1,4 @@
-﻿import type { RetryCondition, AbortCondition, RetryErrorPayload } from '../retry/types.js';
+import type { RetryCondition, AbortCondition, RetryErrorPayload } from '../retry/types.js';
 
 /**
  * Default retry condition: retry on transient HTTP errors (429, 5xx),

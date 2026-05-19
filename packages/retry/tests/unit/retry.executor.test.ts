@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgainExecutor, type ExecutorDependencies } from '../../src/Retry/Retry.executor.js';
 import { HookRunner } from '../../src/Retry/Retry.hooks.js';
 import { DefaultErrorClassifier } from '../../src/conditions/error.classifier.js';

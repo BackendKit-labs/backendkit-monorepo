@@ -1,4 +1,4 @@
-﻿// ---- Backoff ----
+// ---- Backoff ----
 
 export type JitterType = 'full' | 'equal' | 'decorrelated';
 

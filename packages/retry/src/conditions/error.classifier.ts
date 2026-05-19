@@ -1,4 +1,4 @@
-﻿import type { RetryErrorPayload, ClassifierRule, ErrorClassification } from '../retry/types.js';
+import type { RetryErrorPayload, ClassifierRule, ErrorClassification } from '../retry/types.js';
 
 /**
  * Default error classifier with built-in rules and custom rule injection.

@@ -1,3 +1,3 @@
-﻿import type { AbortCondition } from '../retry/types.js';
+import type { AbortCondition } from '../retry/types.js';
 
 export type { AbortCondition };
