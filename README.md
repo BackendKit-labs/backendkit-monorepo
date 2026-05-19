@@ -49,6 +49,38 @@ Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. Back
 
 ---
 
+## Examples
+
+### Minimal examples — one file, one concept
+
+Each example installs its own dependencies from npm and runs with `npm start`. No NestJS, no boilerplate — just the library and a realistic scenario.
+
+| Example | Library | What it shows |
+|---------|---------|---------------|
+| [`examples/minimal-result`](./examples/minimal-result) | `@backendkit-labs/result` | `Result<T, E>` vs `try/catch` — typed errors, `match()`, no surprises |
+| [`examples/minimal-again`](./examples/minimal-again) | `@backendkit-labs/again` | Retry a flaky payment — exponential backoff, jitter, lifecycle hooks |
+| [`examples/minimal-circuit-breaker`](./examples/minimal-circuit-breaker) | `@backendkit-labs/circuit-breaker` | `CLOSED → OPEN → HALF_OPEN → CLOSED` lifecycle with a real state change log |
+| [`examples/minimal-bulkhead`](./examples/minimal-bulkhead) | `@backendkit-labs/bulkhead` | `Promise.all` (16 concurrent) vs bulkhead (max 3) — side by side |
+| [`examples/minimal-pipeline`](./examples/minimal-pipeline) | `@backendkit-labs/pipeline` | 3-step order pipeline — validate → charge → ship, `stop-on-first` mode |
+
+```bash
+# Pick any example and run it
+cd examples/minimal-again
+npm install && npm start
+```
+
+### Full showcase — all libraries together
+
+[`examples/shopify-backend`](./examples/shopify-backend) is a production-grade NestJS backend that integrates every BackendKit library simultaneously — circuit breakers, bulkheads, retry, idempotency, pipeline, observability, WAF, and auto-learning. Includes 6 k6 stress test scenarios.
+
+```bash
+# Requires monorepo (request-scanner is on GitHub Packages, not npm)
+npm run build --workspace=packages/request-scanner
+cd examples/shopify-backend && npm install && npm run start:dev
+```
+
+---
+
 ## Development
 
 ```bash
