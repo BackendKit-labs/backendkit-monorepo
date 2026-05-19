@@ -6,7 +6,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { Reflector }          from '@nestjs/core';
-import { Observable, tap }    from 'rxjs';
+import { Observable, catchError, from, map, mergeMap } from 'rxjs';
 import type { Request, Response } from 'express';
 
 import {
@@ -29,6 +29,7 @@ const SAFE_KEY = /^[\x20-\x7E]{1,256}$/;
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
     @Inject(IDEMPOTENCY_STORE)
     private readonly store: IdempotencyStore,
@@ -125,16 +126,18 @@ export class IdempotencyInterceptor implements NestInterceptor {
       throw new IdempotencyPendingConflictError(rawKey);
     }
 
+    // tap() doesn't await async callbacks — use mergeMap to properly await store updates
     return next.handle().pipe(
-      tap({
-        next: async (body: unknown) => {
-          await this.store.complete(compositeKey, res.statusCode, body, ttl);
-        },
-        error: async () => {
-          // Delete so the client can retry
-          await this.store.delete(compositeKey);
-        },
-      }),
+      mergeMap((body: unknown) =>
+        from(this.store.complete(compositeKey, res.statusCode, body, ttl)).pipe(
+          map(() => body),
+        ),
+      ),
+      catchError((err: unknown) =>
+        from(this.store.delete(compositeKey)).pipe(
+          mergeMap(() => { throw err as Error; }),
+        ),
+      ),
     );
   }
 }

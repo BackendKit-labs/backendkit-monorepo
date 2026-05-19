@@ -1,5 +1,5 @@
 import { DynamicModule, InjectionToken, Module, OptionalFactoryDependency, Provider } from '@nestjs/common';
-import { APP_INTERCEPTOR }                  from '@nestjs/core';
+import { APP_INTERCEPTOR, Reflector }        from '@nestjs/core';
 
 import { IDEMPOTENCY_OPTIONS, IDEMPOTENCY_STORE } from './idempotency.constants.js';
 import { IdempotencyInterceptor }                  from './interceptors/idempotency.interceptor.js';
@@ -23,6 +23,7 @@ export class IdempotencyModule {
         { provide: IDEMPOTENCY_STORE, useClass: InMemoryIdempotencyStore },
         { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
         InMemoryIdempotencyStore,
+        Reflector,
       ],
       exports: [IDEMPOTENCY_STORE],
     };
