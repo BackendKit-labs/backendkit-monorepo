@@ -13,6 +13,7 @@ export class LoggerService implements NestLoggerService {
     @Inject(OBSERVABILITY_OPTIONS)
     private readonly opts: ObservabilityOptions,
     @Optional()
+    @Inject(CorrelationIdService)
     private readonly correlationSvc?: CorrelationIdService,
   ) {
     const transports: winston.transport[] = [
