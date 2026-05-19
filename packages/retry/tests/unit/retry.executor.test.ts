@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgainExecutor, type ExecutorDependencies } from '../../src/Retry/Retry.executor.js';
-import { HookRunner } from '../../src/Retry/Retry.hooks.js';
+import { RetryExecutor, type ExecutorDependencies } from '../../src/retry/retry.executor.js';
+import { HookRunner } from '../../src/retry/retry.hooks.js';
 import { DefaultErrorClassifier } from '../../src/conditions/error.classifier.js';
 import { TimeoutManager } from '../../src/timeout/timeout.manager.js';
 import { FixedBackoff } from '../../src/backoff/fixed.backoff.js';
 import { defaultRetryCondition, defaultAbortCondition } from '../../src/conditions/http.conditions.js';
-import type { RetryConfig } from '../../src/Retry/types.js';
+import type { RetryConfig } from '../../src/retry/types.js';
 
 function makeDeps(overrides?: Partial<ExecutorDependencies>): ExecutorDependencies {
   return {
@@ -27,10 +27,10 @@ function makeConfig(overrides?: Partial<RetryConfig>): RetryConfig {
   };
 }
 
-describe('AgainExecutor', () => {
+describe('RetryExecutor', () => {
   describe('success path', () => {
     it('returns ok on first attempt', async () => {
-      const executor = new AgainExecutor(makeDeps(), makeConfig());
+      const executor = new RetryExecutor(makeDeps(), makeConfig());
       const result = await executor.run(() => Promise.resolve(42));
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.value).toBe(42);
@@ -47,7 +47,7 @@ describe('AgainExecutor', () => {
         return Promise.resolve('data');
       };
 
-      const executor = new AgainExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
       const result = await executor.run(task);
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.value).toBe('data');
@@ -63,7 +63,7 @@ describe('AgainExecutor', () => {
         if (calls < 2) return Promise.reject(Object.assign(new Error('err'), { status: 503 }));
         return Promise.resolve('ok');
       };
-      const executor = new AgainExecutor(makeDeps({ hooks }), makeConfig());
+      const executor = new RetryExecutor(makeDeps({ hooks }), makeConfig());
       const result = await executor.run(task);
       expect(result.ok).toBe(true);
       expect(onRetrySuccess).toHaveBeenCalledOnce();
@@ -72,7 +72,7 @@ describe('AgainExecutor', () => {
     it('does NOT fire onRetrySuccess when task succeeds on first attempt', async () => {
       const onRetrySuccess = vi.fn();
       const hooks = new HookRunner({ onRetrySuccess });
-      const executor = new AgainExecutor(makeDeps({ hooks }), makeConfig());
+      const executor = new RetryExecutor(makeDeps({ hooks }), makeConfig());
       await executor.run(() => Promise.resolve('ok'));
       expect(onRetrySuccess).not.toHaveBeenCalled();
     });
@@ -81,7 +81,7 @@ describe('AgainExecutor', () => {
   describe('failure path', () => {
     it('returns fail after all attempts exhausted', async () => {
       const task = () => Promise.reject(Object.assign(new Error('down'), { status: 503 }));
-      const executor = new AgainExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
       const result = await executor.run(task);
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -95,7 +95,7 @@ describe('AgainExecutor', () => {
       const onExhausted = vi.fn();
       const hooks = new HookRunner({ onExhausted });
       const task = () => Promise.reject(Object.assign(new Error('down'), { status: 503 }));
-      const executor = new AgainExecutor(makeDeps({ hooks }), makeConfig({ maxAttempts: 2 }));
+      const executor = new RetryExecutor(makeDeps({ hooks }), makeConfig({ maxAttempts: 2 }));
       await executor.run(task);
       expect(onExhausted).toHaveBeenCalledOnce();
     });
@@ -103,7 +103,7 @@ describe('AgainExecutor', () => {
     it('returns fail immediately on abort condition (no retry)', async () => {
       let calls = 0;
       const task = () => { calls++; return Promise.reject(Object.assign(new Error('bad'), { status: 400 })); };
-      const executor = new AgainExecutor(makeDeps(), makeConfig({ maxAttempts: 5 }));
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 5 }));
       const result = await executor.run(task);
       expect(result.ok).toBe(false);
       expect(calls).toBe(1); // aborted immediately on 400
@@ -115,7 +115,7 @@ describe('AgainExecutor', () => {
       const deps = makeDeps({
         RetryCondition: { shouldRetry: () => false },
       });
-      const executor = new AgainExecutor(deps, makeConfig({ maxAttempts: 5 }));
+      const executor = new RetryExecutor(deps, makeConfig({ maxAttempts: 5 }));
       await executor.run(task);
       expect(calls).toBe(1);
     });
@@ -123,7 +123,7 @@ describe('AgainExecutor', () => {
     it('invokes fallback on exhaustion and returns ok', async () => {
       const task = () => Promise.reject(Object.assign(new Error('down'), { status: 503 }));
       const fallback = vi.fn().mockResolvedValue('fallback-value');
-      const executor = new AgainExecutor(
+      const executor = new RetryExecutor(
         makeDeps(),
         makeConfig({ maxAttempts: 2, fallback }),
       );
@@ -137,7 +137,7 @@ describe('AgainExecutor', () => {
   describe('error classification', () => {
     it('classifies HTTP errors by status code', async () => {
       const task = () => Promise.reject(Object.assign(new Error('not found'), { status: 404 }));
-      const executor = new AgainExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
       const result = await executor.run(task);
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -151,7 +151,7 @@ describe('AgainExecutor', () => {
       const networkErr = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
       let calls = 0;
       const task = () => { calls++; return Promise.reject(networkErr); };
-      const executor = new AgainExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 3 }));
       const result = await executor.run(task);
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -163,7 +163,7 @@ describe('AgainExecutor', () => {
     it('classifies axios-style errors via response.status', async () => {
       const err = { message: 'Request failed', response: { status: 502 } };
       const task = () => Promise.reject(err);
-      const executor = new AgainExecutor(makeDeps(), makeConfig({ maxAttempts: 2 }));
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 2 }));
       const result = await executor.run(task);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.status).toBe(502);
@@ -181,7 +181,7 @@ describe('AgainExecutor', () => {
         if (calls < 3) return Promise.reject(Object.assign(new Error('err'), { status: 503 }));
         return Promise.resolve('ok');
       };
-      const executor = new AgainExecutor(makeDeps({ hooks }), makeConfig({ maxAttempts: 3 }));
+      const executor = new RetryExecutor(makeDeps({ hooks }), makeConfig({ maxAttempts: 3 }));
       await executor.run(task);
       expect(beforeRetry).toHaveBeenCalledTimes(2);
       expect(afterRetry).toHaveBeenCalledTimes(2);
@@ -196,7 +196,7 @@ describe('AgainExecutor', () => {
         onError: vi.fn(),
         getState: vi.fn().mockReturnValue('open'),
       };
-      const executor = new AgainExecutor(
+      const executor = new RetryExecutor(
         makeDeps({ circuitBreaker }),
         makeConfig({ maxAttempts: 1 }),
       );
@@ -212,7 +212,7 @@ describe('AgainExecutor', () => {
         onError: vi.fn(),
         getState: vi.fn().mockReturnValue('closed'),
       };
-      const executor = new AgainExecutor(makeDeps({ circuitBreaker }), makeConfig());
+      const executor = new RetryExecutor(makeDeps({ circuitBreaker }), makeConfig());
       await executor.run(() => Promise.resolve('ok'));
       expect(circuitBreaker.onSuccess).toHaveBeenCalledOnce();
     });
@@ -229,7 +229,7 @@ describe('AgainExecutor', () => {
       };
       let calls = 0;
       const task = () => { calls++; return Promise.reject(Object.assign(new Error('err'), { status: 503 })); };
-      const executor = new AgainExecutor(makeDeps({ budget }), makeConfig({ maxAttempts: 5 }));
+      const executor = new RetryExecutor(makeDeps({ budget }), makeConfig({ maxAttempts: 5 }));
       const result = await executor.run(task);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.metadata.budgetExhausted).toBe(true);
@@ -249,7 +249,7 @@ describe('AgainExecutor', () => {
       };
       const deps = makeDeps();
       vi.spyOn(deps.backoff, 'nextDelay');
-      const executor = new AgainExecutor(deps, makeConfig({ dynamicDelay }));
+      const executor = new RetryExecutor(deps, makeConfig({ dynamicDelay }));
       await executor.run(task);
       expect(dynamicDelay).toHaveBeenCalledOnce();
       expect(backoffSpy).not.toHaveBeenCalled();
