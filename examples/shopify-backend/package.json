@@ -14,7 +14,7 @@
     "@backendkit-labs/bulkhead": "0.2.0",
     "@backendkit-labs/circuit-breaker": "0.3.0",
     "@backendkit-labs/http-client": "0.2.1",
-    "@backendkit-labs/observability": "0.2.2",
+    "@backendkit-labs/observability": "0.2.3",
     "@backendkit-labs/pipeline": "0.3.0",
     "@backendkit-labs/request-scanner": "file:../../packages/request-scanner",
     "@backendkit-labs/result": "0.2.0",
