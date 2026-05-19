@@ -50,7 +50,7 @@ export const packages: Package[] = [
   {
     slug: 'retry',
     name: 'retry',
-    version: '0.1.1',
+    version: '0.1.2',
     description: 'Enterprise retry. Exponential backoff, sliding-window budget, circuit-breaker integration.',
     longDescription:
       'Never write a retry loop again. retry() returns Result<T, RetryError> and handles exponential backoff with jitter, per-attempt and global timeouts, sliding-window retry budgets, duck-typed circuit breaker and bulkhead integration, and lifecycle hooks for observability.',
