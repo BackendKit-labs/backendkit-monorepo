@@ -25,9 +25,12 @@ Enterprise-grade retry library for Node.js — exponential backoff, sliding-wind
   - [classifiers](#classifiers)
 - [Backoff Strategies](#backoff-strategies)
 - [Error Types](#error-types)
-- [Circuit Breaker Integration](#circuit-breaker-integration)
-- [Bulkhead Integration](#bulkhead-integration)
-- [Observability Integration](#observability-integration)
+- [BackendKit Integrations](#backendkit-integrations)
+  - [circuit-breaker](#backendkit-labscircuit-breaker)
+  - [bulkhead](#backendkit-labsbulkhead)
+  - [result](#backendkit-labsresult)
+  - [observability](#backendkit-labsobservability)
+  - [All three layers together](#all-three-layers-together)
 - [NestJS Integration](#nestjs-integration)
 - [AgainRegistry](#againregistry)
 - [API Reference](#api-reference)
@@ -432,86 +435,187 @@ if (!result.ok) {
 
 ---
 
-## Circuit Breaker Integration
+## BackendKit Integrations
 
-`again` integrates with any circuit breaker that implements `CircuitBreakerLike` — including `@backendkit-labs/circuit-breaker`. No import required; pass the instance via `integrations`.
+All integrations are **duck-typed** — `again` never imports any other BackendKit library at compile time. You connect them by passing the instance directly to `AgainEngine`. Any object that satisfies the minimal interface works, including mocks in tests.
+
+---
+
+### `@backendkit-labs/circuit-breaker`
+
+The circuit breaker controls whether to attempt a call. `again` checks it before each attempt:
 
 ```typescript
+import { CircuitBreaker } from '@backendkit-labs/circuit-breaker';
 import { AgainEngine } from '@backendkit-labs/again';
-import { circuitBreaker } from '@backendkit-labs/circuit-breaker';
 
-const cb = circuitBreaker({ failureThreshold: 5, cooldownMs: 10_000 });
+const cb = new CircuitBreaker({ name: 'payments', threshold: 5 });
 
 const engine = new AgainEngine({
-  name: 'external-api',
-  integrations: { circuitBreaker: cb },
+  name: 'payments',
+  integrations: {
+    circuitBreaker: cb,  // duck-typed: canAttempt() / onSuccess() / onError()
+  },
 });
 
-const result = await engine.execute(() => fetchData());
+const result = await engine.execute(() => chargePayment(order));
 
 if (!result.ok && result.error.type === 'circuit-open') {
-  // Circuit is OPEN — again did not attempt the call
+  // Breaker was OPEN — again returned immediately without calling the task
 }
 ```
 
-**How it works:**
-1. Before the retry loop, `again` checks `circuitBreaker.canAttempt()`. If `false`, returns immediately with `type: 'circuit-open'`.
-2. After each attempt: success → `onSuccess(durationMs)`; transient error → `onError(error)`. Permanent/business errors are not reported to the CB (they're not infrastructure problems).
+**Execution flow:**
+1. `again` calls `cb.canAttempt()` before every attempt. If `false` → returns `{ type: 'circuit-open' }` immediately.
+2. On success → `cb.onSuccess(durationMs)` — registers the healthy call.
+3. On transient failure → `cb.onError(err)` — updates the breaker's failure counter.
+4. On permanent/business failure (e.g. 422) → CB is **not** notified — this is not an infrastructure problem.
+
+**The real value:** the circuit breaker stops calls when the service is known to be down. `again` acts as the gradual recovery mechanism — it waits with backoff and retries when the breaker transitions to half-open.
 
 ---
 
-## Bulkhead Integration
+### `@backendkit-labs/bulkhead`
 
-Wrap each attempt in a bulkhead slot with any object implementing `BulkheadLike`:
+Limits the concurrency of attempts. Every attempt — including retries — passes through the bulkhead:
 
 ```typescript
+import { Bulkhead } from '@backendkit-labs/bulkhead';
 import { AgainEngine } from '@backendkit-labs/again';
-import { bulkhead } from '@backendkit-labs/bulkhead';
 
-const bh = bulkhead({ maxConcurrent: 10, maxQueue: 20 });
+const bulkhead = new Bulkhead({ maxConcurrent: 10, maxQueue: 20 });
 
 const engine = new AgainEngine({
-  name: 'db-calls',
-  integrations: { bulkhead: bh },
+  name: 'orders',
+  integrations: {
+    bulkhead,  // duck-typed: execute(fn) / isFull()
+  },
 });
 ```
 
-When the bulkhead rejects a call, `again` classifies it as `type: 'bulkhead-rejected'` (transient) and retries with backoff.
+**Execution flow:**
+- Each attempt (including retries) is wrapped in `bulkhead.execute(fn)`.
+- If the bulkhead is full → it rejects → `again` classifies as `type: 'bulkhead-rejected'` (transient by default) → waits with backoff and re-queues.
 
 ---
 
-## Observability Integration
+### `@backendkit-labs/result`
 
-Plug in any logger and metrics emitter via `integrations.observability`:
+`again()` already returns `Result<T, AgainError>` — direct integration, no adapter needed:
 
 ```typescript
+import { again } from '@backendkit-labs/again';
+
+const result = await again(() => fetchOrder(id), {
+  maxAttempts: 3,
+  backoff: { type: 'exponential', baseDelay: 200 },
+});
+
+result.match(
+  (order) => res.json(order),
+  (err)   => res.status(502).json({ message: err.message, attempts: err.metadata.attempts }),
+);
+```
+
+When combining with `@backendkit-labs/http-client` (which also returns `Result`), unwrap between layers so `again` sees a thrown error instead of a nested `Result`:
+
+```typescript
+const result = await again(
+  async () => {
+    const r = await httpClient.get<Order>('/orders/1');
+    if (!r.ok) throw Object.assign(new Error(r.error.message), { status: r.error.status });
+    return r.value;
+  },
+  { maxAttempts: 3, backoff: { type: 'exponential', baseDelay: 100 } },
+);
+```
+
+The thrown error with a `.status` property is detected as `type: 'http'` and classified correctly by the built-in rules.
+
+---
+
+### `@backendkit-labs/observability`
+
+Plug in any logger and metrics emitter that satisfy the minimal duck-typed interfaces:
+
+```typescript
+import { Logger } from '@backendkit-labs/observability';
+
+const logger = new Logger({ service: 'payments' });
+
 const engine = new AgainEngine({
   name: 'payments',
   integrations: {
     observability: {
-      logger: {
-        info:  (msg, meta) => pino.info(meta, msg),
-        warn:  (msg, meta) => pino.warn(meta, msg),
-        error: (msg, meta) => pino.error(meta, msg),
-      },
-      metrics: {
-        emit: ({ name, value, tags }) => statsd.increment(name, value, tags),
-      },
+      logger,                         // info / warn / error
+      metrics: metricsRegistry,       // emit(event)
     },
   },
 });
 ```
 
-Events emitted automatically:
+**Logs emitted automatically:**
 
-| Event | When |
-|---|---|
-| `again.attempt` | After each attempt (tags: `engine`, `attempt`, `error_type`) |
-| `again.success` | On eventual success (tags: `engine`, `attempts`) |
-| `again.exhausted` | All retries exhausted (tags: `engine`, `error_type`) |
-| `again.budget_exhausted` | Budget refused retry (tags: `engine`) |
+```
+WARN  "again: attempt failed"  { attempt: 2, type: 'http', classification: 'transient' }
+ERROR "again: exhausted"       { attempts: 3, type: 'http', totalElapsedMs: 1842 }
+```
 
-Logs emitted: `warn` before each retry, `error` on exhaustion.
+**Metrics emitted automatically:**
+
+| Metric | When | Tags |
+|---|---|---|
+| `again.attempt_failed` | After each failed attempt | `attempt`, `type`, `classification` |
+| `again.success` | On eventual success | `attempt` (attempt number that succeeded) |
+| `again.exhausted` | All retries exhausted | `type` |
+| `again.budget_exhausted` | Budget refused a retry | — |
+
+---
+
+### All three layers together
+
+The most complete pattern for a production service — circuit breaker, bulkhead, budget, timeout, and observability in a single engine:
+
+```typescript
+import { CircuitBreaker } from '@backendkit-labs/circuit-breaker';
+import { Bulkhead }        from '@backendkit-labs/bulkhead';
+import { Logger }          from '@backendkit-labs/observability';
+import { AgainEngine }     from '@backendkit-labs/again';
+
+const cb       = new CircuitBreaker({ name: 'payments', threshold: 5 });
+const bulkhead = new Bulkhead({ maxConcurrent: 10, maxQueue: 20 });
+const logger   = new Logger({ service: 'payments-client' });
+
+const engine = new AgainEngine({
+  name: 'payments-client',
+  defaultConfig: {
+    maxAttempts: 4,
+    backoff:  { type: 'exponential', baseDelay: 200, maxDelay: 5_000, jitter: 'full' },
+    budget:   { windowMs: 60_000, maxRetryRatio: 0.15 },  // max 15% retries per minute
+    timeout:  { attemptTimeoutMs: 3_000, globalTimeoutMs: 12_000 },
+  },
+  integrations: {
+    circuitBreaker: cb,
+    bulkhead,
+    observability: { logger, metrics: metricsRegistry },
+  },
+});
+
+const result = await engine.execute(() => chargePayment(order));
+```
+
+**What happens per attempt:**
+
+```
+budget.recordCall()
+→ checkGlobalTimeout()              ← abort if 12s total exceeded
+→ cb.canAttempt()                   ← fast-fail if circuit is OPEN
+→ bulkhead.execute(...)             ← limit concurrency
+→ executeWithAttemptTimeout(3_000)  ← cap each call at 3s
+→ success:  cb.onSuccess() / budget.recordSuccess()
+→ failure:  cb.onError()  / budget.recordFailure()
+            → abort? retry? budget exhausted? → backoff and loop
+```
 
 ---
 
