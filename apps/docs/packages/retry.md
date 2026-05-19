@@ -102,14 +102,15 @@ const result3 = await engine.executeWithContext(
 interface RetryConfig {
   maxAttempts: number;
   backoff: BackoffConfig | BackoffStrategy;
-  retryIf?:     RetryCondition | RetryConditionFn;
-  abortIf?:     AbortCondition | AbortConditionFn;
-  timeout?:     Partial<TimeoutConfig>;
-  budget?:      Partial<RetryBudgetConfig>;
-  classifiers?: ClassifierRule[];
+  retryIf?:      RetryCondition | RetryConditionFn;
+  abortIf?:      AbortCondition | AbortConditionFn;
+  timeout?:      Partial<TimeoutConfig>;
+  budget?:       Partial<RetryBudgetConfig>;
+  idempotency?:  Partial<IdempotencyConfig>;
+  classifiers?:  ClassifierRule[];
   dynamicDelay?: (error: RetryErrorPayload, attempt: number) => number;
-  hooks?:       RetryHooks;
-  fallback?:    (error: RetryErrorPayload) => unknown | Promise<unknown>;
+  hooks?:        RetryHooks;
+  fallback?:     (error: RetryErrorPayload) => unknown | Promise<unknown>;
   correlationId?: string;
 }
 ```
@@ -213,6 +214,87 @@ await retry(task, {
   },
 });
 ```
+
+### `idempotency`
+
+Prevents duplicate side effects when a retry succeeds after an earlier attempt already completed server-side. On the first successful execution the result is serialized and stored; subsequent calls with the same `key` return the cached result immediately — the task is never called again.
+
+```typescript
+import { retry } from '@backendkit-labs/retry';
+
+const result = await retry(() => chargePayment(order), {
+  maxAttempts: 3,
+  backoff: { type: 'exponential', baseDelay: 300 },
+  idempotency: {
+    enabled: true,
+    key: `charge:${order.id}`,  // unique per logical operation
+    ttlMs: 24 * 60 * 60 * 1000, // cache result for 24h (default)
+  },
+});
+```
+
+`IdempotencyConfig`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | `boolean` | `false` | Must be `true` to activate idempotency |
+| `key` | `string` | — | Idempotency key for this execution |
+| `store` | `IdempotencyStore` | `InMemoryIdempotencyStore` | Storage backend |
+| `ttlMs` | `number` | `86_400_000` (24h) | How long to keep the cached result |
+| `idempotentMethods` | `string[]` | `['POST','PUT','PATCH']` | Used by the NestJS interceptor to filter requests |
+| `headerName` | `string` | `'Idempotency-Key'` | Header the NestJS interceptor reads the key from |
+
+#### Custom store
+
+`InMemoryIdempotencyStore` is process-local and loses state on restart. For production use a shared store:
+
+```typescript
+import { InMemoryIdempotencyStore, type IdempotencyStore } from '@backendkit-labs/retry';
+
+// Implement any KV backend
+class RedisIdempotencyStore implements IdempotencyStore {
+  constructor(private redis: Redis) {}
+
+  async get(key: string)                       { return this.redis.get(key); }
+  async set(key: string, value: string, ttlMs) { await this.redis.set(key, value, 'PX', ttlMs ?? 86_400_000); }
+  async exists(key: string)                    { return (await this.redis.exists(key)) === 1; }
+}
+
+const result = await retry(() => chargePayment(order), {
+  maxAttempts: 3,
+  idempotency: {
+    enabled: true,
+    key: `charge:${order.id}`,
+    store: new RedisIdempotencyStore(redisClient),
+  },
+});
+```
+
+#### NestJS — automatic key extraction
+
+When using `RetryModule`, the `RetryInterceptor` can extract the idempotency key from the `Idempotency-Key` HTTP header automatically and apply it to methods decorated with `@Retry`:
+
+```typescript
+// Client sends: POST /payments  Idempotency-Key: order-abc-123
+
+@Controller('payments')
+export class PaymentsController {
+  @Retry({
+    maxAttempts: 3,
+    backoff: { type: 'exponential', baseDelay: 200 },
+    idempotency: { enabled: true, ttlMs: 3_600_000 },
+    // key is injected from the Idempotency-Key header by RetryInterceptor
+  })
+  @Post()
+  charge(@Body() dto: ChargeDto) {
+    return this.paymentsService.charge(dto);
+  }
+}
+```
+
+::: tip When to use idempotency
+Use it for non-idempotent operations that can succeed server-side even when the response doesn't reach the client — payment charges, email sends, inventory deductions. GET/DELETE requests are already idempotent by nature and don't need this.
+:::
 
 ## Error Types
 

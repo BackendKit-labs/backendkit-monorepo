@@ -108,11 +108,21 @@ export class RetryExecutor {
       backoff, budget, classifier, timeoutManager,
       RetryCondition, abortCondition, hooks,
       circuitBreaker, bulkhead, logger, metrics, correlationId,
+      idempotency,
     } = this.deps;
     const { maxAttempts = 3, dynamicDelay, fallback } = this.config;
+    const idempotencyKey = this.config.idempotency?.key;
 
     const startTime = Date.now();
     let lastError: RetryErrorPayload | undefined;
+
+    // Return cached result for duplicate requests
+    if (idempotency && idempotencyKey) {
+      const cached = await idempotency.getResult(idempotencyKey);
+      if (cached !== null) {
+        return ok(JSON.parse(cached) as T);
+      }
+    }
 
     budget?.recordCall();
 
@@ -159,6 +169,9 @@ export class RetryExecutor {
           await hooks.onRetrySuccess({ attempt, totalAttempts: attempt, totalElapsedMs: Date.now() - startTime });
         }
         metrics?.emit({ name: 'Retry.success', value: 1, tags: { attempt: String(attempt) } });
+        if (idempotency && idempotencyKey) {
+          await idempotency.storeResult(idempotencyKey, JSON.stringify(value));
+        }
         return ok(value);
 
       } catch (err) {

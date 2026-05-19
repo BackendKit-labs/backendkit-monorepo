@@ -65,6 +65,7 @@ export interface IdempotencyStore {
 
 export interface IdempotencyConfig {
   enabled: boolean;                  // Default: false
+  key?: string;                      // Idempotency key for this execution
   store?: IdempotencyStore;          // Default: InMemoryIdempotencyStore
   idempotentMethods: string[];       // Default: ['POST', 'PUT', 'PATCH']
   headerName: string;                // Default: 'Idempotency-Key'
