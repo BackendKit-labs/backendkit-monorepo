@@ -22,7 +22,7 @@ Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. Back
 |---------|---------|-------------|
 | [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker) | Circuit Breaker — fail-fast with business vs infrastructure error classification, optional NestJS integration |
 | [`@backendkit-labs/bulkhead`](./packages/bulkhead) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/bulkhead?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/bulkhead) | Bulkhead concurrency limiting — queue-based, optional NestJS integration |
-| [`@backendkit-labs/retry`](./packages/retry) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/retry?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/retry) | Enterprise-grade retry — exponential backoff, sliding-window budget, error classification, duck-typed circuit-breaker/bulkhead/observability integration, optional NestJS support |
+| [`@backendkit-labs/retry`](./packages/retry) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/retry?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/retry) | Retry with exponential backoff — sliding-window budget, idempotency, error classification, duck-typed circuit-breaker/bulkhead/observability integration, optional NestJS support |
 | [`@backendkit-labs/idempotency`](./packages/idempotency) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/idempotency?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/idempotency) | Idempotency key enforcement — replay cached responses, prevent duplicate mutations, pluggable store (in-memory / Redis) |
 | [`@backendkit-labs/auto-learning`](./packages/auto-learning) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/auto-learning?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/auto-learning) | Adaptive resilience — automatically tunes circuit breakers, bulkheads, and HTTP clients based on real traffic patterns |
 
@@ -81,6 +81,18 @@ cd examples/shopify-backend && npm install && npm run start:dev
 
 ---
 
+## Benchmarks
+
+Transparent performance comparisons against popular alternatives — run on your own hardware with `npm run bench` from the monorepo root:
+
+- **Circuit Breaker vs opossum** — BackendKit uses an `AsyncMutex` for safe concurrent state transitions. opossum is ~42× faster in CLOSED state; the mutex adds ~120 µs per call — negligible for any I/O-bound workload (database calls, HTTP).
+- **Result vs neverthrow** — construction and `map`/`flatMap` chains are statistically identical. `fail()` is 20% faster than `try/catch` on the error path (no stack capture).
+- **Result vs try/catch** — within 5% on the success path.
+
+→ [Full benchmark results with methodology](./benchmarks/README.md)
+
+---
+
 ## Development
 
 ```bash
@@ -108,6 +120,14 @@ Issues, questions, and PRs are welcome — especially real use cases that expose
 
 - **[GitHub Discussions](https://github.com/BackendKit-labs/backendkit-monorepo/discussions)** — questions, ideas, and show & tell
 - **[Open issues](https://github.com/BackendKit-labs/backendkit-monorepo/issues)** — bugs and tasks, including `good first issue` picks
+
+---
+
+## Maintainer
+
+**[Mairon Cuello](https://www.linkedin.com/in/maironcuellomartinez/)** — Backend engineer with experience building distributed systems and resilient Node.js services. BackendKit is a distillation of patterns I've used in production over the years.
+
+Open to feedback, war stories, and collaboration — open a [Discussion](https://github.com/BackendKit-labs/backendkit-monorepo/discussions) or reach out on LinkedIn.
 
 ---
 
