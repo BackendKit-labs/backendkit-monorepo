@@ -36,6 +36,18 @@ export const packages: Package[] = [
     highlights: ['Sliding-window tracking', 'Error classification', 'NestJS integration'],
   },
   {
+    slug: 'rate-limiter',
+    name: 'rate-limiter',
+    version: '0.1.0',
+    description: 'Token bucket, fixed window, sliding window. Redis atomic Lua scripts.',
+    longDescription:
+      'Four algorithms, one interface. Starts in-memory with zero dependencies — swap to Redis without changing application code. Atomic Lua scripts guarantee correctness across multiple instances. Optional circuit breaker fallback keeps limits enforced even when Redis is down.',
+    icon: 'RL',
+    npmName: '@backendkit-labs/rate-limiter',
+    color: '#14b8a6',
+    highlights: ['4 algorithms, 1 interface', 'Redis atomic Lua scripts', 'NestJS integration'],
+  },
+  {
     slug: 'bulkhead',
     name: 'bulkhead',
     version: '0.2.1',

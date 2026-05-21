@@ -151,6 +151,141 @@ export class PaymentService {
   },
 
   {
+    slug: 'rate-limiter',
+    name: 'rate-limiter',
+    npmName: '@backendkit-labs/rate-limiter',
+    version: '0.1.0',
+    icon: 'RL',
+    color: '#14b8a6',
+    tagline: 'Four algorithms, one interface. Redis-ready with atomic Lua scripts.',
+    description:
+      'Token bucket, fixed window, sliding window log, and sliding window counter — all behind the same consume(key) call. Starts in-memory with zero dependencies; swap to Redis without touching application code. Atomic Lua scripts via EVALSHA guarantee correctness across multiple instances. Optional @backendkit-labs/circuit-breaker integration keeps limits enforced even during Redis outages.',
+    highlights: [
+      'Token bucket, fixed window, sliding window log & counter',
+      'Redis atomic Lua scripts (EVALSHA with EVAL fallback)',
+      'Circuit breaker + fallbackToMemory on Redis outages',
+      'NestJS: RateLimiterModule, @RateLimit(), RateLimiterGuard',
+    ],
+    examples: [
+      {
+        label: 'Basic',
+        filename: 'api.middleware.ts',
+        code: `import { RateLimiterFactory, type TokenBucketConfig } from '@backendkit-labs/rate-limiter';
+
+const config: TokenBucketConfig = {
+  algorithm:       'token-bucket',
+  store:           'memory',
+  bucketSize:      20,       // max burst
+  tokensPerSecond: 5,        // steady-state refill
+  keyPrefix:       'api:',
+};
+
+const limiter = RateLimiterFactory.create(config);
+
+// In your Express / Fastify handler:
+app.use(async (req, res, next) => {
+  const result = await limiter.consume(req.ip ?? 'unknown');
+
+  if (!result.ok) {
+    // Store error — fail open or return 503
+    return next();
+  }
+
+  res.set('X-RateLimit-Limit',     String(result.value.totalLimit));
+  res.set('X-RateLimit-Remaining', String(result.value.remaining));
+  res.set('X-RateLimit-Reset',     String(Math.ceil(result.value.resetAt / 1000)));
+
+  if (!result.value.allowed) {
+    const retryAfter = Math.ceil((result.value.resetAt - Date.now()) / 1000);
+    return res.status(429)
+      .set('Retry-After', String(retryAfter))
+      .json({ error: 'too_many_requests', retryAfter });
+  }
+
+  next();
+});`,
+      },
+      {
+        label: 'Redis',
+        filename: 'rate-limiter.config.ts',
+        code: `import { RateLimiterFactory, type SlidingWindowCounterConfig } from '@backendkit-labs/rate-limiter';
+
+// Redis store — atomic Lua scripts, multi-instance safe
+const config: SlidingWindowCounterConfig = {
+  algorithm:    'sliding-window-counter',
+  store:        'redis',
+  redisOptions: {
+    host:     process.env['REDIS_HOST'] ?? '127.0.0.1',
+    port:     parseInt(process.env['REDIS_PORT'] ?? '6379', 10),
+    password: process.env['REDIS_PASSWORD'],
+  },
+  windowMs:     60_000,   // 1 minute window
+  maxRequests:  100,
+  keyPrefix:    'api:rl:',
+
+  // Optional: circuit breaker protects your app when Redis is down
+  circuitBreaker: {
+    failureThreshold: 60,           // open after 60% Redis failures
+    openTimeoutMs:    30_000,       // probe Redis again after 30s
+    fallbackToMemory: true,         // serve in-memory while circuit is open
+    onStateChange: (from, to) => {
+      logger.warn(\`Rate limiter circuit: \${from} → \${to}\`);
+    },
+  },
+};
+
+export const limiter = RateLimiterFactory.create(config);`,
+      },
+      {
+        label: 'NestJS',
+        filename: 'app.module.ts',
+        code: `import { RateLimiterModule } from '@backendkit-labs/rate-limiter/nestjs';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    RateLimiterModule.forRootAsync({
+      imports:    [ConfigModule],
+      inject:     [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        algorithm:    'sliding-window-counter',
+        store:        'redis',
+        redisOptions: { host: config.get('REDIS_HOST') },
+        windowMs:     config.get<number>('RATE_LIMIT_WINDOW_MS', 60_000),
+        maxRequests:  config.get<number>('RATE_LIMIT_MAX', 100),
+        circuitBreaker: { fallbackToMemory: true },
+      }),
+      globalGuard: true,   // protect every route by default
+    }),
+  ],
+})
+export class AppModule {}
+
+// ---- payments.controller.ts ----
+import { Controller, Post, Body } from '@nestjs/common';
+import { RateLimit } from '@backendkit-labs/rate-limiter/nestjs';
+
+@Controller('payments')
+export class PaymentsController {
+  // Override the global limit for this expensive endpoint
+  @Post()
+  @RateLimit({
+    algorithm:       'token-bucket',
+    store:           'redis',
+    bucketSize:      5,
+    tokensPerSecond: 1,   // 1 payment per second max
+    keyPrefix:       'pay:',
+  })
+  charge(@Body() dto: ChargeDto) {
+    return this.paymentsService.charge(dto);
+  }
+}`,
+      },
+    ],
+  },
+
+  {
     slug: 'bulkhead',
     name: 'bulkhead',
     npmName: '@backendkit-labs/bulkhead',
