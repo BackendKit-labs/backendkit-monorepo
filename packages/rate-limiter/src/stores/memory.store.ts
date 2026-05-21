@@ -11,18 +11,17 @@ export class MemoryStore implements IRateLimiterStore<unknown> {
     this.maxSize = maxSize ?? 0; // 0 = unlimited
   }
 
-  async get(key: string): Promise<unknown | null> {
+  get(key: string): Promise<unknown | null> {
     const entry = this.store.get(key);
-    if (!entry) return null;
+    if (!entry) return Promise.resolve(null);
     if (entry.expiresAt > 0 && this.clock.now() > entry.expiresAt) {
       this.store.delete(key);
-      return null;
+      return Promise.resolve(null);
     }
-    return entry.state;
+    return Promise.resolve(entry.state);
   }
 
-  async set(key: string, state: unknown, ttlMs?: number): Promise<void> {
-    // Evict oldest entry if at capacity (only when maxSize > 0)
+  set(key: string, state: unknown, ttlMs?: number): Promise<void> {
     if (this.maxSize > 0 && this.store.size >= this.maxSize) {
       const oldestKey = this.store.keys().next().value;
       if (oldestKey !== undefined) {
@@ -31,14 +30,17 @@ export class MemoryStore implements IRateLimiterStore<unknown> {
     }
     const expiresAt = ttlMs ? this.clock.now() + ttlMs : 0;
     this.store.set(key, { state, expiresAt });
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  delete(key: string): Promise<void> {
     this.store.delete(key);
+    return Promise.resolve();
   }
 
-  async clear(): Promise<void> {
+  clear(): Promise<void> {
     this.store.clear();
+    return Promise.resolve();
   }
 
   get size(): number {

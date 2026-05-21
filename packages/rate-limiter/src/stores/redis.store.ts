@@ -199,7 +199,7 @@ export class RedisStore implements IRateLimiterStore<unknown>, IAtomicConsumeSto
   /**
    * Disconnect the Redis client. Call this on application shutdown.
    */
-  async disconnect(): Promise<void> {
+  disconnect(): void {
     this.client.disconnect();
   }
 

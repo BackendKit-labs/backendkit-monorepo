@@ -118,16 +118,9 @@ export class RateLimiterFactory {
   }
 
   private static extractConfig(config: RateLimiterConfig): Record<string, unknown> {
-    const {
-      algorithm: _algo,
-      store: _store,
-      keyPrefix: _prefix,
-      redisOptions: _redis,
-      circuitBreaker: _cb,
-      logger: _logger,
-      metrics: _metrics,
-      ...rest
-    } = config as unknown as Record<string, unknown>;
-    return rest;
+    const excluded = new Set(['algorithm', 'store', 'keyPrefix', 'redisOptions', 'circuitBreaker', 'logger', 'metrics']);
+    return Object.fromEntries(
+      Object.entries(config as unknown as Record<string, unknown>).filter(([k]) => !excluded.has(k)),
+    );
   }
 }

@@ -21,9 +21,9 @@ export interface RateLimiterModuleOptions {
 }
 
 export interface RateLimiterModuleAsyncOptions {
-  imports?: Type<any>[];
-  useFactory: (...args: any[]) => RateLimiterConfig | Promise<RateLimiterConfig>;
-  inject?: any[];
+  imports?: Type<unknown>[];
+  useFactory: (...args: unknown[]) => RateLimiterConfig | Promise<RateLimiterConfig>;
+  inject?: unknown[];
   globalGuard?: boolean;
   /** Optional logger injected into the guard and all per-route limiters it creates */
   logger?: ILogger;
@@ -140,7 +140,7 @@ export class RateLimiterModule {
     const providers: Provider[] = [
       {
         provide: RATE_LIMITER_INSTANCE,
-        useFactory: async (...args: any[]) => {
+        useFactory: async (...args: unknown[]) => {
           const config = await options.useFactory(...args);
           return RateLimiterFactory.create(config);
         },

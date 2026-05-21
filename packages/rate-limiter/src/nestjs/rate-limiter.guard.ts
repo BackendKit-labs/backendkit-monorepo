@@ -111,7 +111,7 @@ export class RateLimiterGuard implements CanActivate {
     return prefix ? `${prefix}:${ip}` : ip;
   }
 
-  private async resolveLimiter(options: RateLimitOptions): Promise<IRateLimiter> {
+  private resolveLimiter(options: RateLimitOptions): IRateLimiter {
     if (!options.algorithm && this.globalLimiter) {
       return this.globalLimiter;
     }
@@ -149,13 +149,17 @@ export class RateLimiterGuard implements CanActivate {
     _algorithm: AlgorithmType,
     options: RateLimitOptions,
   ): Record<string, unknown> {
-    const { algorithm: _a, keyGenerator: _k, errorMessage: _e, keyPrefix: _p, ...rest } =
-      options as unknown as Record<string, unknown>;
-    return rest;
+    const excluded = new Set(['algorithm', 'keyGenerator', 'errorMessage', 'keyPrefix']);
+    return Object.fromEntries(
+      Object.entries(options as unknown as Record<string, unknown>).filter(([k]) => !excluded.has(k)),
+    );
   }
 
   private buildCacheKey(options: RateLimitOptions): string {
-    const { keyGenerator: _kg, errorMessage: _em, ...serializable } = options;
+    const excluded = new Set(['keyGenerator', 'errorMessage']);
+    const serializable = Object.fromEntries(
+      Object.entries(options as unknown as Record<string, unknown>).filter(([k]) => !excluded.has(k)),
+    );
     return JSON.stringify(serializable);
   }
 
