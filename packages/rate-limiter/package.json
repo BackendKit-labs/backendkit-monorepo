@@ -1,0 +1,112 @@
+{
+  "name": "@backendkit-labs/rate-limiter",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "hello@backendkitlabs.dev"
+  },
+  "description": "Modular rate limiter for Node.js — token bucket, fixed window, sliding window log & counter, with Redis atomic Lua scripts and optional NestJS integration",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./nestjs": {
+      "types": "./dist/nestjs/index.d.ts",
+      "import": "./dist/nestjs/index.js",
+      "require": "./dist/nestjs/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "format": "prettier --write src/",
+    "prepublishOnly": "npm run build && npm run test && npm run lint"
+  },
+  "keywords": [
+    "rate-limiter",
+    "rate-limiting",
+    "token-bucket",
+    "fixed-window",
+    "sliding-window",
+    "redis",
+    "nestjs",
+    "backendkit",
+    "resilience",
+    "backend"
+  ],
+  "homepage": "https://backendkitlabs.dev/docs/rate-limiter/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BackendKit-labs/backendkit-monorepo.git",
+    "directory": "packages/rate-limiter"
+  },
+  "bugs": {
+    "url": "https://github.com/BackendKit-labs/backendkit-monorepo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@backendkit-labs/result": "*"
+  },
+  "peerDependencies": {
+    "@backendkit-labs/circuit-breaker": "*",
+    "@backendkit-labs/observability": "*",
+    "@nestjs/common": ">=10.0.0",
+    "@nestjs/core": ">=10.0.0",
+    "ioredis": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@backendkit-labs/circuit-breaker": {
+      "optional": true
+    },
+    "@backendkit-labs/observability": {
+      "optional": true
+    },
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@nestjs/core": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "ioredis": "^5.4.0",
+    "prettier": "^3.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.59.3",
+    "vitest": "^2.0.0"
+  }
+}

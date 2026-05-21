@@ -2,7 +2,7 @@
 
 Composable building blocks for resilient Node.js backends — built from production experience with distributed systems.
 
-**11 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
+**12 focused packages · Install only what you need · Zero runtime deps (core) · 100% TypeScript**
 
 > Community in early formation. Your use cases shape the roadmap — open an issue, start a discussion.
 
@@ -21,6 +21,7 @@ Installing `neverthrow` + `opossum` + `p-retry` + a logger gets you pieces. Back
 | Package | Version | Description |
 |---------|---------|-------------|
 | [`@backendkit-labs/circuit-breaker`](./packages/circuit-breaker) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/circuit-breaker?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/circuit-breaker) | Circuit Breaker — fail-fast with business vs infrastructure error classification, optional NestJS integration |
+| [`@backendkit-labs/rate-limiter`](./packages/rate-limiter) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/rate-limiter?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/rate-limiter) | Rate Limiter — token bucket, fixed window, sliding window log & counter, Redis atomic Lua scripts, optional NestJS integration |
 | [`@backendkit-labs/bulkhead`](./packages/bulkhead) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/bulkhead?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/bulkhead) | Bulkhead concurrency limiting — queue-based, optional NestJS integration |
 | [`@backendkit-labs/retry`](./packages/retry) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/retry?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/retry) | Retry with exponential backoff — sliding-window budget, idempotency, error classification, duck-typed circuit-breaker/bulkhead/observability integration, optional NestJS support |
 | [`@backendkit-labs/idempotency`](./packages/idempotency) | [![npm](https://img.shields.io/npm/v/@backendkit-labs/idempotency?style=flat-square&color=cb3837)](https://www.npmjs.com/package/@backendkit-labs/idempotency) | Idempotency key enforcement — replay cached responses, prevent duplicate mutations, pluggable store (in-memory / Redis) |
@@ -67,6 +68,23 @@ Each example installs its own dependencies from npm and runs with `npm start`. N
 # Pick any example and run it
 cd examples/minimal-retry
 npm install && npm start
+```
+
+### Rate limiter — Express server + k6 load tests
+
+[`examples/rate-limiter-k6`](./examples/rate-limiter-k6) — Express server exposing all four algorithms with proper `X-RateLimit-*` headers and `Retry-After`, plus three k6 test scripts.
+
+| Script | Scenario | Validates |
+|--------|----------|-----------|
+| `npm run k6:smoke` | 1 VU · 40 iterations | All endpoints respond, headers present, 429 triggered |
+| `npm run k6:load` | 5 VU · 30s steady | Zero 5xx, p95 < 300ms, block rate in range |
+| `npm run k6:burst` | spike to 50 VU · 10s | Zero 5xx, fail-fast 429s, recovery after drain |
+
+```bash
+cd examples/rate-limiter-k6
+npm install && npm start
+# in another terminal:
+npm run k6:smoke
 ```
 
 ### Full showcase — all libraries together
