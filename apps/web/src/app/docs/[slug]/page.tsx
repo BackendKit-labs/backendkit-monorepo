@@ -2104,6 +2104,201 @@ export class PaymentService {
       );
     },
   },
+
+  'rate-limiter': {
+    examples: [
+      {
+        label: 'Basic',
+        filename: 'api.middleware.ts',
+        code: `import { RateLimiterFactory, type TokenBucketConfig } from '@backendkit-labs/rate-limiter';
+
+const config: TokenBucketConfig = {
+  algorithm:       'token-bucket',
+  store:           'memory',
+  bucketSize:      20,
+  tokensPerSecond: 5,
+  keyPrefix:       'api:',
+};
+
+const limiter = RateLimiterFactory.create(config);
+
+app.use(async (req, res, next) => {
+  const result = await limiter.consume(req.ip ?? 'unknown');
+  if (!result.ok) return next(); // store error — fail open
+
+  res.set('X-RateLimit-Limit',     String(result.value.totalLimit));
+  res.set('X-RateLimit-Remaining', String(result.value.remaining));
+  res.set('X-RateLimit-Reset',     String(Math.ceil(result.value.resetAt / 1000)));
+
+  if (!result.value.allowed) {
+    const retryAfter = Math.ceil((result.value.resetAt - Date.now()) / 1000);
+    return res.status(429).set('Retry-After', String(retryAfter))
+      .json({ error: 'too_many_requests', retryAfter });
+  }
+  next();
+});`,
+      },
+      {
+        label: 'Redis',
+        filename: 'rate-limiter.config.ts',
+        code: `import { RateLimiterFactory, type SlidingWindowCounterConfig } from '@backendkit-labs/rate-limiter';
+
+const config: SlidingWindowCounterConfig = {
+  algorithm:    'sliding-window-counter',
+  store:        'redis',
+  redisOptions: {
+    host:     process.env['REDIS_HOST'] ?? '127.0.0.1',
+    password: process.env['REDIS_PASSWORD'],
+  },
+  windowMs:     60_000,
+  maxRequests:  100,
+  keyPrefix:    'api:rl:',
+  circuitBreaker: {
+    failureThreshold: 60,
+    openTimeoutMs:    30_000,
+    fallbackToMemory: true,
+    onStateChange: (from, to) => logger.warn(\`Rate limiter circuit: \${from} → \${to}\`),
+  },
+};
+
+export const limiter = RateLimiterFactory.create(config);`,
+      },
+      {
+        label: 'NestJS',
+        filename: 'app.module.ts',
+        code: `import { RateLimiterModule } from '@backendkit-labs/rate-limiter/nestjs';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    RateLimiterModule.forRootAsync({
+      imports:    [ConfigModule],
+      inject:     [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        algorithm:    'sliding-window-counter',
+        store:        'redis',
+        redisOptions: { host: config.get('REDIS_HOST') },
+        windowMs:     config.get<number>('RATE_LIMIT_WINDOW_MS', 60_000),
+        maxRequests:  config.get<number>('RATE_LIMIT_MAX', 100),
+        circuitBreaker: { fallbackToMemory: true },
+      }),
+      globalGuard: true,
+    }),
+  ],
+})
+export class AppModule {}
+
+// payments.controller.ts
+@Controller('payments')
+export class PaymentsController {
+  @Post()
+  @RateLimit({
+    algorithm: 'token-bucket', store: 'redis',
+    bucketSize: 5, tokensPerSecond: 1, keyPrefix: 'pay:',
+  })
+  charge(@Body() dto: ChargeDto) {
+    return this.paymentsService.charge(dto);
+  }
+}`,
+      },
+    ],
+    content: function RateLimiterContent({ color }) {
+      return (
+        <>
+          <section id="overview">
+            <SectionHeading id="overview">Overview</SectionHeading>
+            <P>
+              Rate limiting protects your services from abusive traffic, runaway clients, and
+              accidental self-denial-of-service. <C>@backendkit-labs/rate-limiter</C> provides four
+              algorithms behind a single <C>consume(key)</C> call, so you can start in-memory with
+              zero dependencies and migrate to Redis without changing application code.
+            </P>
+            <P>
+              Every call returns <C>{'Result<RateLimitResult, RateLimitError>'}</C> — a store failure
+              (Redis down) is distinct from a rate-limited request (<C>allowed: false</C>). You decide
+              whether to fail open or return 503 on store errors; a 429 is always an explicit branch.
+            </P>
+          </section>
+
+          <section id="algorithms">
+            <SectionHeading id="algorithms">Algorithms</SectionHeading>
+            <div className="grid sm:grid-cols-2 gap-4 my-5">
+              {[
+                { name: 'Token Bucket',           abbr: 'TB', desc: 'Tokens refill at a fixed rate up to bucketSize. Allows controlled bursts. Best for APIs with bursty clients.' },
+                { name: 'Fixed Window',            abbr: 'FW', desc: 'Hard cap per fixed time window. Simplest, lowest memory. Susceptible to boundary bursts.' },
+                { name: 'Sliding Window Log',      abbr: 'SWL', desc: 'Stores a timestamp per request. Exact enforcement, no boundary burst. Higher memory (O(maxRequests)).' },
+                { name: 'Sliding Window Counter',  abbr: 'SWC', desc: 'Two counters + weighted interpolation. ~Exact accuracy, O(1) memory. Recommended default.' },
+              ].map((a) => (
+                <div key={a.name} className="rounded-xl p-4 bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded" style={{ background: `${color}20`, color }}>{a.abbr}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{a.name}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-[#94a3b8] leading-relaxed">{a.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="config">
+            <SectionHeading id="config">Configuration</SectionHeading>
+            <PropsTable
+              rows={[
+                { prop: 'algorithm',       type: "'token-bucket' | 'fixed-window' | 'sliding-window-log' | 'sliding-window-counter'", description: 'Algorithm to use.' },
+                { prop: 'store',           type: "'memory' | 'redis'", default: "'memory'", description: 'Store backend. Pass a pre-configured ioredis instance for custom setups.' },
+                { prop: 'keyPrefix',       type: 'string',   default: "'rl:'",    description: 'Prefix added to every store key.' },
+                { prop: 'bucketSize',      type: 'number',   default: '—',        description: 'Token bucket only — maximum capacity (max burst).' },
+                { prop: 'tokensPerSecond', type: 'number',   default: '—',        description: 'Token bucket only — steady-state refill rate.' },
+                { prop: 'windowMs',        type: 'number',   default: '—',        description: 'Window algorithms — duration of the rate limit window in ms.' },
+                { prop: 'maxRequests',     type: 'number',   default: '—',        description: 'Window algorithms — max allowed requests per window.' },
+                { prop: 'circuitBreaker',  type: 'RateLimiterCircuitBreakerConfig', description: 'Redis only — opens on Redis failures and optionally falls back to MemoryStore.' },
+              ]}
+            />
+          </section>
+
+          <section id="redis">
+            <SectionHeading id="redis">Redis Store</SectionHeading>
+            <P>
+              All algorithm logic runs as <strong>atomic Lua scripts</strong> via <C>EVALSHA</C> (with{' '}
+              <C>EVAL</C> fallback on <C>NOSCRIPT</C>). Consume + check + update is a single round-trip
+              — no race conditions across multiple instances.
+            </P>
+            <P>
+              Add <C>circuitBreaker: {'{ fallbackToMemory: true }'}</C> to keep limits enforced
+              locally when Redis is unavailable. Each instance maintains its own counter during the
+              outage, so the effective limit becomes <C>maxRequests × instanceCount</C> — an acceptable
+              trade-off for continued availability.
+            </P>
+          </section>
+
+          <section id="nestjs">
+            <SectionHeading id="nestjs">NestJS Integration</SectionHeading>
+            <P>
+              Register <C>RateLimiterModule.forRoot()</C> once with <C>globalGuard: true</C> to protect
+              every route. Override per-route with <C>@RateLimit(config)</C> or disable entirely with{' '}
+              <C>@RateLimit(null)</C>.
+            </P>
+            <P>
+              Use <C>forRootAsync</C> when the configuration depends on <C>ConfigService</C> or other
+              injectable providers. The module re-creates the limiter instance on each initialization —
+              safe for hot-reload in development.
+            </P>
+            <SubHeading>Trust proxy for IP-based limiting</SubHeading>
+            <P>
+              When running behind a reverse proxy (Nginx, Cloudflare, AWS ALB), configure Express trust
+              proxy so <C>request.ip</C> reflects the real client IP from <C>X-Forwarded-For</C>:
+            </P>
+            <CodeBlock
+              filename="main.ts"
+              code={`const app = await NestFactory.create(AppModule);
+app.set('trust proxy', 1); // trust one proxy hop`}
+            />
+          </section>
+        </>
+      );
+    },
+  },
 };
 
 // ── Comparison tables data ───────────────────────────────────────────────────
@@ -2205,6 +2400,22 @@ const comparisonData: Record<string, {
       { feature: 'Named instances (DI)',       ours: '✅',             alt1: '⚠️ Manual', alt2: '❌' },
       { feature: 'Runtime dependencies',      ours: 'axios (peer)',   alt1: '0 (is the dep)', alt2: '0' },
       { feature: 'Weekly downloads',          ours: 'Growing',        alt1: '~50M', alt2: '~2M' },
+    ],
+  },
+  'rate-limiter': {
+    intro: 'Comparing against express-rate-limit and node-rate-limiter-flexible — the two most common rate limiting libraries in the Node.js ecosystem.',
+    ours: '@backendkit-labs/rate-limiter',
+    alternatives: ['express-rate-limit', 'rate-limiter-flexible'],
+    rows: [
+      { feature: 'Algorithms',              ours: '4 (TB, FW, SWL, SWC)',   alt1: '1 (fixed window)',       alt2: '✅ Multiple' },
+      { feature: 'In-memory store',         ours: '✅ Built-in',             alt1: '✅ Default',             alt2: '✅ Built-in' },
+      { feature: 'Redis support',           ours: '✅ Atomic Lua scripts',   alt1: '⚠️ Via plugin',         alt2: '✅ Built-in' },
+      { feature: 'Atomic multi-instance',   ours: '✅ EVALSHA',              alt1: '⚠️ Depends on store',   alt2: '✅' },
+      { feature: 'Circuit breaker',         ours: '✅ Integrated',           alt1: '❌',                    alt2: '❌' },
+      { feature: 'Result<T,E> interface',   ours: '✅ No throws',            alt1: '❌ Throws / middleware', alt2: '❌ Throws' },
+      { feature: 'Multi-weight requests',   ours: '✅ consume(key, weight)', alt1: '❌',                    alt2: '✅' },
+      { feature: 'NestJS integration',      ours: '✅ Module + @RateLimit()', alt1: '⚠️ Manual adapter',   alt2: '⚠️ Manual adapter' },
+      { feature: 'Zero deps (core)',         ours: '✅',                      alt1: '✅',                    alt2: '✅' },
     ],
   },
   'request-scanner': {
