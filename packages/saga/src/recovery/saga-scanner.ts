@@ -26,7 +26,10 @@ export class SagaScanner {
 
     this.timerId = setInterval(() => {
       this.recoveryEngine.recoverCrashedSagas().catch((error: unknown) => {
-        console.error('[SagaScanner] Recovery scan failed:', error);
+        console.error('[SagaScanner] Crash recovery scan failed:', error);
+      });
+      this.recoveryEngine.recoverTimedOutWaits().catch((error: unknown) => {
+        console.error('[SagaScanner] Timeout scan failed:', error);
       });
     }, this.intervalMs);
   }

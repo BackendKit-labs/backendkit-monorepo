@@ -74,10 +74,26 @@ export class RedisAdapter implements SagaStore {
         await this.client.srem(`${this.prefix}:index:status:${prev.status}`, state.id);
       }
 
+      // Remove old token index if token changed or cleared
+      if (existing !== null) {
+        const prev = JSON.parse(existing) as { eventToken?: string };
+        if (prev.eventToken !== undefined && prev.eventToken !== state.eventToken) {
+          await this.client.del(this.tokenKey(prev.eventToken));
+        }
+      }
+
       // Save state
       await this.client.set(key, JSON.stringify(state));
       if (this.ttl !== undefined) {
         await this.client.expire(key, this.ttl);
+      }
+
+      // Update token index
+      if (state.eventToken !== undefined) {
+        await this.client.set(this.tokenKey(state.eventToken), state.id);
+        if (this.ttl !== undefined) {
+          await this.client.expire(this.tokenKey(state.eventToken), this.ttl);
+        }
       }
 
       // Update indexes
@@ -177,6 +193,9 @@ export class RedisAdapter implements SagaStore {
 
       const state = JSON.parse(raw) as SagaState;
 
+      if (state.eventToken !== undefined) {
+        await this.client.del(this.tokenKey(state.eventToken));
+      }
       await this.client.del(this.stateKey(sagaId));
       await this.client.zrem(`${this.prefix}:index:all`, sagaId);
       await this.client.srem(`${this.prefix}:index:status:${state.status}`, sagaId);
@@ -191,7 +210,26 @@ export class RedisAdapter implements SagaStore {
     }
   }
 
+  async findByEventToken(token: string): Promise<SagaResult<SagaState>> {
+    try {
+      const sagaId = await this.client.get(this.tokenKey(token));
+      if (sagaId === null) {
+        return fail({ category: 'SAGA_NOT_FOUND', sagaId: token as SagaId });
+      }
+      return this.load(sagaId as SagaId);
+    } catch (err) {
+      return fail({
+        category: 'PERSISTENCE_ERROR',
+        cause: err instanceof Error ? err : new Error(String(err)),
+      });
+    }
+  }
+
   private stateKey(sagaId: SagaId | string): string {
     return `${this.prefix}:state:${sagaId}`;
+  }
+
+  private tokenKey(token: string): string {
+    return `${this.prefix}:token:${token}`;
   }
 }

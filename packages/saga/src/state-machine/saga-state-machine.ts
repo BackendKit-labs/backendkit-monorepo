@@ -16,6 +16,7 @@ const TRANSITIONS: Record<SagaStatus, Set<SagaStatus>> = {
 
   [SagaStatus.RUNNING]: new Set([
     SagaStatus.STEP_EXECUTING,
+    SagaStatus.WAITING_FOR_EVENT,
     SagaStatus.COMPENSATING,
     SagaStatus.PAUSED,
     SagaStatus.COMPLETED,
@@ -23,7 +24,13 @@ const TRANSITIONS: Record<SagaStatus, Set<SagaStatus>> = {
 
   [SagaStatus.STEP_EXECUTING]: new Set([
     SagaStatus.RUNNING,
+    SagaStatus.WAITING_FOR_EVENT,
     SagaStatus.COMPENSATING,
+  ]),
+
+  [SagaStatus.WAITING_FOR_EVENT]: new Set([
+    SagaStatus.RUNNING,       // signal received
+    SagaStatus.COMPENSATING,  // timeout expired
   ]),
 
   [SagaStatus.COMPENSATING]: new Set([SagaStatus.COMPENSATION_DONE]),
@@ -84,6 +91,7 @@ export class SagaStateMachine {
     return (
       state.status === SagaStatus.RUNNING ||
       state.status === SagaStatus.STEP_EXECUTING ||
+      state.status === SagaStatus.WAITING_FOR_EVENT ||
       state.status === SagaStatus.PAUSED
     );
   }

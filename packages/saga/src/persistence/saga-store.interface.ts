@@ -13,4 +13,5 @@ export interface SagaStore {
   load(sagaId: SagaId): Promise<SagaResult<SagaState>>;
   list(filter?: SagaFilter): Promise<SagaResult<SagaState[]>>;
   delete(sagaId: SagaId): Promise<SagaResult<void>>;
+  findByEventToken(token: string): Promise<SagaResult<SagaState>>;
 }

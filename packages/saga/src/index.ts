@@ -7,6 +7,8 @@
 // ===== Types =====
 export type { SagaId, SagaState, SagaFilter, SagaOutput, StepState } from './types/saga.types';
 export { SagaStatus, StepStatus } from './types/saga.types';
+export { waitForSignal, isWaitForSignal } from './types/signal.types';
+export type { WaitForSignalResult } from './types/signal.types';
 export type { StepError, SagaEngineError, SagaError, SagaResult } from './types/error.types';
 export type { StepContext, CompensationContext, StepHandler, CompensationHandler, StepDefinition, StepGroup } from './types/step.types';
 export type { SagaEventType, SagaEvent, EventHandler, SagaEventBus as SagaEventBusInterface } from './types/events.types';

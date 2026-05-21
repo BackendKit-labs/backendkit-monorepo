@@ -75,6 +75,8 @@ interface SagaRow extends Record<string, unknown> {
   metadata: unknown;
   version: number | string;
   lock_expires_at: number | string | null;
+  event_token: string | null;
+  wait_expires_at: number | string | null;
 }
 
 // ---- Implementation ----
@@ -100,8 +102,9 @@ export class SqlAdapter implements SagaStore {
         await this.client.query(
           `INSERT INTO saga_states
              (id, saga_type, status, correlation_id, steps_state, current_step,
-              created_at, updated_at, completed_at, metadata, version, lock_expires_at)
-           VALUES (${this.placeholders(12)})`,
+              created_at, updated_at, completed_at, metadata, version, lock_expires_at,
+              event_token, wait_expires_at)
+           VALUES (${this.placeholders(14)})`,
           [
             state.id,
             state.sagaType,
@@ -115,6 +118,8 @@ export class SqlAdapter implements SagaStore {
             JSON.stringify(state.metadata),
             state.version,
             state.lockExpiresAt ?? null,
+            state.eventToken ?? null,
+            state.waitExpiresAt ?? null,
           ],
         );
       } else {
@@ -139,8 +144,10 @@ export class SqlAdapter implements SagaStore {
                   completed_at    = ${this.p(7)},
                   metadata        = ${this.p(8)},
                   version         = ${this.p(9)},
-                  lock_expires_at = ${this.p(10)}
-            WHERE id = ${this.p(11)} AND version = ${this.p(12)}`,
+                  lock_expires_at = ${this.p(10)},
+                  event_token     = ${this.p(11)},
+                  wait_expires_at = ${this.p(12)}
+            WHERE id = ${this.p(13)} AND version = ${this.p(14)}`,
           [
             state.sagaType,
             state.status,
@@ -152,6 +159,8 @@ export class SqlAdapter implements SagaStore {
             JSON.stringify(state.metadata),
             state.version,
             state.lockExpiresAt ?? null,
+            state.eventToken ?? null,
+            state.waitExpiresAt ?? null,
             state.id,
             state.version - 1,
           ],
@@ -249,6 +258,26 @@ export class SqlAdapter implements SagaStore {
     }
   }
 
+  async findByEventToken(token: string): Promise<SagaResult<SagaState>> {
+    try {
+      const result = await this.client.query(
+        `SELECT * FROM saga_states WHERE event_token = ${this.p(1)} LIMIT 1`,
+        [token],
+      );
+
+      if (result.rows.length === 0) {
+        return fail({ category: 'SAGA_NOT_FOUND', sagaId: token as SagaId });
+      }
+
+      return ok(rowToState(result.rows[0] as SagaRow));
+    } catch (err) {
+      return fail({
+        category: 'PERSISTENCE_ERROR',
+        cause: err instanceof Error ? err : new Error(String(err)),
+      });
+    }
+  }
+
   // ---- Placeholder helpers ----
 
   private p(index: number): string {
@@ -280,5 +309,7 @@ function rowToState(row: SagaRow): SagaState {
       : (row.metadata as Record<string, unknown>),
     version: Number(row.version),
     lockExpiresAt: row.lock_expires_at !== null ? Number(row.lock_expires_at) : undefined,
+    eventToken: row.event_token !== null ? row.event_token : undefined,
+    waitExpiresAt: row.wait_expires_at !== null ? Number(row.wait_expires_at) : undefined,
   };
 }

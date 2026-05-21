@@ -18,6 +18,7 @@ export enum SagaStatus {
   PENDING = 'PENDING',
   RUNNING = 'RUNNING',
   STEP_EXECUTING = 'STEP_EXECUTING',
+  WAITING_FOR_EVENT = 'WAITING_FOR_EVENT',
   COMPENSATING = 'COMPENSATING',
   COMPENSATION_DONE = 'COMPENSATION_DONE',
   COMPLETED = 'COMPLETED',
@@ -31,6 +32,7 @@ export enum SagaStatus {
 export enum StepStatus {
   PENDING = 'PENDING',
   EXECUTING = 'EXECUTING',
+  WAITING_FOR_SIGNAL = 'WAITING_FOR_SIGNAL',
   SUCCEEDED = 'SUCCEEDED',
   FAILED = 'FAILED',
   COMPENSATED = 'COMPENSATED',
@@ -65,6 +67,8 @@ export interface SagaState {
   metadata: Record<string, unknown>;
   version: number;           // optimistic locking
   lockExpiresAt?: number;    // timestamp ms
+  eventToken?: string;       // signal token when status === WAITING_FOR_EVENT
+  waitExpiresAt?: number;    // timestamp ms — if set, wait fails after this time
 }
 
 // ---- SagaFilter ----

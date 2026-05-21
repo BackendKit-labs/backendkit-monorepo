@@ -15,8 +15,11 @@ CREATE TABLE IF NOT EXISTS saga_states (
   metadata        JSON         NOT NULL,
   version         INT          NOT NULL DEFAULT 1,
   lock_expires_at BIGINT,
+  event_token     VARCHAR(255),
+  wait_expires_at BIGINT,
   PRIMARY KEY (id),
-  INDEX idx_saga_states_status    (status),
-  INDEX idx_saga_states_saga_type (saga_type),
-  INDEX idx_saga_states_created   (created_at DESC)
+  UNIQUE INDEX idx_saga_states_token   (event_token),
+  INDEX idx_saga_states_status         (status),
+  INDEX idx_saga_states_saga_type      (saga_type),
+  INDEX idx_saga_states_created        (created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

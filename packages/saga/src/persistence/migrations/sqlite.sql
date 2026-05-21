@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS saga_states (
   completed_at    INTEGER,
   metadata        TEXT    NOT NULL DEFAULT '{}',
   version         INTEGER NOT NULL DEFAULT 1,
-  lock_expires_at INTEGER
+  lock_expires_at INTEGER,
+  event_token     TEXT UNIQUE,
+  wait_expires_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_saga_states_status    ON saga_states (status);

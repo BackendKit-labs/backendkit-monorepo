@@ -138,6 +138,62 @@ export class SagaEngine {
     return instance.pause();
   }
 
+  async signal(token: string, payload?: unknown): Promise<SagaResult<SagaOutput>> {
+    const loadResult = await this.store.findByEventToken(token);
+    if (isFail(loadResult)) {
+      return loadResult as unknown as SagaResult<SagaOutput>;
+    }
+
+    const state = loadResult.value;
+    const definition = this.definitions.get(state.sagaType);
+    if (definition === undefined) {
+      return fail({
+        category: 'DEFINITION_NOT_REGISTERED',
+        sagaType: state.sagaType,
+      } satisfies SagaEngineError);
+    }
+
+    const instance = new SagaInstance(
+      definition,
+      state,
+      this.store,
+      this.lockProvider,
+      this.eventBus,
+      new StepRunner(),
+      new CompensationRunner(),
+    );
+
+    return instance.signal(payload);
+  }
+
+  async expireWait(sagaId: SagaId): Promise<SagaResult<SagaOutput>> {
+    const loadResult = await this.store.load(sagaId);
+    if (isFail(loadResult)) {
+      return loadResult as unknown as SagaResult<SagaOutput>;
+    }
+
+    const state = loadResult.value;
+    const definition = this.definitions.get(state.sagaType);
+    if (definition === undefined) {
+      return fail({
+        category: 'DEFINITION_NOT_REGISTERED',
+        sagaType: state.sagaType,
+      } satisfies SagaEngineError);
+    }
+
+    const instance = new SagaInstance(
+      definition,
+      state,
+      this.store,
+      this.lockProvider,
+      this.eventBus,
+      new StepRunner(),
+      new CompensationRunner(),
+    );
+
+    return instance.expireWait();
+  }
+
   async resume(sagaId: SagaId): Promise<SagaResult<SagaOutput>> {
     const loadResult = await this.store.load(sagaId);
     if (isFail(loadResult)) {

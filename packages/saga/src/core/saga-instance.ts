@@ -24,6 +24,8 @@ import { ParallelExecutor } from '../parallel/parallel-executor';
 import { generateEventId } from '../utils/id-generator';
 import { currentTimestamp } from '../utils/time';
 import type { StepContext, StepDefinition, StepGroup } from '../types/step.types';
+import { isWaitForSignal } from '../types/signal.types';
+import type { WaitForSignalResult } from '../types/signal.types';
 
 function createEvent(
   sagaId: SagaId,
@@ -93,6 +95,71 @@ export class SagaInstance {
     });
   }
 
+  async signal(payload?: unknown): Promise<SagaResult<SagaOutput>> {
+    return this.executeWithLifecycle(async () => {
+      if (this.state.status !== SagaStatus.WAITING_FOR_EVENT) {
+        return fail({
+          category: 'INVALID_TRANSITION',
+          from: this.state.status,
+          to: SagaStatus.RUNNING,
+        });
+      }
+
+      // Mark waiting step as SUCCEEDED with the signal payload as its output
+      this.updateStepState(this.state.currentStepIndex, StepStatus.SUCCEEDED, payload);
+
+      // Clear wait fields and advance to the next step
+      this.state = {
+        ...this.state,
+        eventToken: undefined,
+        waitExpiresAt: undefined,
+        currentStepIndex: this.state.currentStepIndex + 1,
+      };
+
+      const transitionResult = SagaStateMachine.transition(this.state, SagaStatus.RUNNING);
+      if (isFail(transitionResult)) {
+        return transitionResult as unknown as SagaResult<SagaOutput>;
+      }
+      this.state = transitionResult.value;
+      await this.persistAndPublish(
+        createEvent(this.state.id, 'SAGA_SIGNALED', { payload }),
+      );
+
+      return this.executeSteps();
+    });
+  }
+
+  async expireWait(): Promise<SagaResult<SagaOutput>> {
+    return this.executeWithLifecycle(async () => {
+      if (this.state.status !== SagaStatus.WAITING_FOR_EVENT) {
+        return this.buildOutput();
+      }
+
+      const stepName = this.state.steps[this.state.currentStepIndex]?.name ?? '';
+      const timeoutError: SagaError = {
+        type: 'STEP_TIMEOUT',
+        step: stepName,
+        timeoutMs: this.state.waitExpiresAt !== undefined
+          ? this.state.waitExpiresAt - this.state.updatedAt
+          : 0,
+      };
+
+      // Mark the step as failed and clear wait fields
+      const steps = this.state.steps.map((s, i) =>
+        i === this.state.currentStepIndex
+          ? { ...s, status: StepStatus.FAILED, error: timeoutError, completedAt: currentTimestamp() }
+          : s,
+      );
+      this.state = { ...this.state, steps, eventToken: undefined, waitExpiresAt: undefined };
+
+      await this.persistAndPublish(
+        createEvent(this.state.id, 'SAGA_WAIT_TIMEOUT', undefined, stepName, timeoutError),
+      );
+
+      return this.handleStepFailure(timeoutError, this.definition.steps);
+    });
+  }
+
   getState(): SagaState {
     return { ...this.state };
   }
@@ -153,8 +220,14 @@ export class SagaInstance {
         return this.handleStepFailure(result.error, steps);
       }
 
-      // Update step state to SUCCEEDED
       const stepResult = result.value;
+
+      // Detect wait-for-signal: step defers completion to an external event
+      if (isWaitForSignal(stepResult.output)) {
+        return this.handleWaitForSignal(stepResult.output, i, stepOrGroup);
+      }
+
+      // Update step state to SUCCEEDED
       this.updateStepState(i, StepStatus.SUCCEEDED, stepResult.output);
       await this.persistAndPublish(
         createEvent(this.state.id, 'STEP_SUCCEEDED', stepResult.output, getStepName(stepOrGroup)),
@@ -263,6 +336,35 @@ export class SagaInstance {
         metadata: this.state.metadata,
       });
     }
+
+    return this.buildOutput();
+  }
+
+  private async handleWaitForSignal(
+    signal: WaitForSignalResult,
+    stepIndex: number,
+    stepOrGroup: StepDefinition | StepGroup,
+  ): Promise<SagaResult<SagaOutput>> {
+    // Mark the step as waiting (not yet completed)
+    this.updateStepState(stepIndex, StepStatus.WAITING_FOR_SIGNAL);
+
+    this.state = {
+      ...this.state,
+      eventToken: signal.token,
+      waitExpiresAt: signal.timeoutMs !== undefined
+        ? currentTimestamp() + signal.timeoutMs
+        : undefined,
+    };
+
+    const transitionResult = SagaStateMachine.transition(this.state, SagaStatus.WAITING_FOR_EVENT);
+    if (isFail(transitionResult)) {
+      return transitionResult as unknown as SagaResult<SagaOutput>;
+    }
+    this.state = transitionResult.value;
+
+    await this.persistAndPublish(
+      createEvent(this.state.id, 'SAGA_WAITING_FOR_EVENT', { token: signal.token }, getStepName(stepOrGroup)),
+    );
 
     return this.buildOutput();
   }

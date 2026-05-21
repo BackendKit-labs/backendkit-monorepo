@@ -13,6 +13,7 @@ import type { SagaStore } from './saga-store.interface';
 
 export class InMemoryStore implements SagaStore {
   private readonly store = new Map<string, SagaState>();
+  private readonly tokenIndex = new Map<string, SagaId>();  // token → sagaId
 
   async save(state: SagaState): Promise<SagaResult<void>> {
     const existing = this.store.get(state.id);
@@ -27,9 +28,18 @@ export class InMemoryStore implements SagaStore {
           ),
         });
       }
+      // Clean up old token index if token changed or cleared
+      if (existing.eventToken !== undefined && existing.eventToken !== state.eventToken) {
+        this.tokenIndex.delete(existing.eventToken);
+      }
     }
 
     this.store.set(state.id, { ...state });
+
+    if (state.eventToken !== undefined) {
+      this.tokenIndex.set(state.eventToken, state.id);
+    }
+
     return ok(undefined);
   }
 
@@ -76,14 +86,23 @@ export class InMemoryStore implements SagaStore {
   }
 
   async delete(sagaId: SagaId): Promise<SagaResult<void>> {
-    if (!this.store.has(sagaId)) {
-      return fail({
-        category: 'SAGA_NOT_FOUND',
-        sagaId,
-      });
+    const state = this.store.get(sagaId);
+    if (state === undefined) {
+      return fail({ category: 'SAGA_NOT_FOUND', sagaId });
     }
 
+    if (state.eventToken !== undefined) {
+      this.tokenIndex.delete(state.eventToken);
+    }
     this.store.delete(sagaId);
     return ok(undefined);
+  }
+
+  async findByEventToken(token: string): Promise<SagaResult<SagaState>> {
+    const sagaId = this.tokenIndex.get(token);
+    if (sagaId === undefined) {
+      return fail({ category: 'SAGA_NOT_FOUND', sagaId: token as SagaId });
+    }
+    return this.load(sagaId);
   }
 }

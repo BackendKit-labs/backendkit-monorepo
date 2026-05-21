@@ -19,6 +19,9 @@ const CRASHED_STATUSES: SagaStatus[] = [
   SagaStatus.COMPENSATING,
 ];
 
+// Sagas waiting for an external signal that has a deadline
+const WAITING_STATUS = SagaStatus.WAITING_FOR_EVENT;
+
 export class RecoveryEngine {
   constructor(
     private readonly store: SagaStore,
@@ -53,6 +56,30 @@ export class RecoveryEngine {
     }
 
     return ok(recoveredCount);
+  }
+
+  async recoverTimedOutWaits(): Promise<SagaResult<number>> {
+    const listResult = await this.store.list({ status: WAITING_STATUS });
+    if (isFail(listResult)) {
+      return listResult as unknown as SagaResult<number>;
+    }
+
+    const now = currentTimestamp();
+    let expiredCount = 0;
+
+    for (const saga of listResult.value) {
+      // Only expire sagas that have a deadline and it has passed
+      if (saga.waitExpiresAt === undefined || saga.waitExpiresAt > now) {
+        continue;
+      }
+
+      const result = await this.engine.expireWait(saga.id);
+      if (isOk(result)) {
+        expiredCount++;
+      }
+    }
+
+    return ok(expiredCount);
   }
 
   private async recoverSaga(saga: SagaState): Promise<SagaResult<void>> {

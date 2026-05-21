@@ -13,9 +13,12 @@ CREATE TABLE IF NOT EXISTS saga_states (
   completed_at    BIGINT,
   metadata        JSONB        NOT NULL DEFAULT '{}',
   version         INTEGER      NOT NULL DEFAULT 1,
-  lock_expires_at BIGINT
+  lock_expires_at BIGINT,
+  event_token     VARCHAR(255),
+  wait_expires_at BIGINT
 );
 
-CREATE INDEX IF NOT EXISTS idx_saga_states_status    ON saga_states (status);
-CREATE INDEX IF NOT EXISTS idx_saga_states_saga_type ON saga_states (saga_type);
-CREATE INDEX IF NOT EXISTS idx_saga_states_created   ON saga_states (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saga_states_status      ON saga_states (status);
+CREATE INDEX IF NOT EXISTS idx_saga_states_saga_type   ON saga_states (saga_type);
+CREATE INDEX IF NOT EXISTS idx_saga_states_created     ON saga_states (created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_saga_states_token ON saga_states (event_token) WHERE event_token IS NOT NULL;
