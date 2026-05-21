@@ -1,0 +1,129 @@
+{
+  "name": "@backendkit-labs/saga",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "BackendKit Labs",
+    "email": "hello@backendkitlabs.dev"
+  },
+  "description": "Production-grade distributed transaction orchestration for Node.js and NestJS microservices",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./nestjs": {
+      "types": "./dist/nestjs/index.d.ts",
+      "import": "./dist/nestjs/index.js",
+      "require": "./dist/nestjs/index.cjs"
+    },
+    "./stores/sql": {
+      "types": "./dist/stores/sql.d.ts",
+      "import": "./dist/stores/sql.js",
+      "require": "./dist/stores/sql.cjs"
+    },
+    "./stores/redis": {
+      "types": "./dist/stores/redis.d.ts",
+      "import": "./dist/stores/redis.js",
+      "require": "./dist/stores/redis.cjs"
+    },
+    "./locks/redis": {
+      "types": "./dist/locks/redis.d.ts",
+      "import": "./dist/locks/redis.js",
+      "require": "./dist/locks/redis.cjs"
+    }
+  },
+  "bin": {
+    "saga-cli": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "src/persistence/migrations",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "format": "prettier --write src/",
+    "prepublishOnly": "npm run build && npm run test && npm run lint"
+  },
+  "keywords": [
+    "saga",
+    "distributed-transactions",
+    "orchestration",
+    "microservices",
+    "nestjs",
+    "resilience",
+    "compensating-transactions"
+  ],
+  "homepage": "https://backendkitlabs.dev/docs/saga/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BackendKit-labs/backendkit-monorepo.git",
+    "directory": "packages/saga"
+  },
+  "bugs": {
+    "url": "https://github.com/BackendKit-labs/backendkit-monorepo/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@backendkit-labs/result": "*",
+    "uuid": "^9.0.0"
+  },
+  "peerDependencies": {
+    "@backendkit-labs/bulkhead": "*",
+    "@backendkit-labs/circuit-breaker": "*",
+    "@backendkit-labs/http-client": "*",
+    "@backendkit-labs/observability": "*",
+    "@backendkit-labs/pipeline": "*",
+    "@nestjs/common": ">=10.0.0",
+    "@nestjs/core": ">=10.0.0",
+    "reflect-metadata": ">=0.1.13",
+    "rxjs": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@backendkit-labs/bulkhead": { "optional": true },
+    "@backendkit-labs/circuit-breaker": { "optional": true },
+    "@backendkit-labs/http-client": { "optional": true },
+    "@backendkit-labs/observability": { "optional": true },
+    "@backendkit-labs/pipeline": { "optional": true },
+    "@nestjs/common": { "optional": true },
+    "@nestjs/core": { "optional": true },
+    "reflect-metadata": { "optional": true },
+    "rxjs": { "optional": true }
+  },
+  "devDependencies": {
+    "@backendkit-labs/result": "*",
+    "@eslint/js": "^9.39.4",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^9.0.7",
+    "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.59.3",
+    "vitest": "^2.0.0"
+  }
+}
