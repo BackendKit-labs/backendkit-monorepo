@@ -1,4 +1,4 @@
-import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
+import { DynamicModule, InjectionToken, Module, OptionalFactoryDependency, Provider, Type } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import {
   RateLimiterGuard,
@@ -23,7 +23,7 @@ export interface RateLimiterModuleOptions {
 export interface RateLimiterModuleAsyncOptions {
   imports?: Type<unknown>[];
   useFactory: (...args: unknown[]) => RateLimiterConfig | Promise<RateLimiterConfig>;
-  inject?: unknown[];
+  inject?: (InjectionToken | OptionalFactoryDependency)[];
   globalGuard?: boolean;
   /** Optional logger injected into the guard and all per-route limiters it creates */
   logger?: ILogger;
