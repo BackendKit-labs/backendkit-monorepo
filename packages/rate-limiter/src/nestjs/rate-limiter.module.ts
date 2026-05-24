@@ -92,10 +92,11 @@ export class RateLimiterModule {
       providers.push({ provide: RATE_LIMITER_METRICS, useValue: options.metrics });
     }
 
+    providers.push(RateLimiterGuard);
     if (options?.globalGuard !== false) {
       providers.push({
         provide: APP_GUARD,
-        useClass: RateLimiterGuard,
+        useExisting: RateLimiterGuard,
       });
     }
 
@@ -156,10 +157,11 @@ export class RateLimiterModule {
       providers.push({ provide: RATE_LIMITER_METRICS, useValue: options.metrics });
     }
 
+    providers.push(RateLimiterGuard);
     if (options.globalGuard !== false) {
       providers.push({
         provide: APP_GUARD,
-        useClass: RateLimiterGuard,
+        useExisting: RateLimiterGuard,
       });
     }
 
