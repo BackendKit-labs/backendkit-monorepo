@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0] — 2026-09-14
+
+### Bug Fixes
+
+- fix HALF_OPEN state machine, threshold edge cases, and broken guard decorator (`a1363cf`)
+
 ## [0.3.2] — 2026-09-14
 
 ### Bug Fixes
