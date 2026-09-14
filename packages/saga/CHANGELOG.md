@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0] — 2026-09-14
+
+### ⚠ Breaking Changes
+
+- stop the main entry point from requiring NestJS/rxjs to compile (`cdc70e0`)
+
+### Bug Fixes
+
+- stop the main entry point from requiring NestJS/rxjs to compile (`cdc70e0`)
+
 ## [0.2.1] — 2026-09-14
 
 ### Bug Fixes
