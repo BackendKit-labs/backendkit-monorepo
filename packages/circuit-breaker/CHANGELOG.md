@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.2] — 2026-09-14
+
+### Bug Fixes
+
+- merge default config in constructor, expose onSuccess/onError (`3fad07f`)
+
 ## [0.3.0] — 2026-05-18
 
 ### Bug Fixes
