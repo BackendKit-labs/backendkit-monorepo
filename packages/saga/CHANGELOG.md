@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] — 2026-09-14
+
+### Bug Fixes
+
+- fix stale tests and lint errors blocking npm publish (`d99efd1`)
+
 ## [0.2.0] — 2026-09-14
 
 ### ⚠ Breaking Changes
