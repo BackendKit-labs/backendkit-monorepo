@@ -16,7 +16,7 @@ export interface SagaContext {
   sagaType: string;
   correlationId: string;
   status: SagaStatus;
-  // biome-ignore lint/suspicious/noExplicitAny: unknown payload
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unknown payload
   output?: any;
   metadata: Record<string, unknown>;
 }

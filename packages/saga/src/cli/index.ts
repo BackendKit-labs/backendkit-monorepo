@@ -89,15 +89,15 @@ async function createDbClient(url: string, dialect: SqlDialect): Promise<SqlClie
   }) as { default: new (path: string) => { prepare(sql: string): { all(...params: unknown[]): Record<string, unknown>[]; run(...params: unknown[]): { changes: number } } } };
   const db = new sqlite.default(url.replace(/^sqlite:\/\//, ''));
   return {
-    query: async (sql, params) => {
+    query: (sql, params) => {
       const stmt = db.prepare(sql);
       const isSelect = /^\s*SELECT/i.test(sql);
       if (isSelect) {
         const rows = params !== undefined ? stmt.all(...params) : stmt.all();
-        return { rows, affectedRows: 0 };
+        return Promise.resolve({ rows, affectedRows: 0 });
       }
       const info = params !== undefined ? stmt.run(...params) : stmt.run();
-      return { rows: [], affectedRows: info.changes };
+      return Promise.resolve({ rows: [], affectedRows: info.changes });
     },
   };
 }

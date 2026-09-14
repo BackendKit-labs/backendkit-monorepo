@@ -15,18 +15,18 @@ export class InMemoryStore implements SagaStore {
   private readonly store = new Map<string, SagaState>();
   private readonly tokenIndex = new Map<string, SagaId>();  // token → sagaId
 
-  async save(state: SagaState): Promise<SagaResult<void>> {
+  save(state: SagaState): Promise<SagaResult<void>> {
     const existing = this.store.get(state.id);
 
     if (existing !== undefined) {
       if (existing.version !== state.version - 1) {
-        return fail({
+        return Promise.resolve(fail({
           category: 'PERSISTENCE_ERROR',
           cause: new Error(
             `Version conflict for saga ${state.id}: ` +
             `stored version=${existing.version}, incoming version=${state.version - 1}`,
           ),
-        });
+        }));
       }
       // Clean up old token index if token changed or cleared
       if (existing.eventToken !== undefined && existing.eventToken !== state.eventToken) {
@@ -40,23 +40,23 @@ export class InMemoryStore implements SagaStore {
       this.tokenIndex.set(state.eventToken, state.id);
     }
 
-    return ok(undefined);
+    return Promise.resolve(ok(undefined));
   }
 
-  async load(sagaId: SagaId): Promise<SagaResult<SagaState>> {
+  load(sagaId: SagaId): Promise<SagaResult<SagaState>> {
     const state = this.store.get(sagaId);
 
     if (state === undefined) {
-      return fail({
+      return Promise.resolve(fail({
         category: 'SAGA_NOT_FOUND',
         sagaId,
-      });
+      }));
     }
 
-    return ok({ ...state });
+    return Promise.resolve(ok({ ...state }));
   }
 
-  async list(filter?: SagaFilter): Promise<SagaResult<SagaState[]>> {
+  list(filter?: SagaFilter): Promise<SagaResult<SagaState[]>> {
     let results = Array.from(this.store.values());
 
     if (filter !== undefined) {
@@ -82,20 +82,20 @@ export class InMemoryStore implements SagaStore {
       results = results.slice(offset, offset + limit);
     }
 
-    return ok(results.map((s) => ({ ...s })));
+    return Promise.resolve(ok(results.map((s) => ({ ...s }))));
   }
 
-  async delete(sagaId: SagaId): Promise<SagaResult<void>> {
+  delete(sagaId: SagaId): Promise<SagaResult<void>> {
     const state = this.store.get(sagaId);
     if (state === undefined) {
-      return fail({ category: 'SAGA_NOT_FOUND', sagaId });
+      return Promise.resolve(fail({ category: 'SAGA_NOT_FOUND', sagaId }));
     }
 
     if (state.eventToken !== undefined) {
       this.tokenIndex.delete(state.eventToken);
     }
     this.store.delete(sagaId);
-    return ok(undefined);
+    return Promise.resolve(ok(undefined));
   }
 
   async findByEventToken(token: string): Promise<SagaResult<SagaState>> {

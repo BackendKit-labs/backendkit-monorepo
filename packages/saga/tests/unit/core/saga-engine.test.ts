@@ -136,14 +136,14 @@ describe('SagaEngine', () => {
       expect(savedState.version).toBe(1);
     });
 
-    it('should return SAGA_NOT_FOUND for undefined saga type', async () => {
+    it('should return DEFINITION_NOT_REGISTERED for undefined saga type', async () => {
       const engine = new SagaEngine(store, lockProvider, eventBus);
 
       const result = await engine.create('non-existent');
 
       expect(isFail(result)).toBe(true);
       if (isFail(result)) {
-        expect((result.error as any).category).toBe('SAGA_NOT_FOUND');
+        expect((result.error as any).category).toBe('DEFINITION_NOT_REGISTERED');
       }
     });
 
@@ -306,7 +306,7 @@ describe('SagaEngine', () => {
       const result = await engine.pause('saga-1' as any);
       expect(isFail(result)).toBe(true);
       if (isFail(result)) {
-        expect((result.error as any).category).toBe('SAGA_NOT_FOUND');
+        expect((result.error as any).category).toBe('DEFINITION_NOT_REGISTERED');
       }
     });
   });

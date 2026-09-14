@@ -19,28 +19,28 @@ interface LockEntry {
 export class InMemoryLock implements LockProvider {
   private readonly locks = new Map<string, LockEntry>();
 
-  async acquire(lockKey: string, ttlMs: number): Promise<SagaResult<boolean>> {
+  acquire(lockKey: string, ttlMs: number): Promise<SagaResult<boolean>> {
     const now = currentTimestamp();
     const existing = this.locks.get(lockKey);
 
     if (existing !== undefined && now < existing.acquired + existing.ttlMs) {
-      return ok(false);
+      return Promise.resolve(ok(false));
     }
 
     this.locks.set(lockKey, { acquired: now, ttlMs });
-    return ok(true);
+    return Promise.resolve(ok(true));
   }
 
-  async release(lockKey: string): Promise<SagaResult<void>> {
+  release(lockKey: string): Promise<SagaResult<void>> {
     this.locks.delete(lockKey);
-    return ok(undefined);
+    return Promise.resolve(ok(undefined));
   }
 
-  async isLocked(lockKey: string): Promise<SagaResult<boolean>> {
+  isLocked(lockKey: string): Promise<SagaResult<boolean>> {
     const existing = this.locks.get(lockKey);
 
     if (existing === undefined) {
-      return ok(false);
+      return Promise.resolve(ok(false));
     }
 
     const now = currentTimestamp();
@@ -48,9 +48,9 @@ export class InMemoryLock implements LockProvider {
 
     if (expired) {
       this.locks.delete(lockKey);
-      return ok(false);
+      return Promise.resolve(ok(false));
     }
 
-    return ok(true);
+    return Promise.resolve(ok(true));
   }
 }

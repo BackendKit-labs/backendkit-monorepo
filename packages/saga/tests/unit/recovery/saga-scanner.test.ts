@@ -9,6 +9,7 @@ describe('SagaScanner', () => {
   let store: Mocked<SagaStore>;
   let engine: Mocked<SagaEngine>;
   let recoverCrashedSagasMock: Mock;
+  let recoverTimedOutWaitsMock: Mock;
 
   beforeEach(() => {
     store = {
@@ -29,8 +30,10 @@ describe('SagaScanner', () => {
     } as any;
 
     recoverCrashedSagasMock = vi.fn().mockResolvedValue({ ok: true, value: 3 });
+    recoverTimedOutWaitsMock = vi.fn().mockResolvedValue({ ok: true, value: 0 });
     (RecoveryEngine as Mock).mockImplementation(() => ({
       recoverCrashedSagas: recoverCrashedSagasMock,
+      recoverTimedOutWaits: recoverTimedOutWaitsMock,
     }));
   });
 
@@ -101,7 +104,7 @@ describe('SagaScanner', () => {
     expect(() => scanner.stop()).not.toThrow();
   });
 
-  it('should catch errors from recovery engine without crashing', async () => {
+  it('should catch errors from recoverCrashedSagas without crashing', async () => {
     vi.useFakeTimers();
 
     // Use a promise that rejects to simulate an error
@@ -120,7 +123,31 @@ describe('SagaScanner', () => {
     await Promise.resolve();
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      '[SagaScanner] Recovery scan failed:',
+      '[SagaScanner] Crash recovery scan failed:',
+      expect.any(Error),
+    );
+
+    consoleSpy.mockRestore();
+  });
+
+  it('should catch errors from recoverTimedOutWaits without crashing', async () => {
+    vi.useFakeTimers();
+
+    recoverTimedOutWaitsMock.mockImplementation(() => {
+      const error = new Error('timeout scan failed');
+      return Promise.reject(error);
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const scanner = new SagaScanner(store, engine as any, 100);
+    scanner.start();
+
+    vi.advanceTimersByTime(100);
+    await Promise.resolve();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[SagaScanner] Timeout scan failed:',
       expect.any(Error),
     );
 

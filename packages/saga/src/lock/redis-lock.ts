@@ -37,7 +37,7 @@ export class RedisLockAdapter implements LockProvider {
       const key = this.key(lockKey);
       const result = await this.client.set(key, '1', 'NX', 'PX', ttlMs);
       return ok(result === 'OK');
-    } catch (err) {
+    } catch {
       return fail({
         category: 'LOCK_ACQUISITION_FAILED',
         lockKey,
