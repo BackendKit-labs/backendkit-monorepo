@@ -138,6 +138,14 @@ export class CircuitBreaker {
   private slowCalls = 0;
   private notPermittedCalls = 0;
 
+  /**
+   * Bumped on every state transition. Lets in-flight calls that started in a
+   * previous state (e.g. a slow call from CLOSED that resolves after the
+   * circuit already moved to HALF_OPEN) detect that their outcome no longer
+   * belongs to the current probe cohort and skip window/half-open bookkeeping.
+   */
+  private generation = 0;
+
   private readonly mutex = new AsyncMutex();
 
   private config: CircuitBreakerConfig;
@@ -172,6 +180,9 @@ export class CircuitBreaker {
     if (config.minimumCalls < 1) {
       throw new RangeError(`CircuitBreaker '${config.name}': minimumCalls must be >= 1, got ${config.minimumCalls}`);
     }
+    if (config.minimumCalls > config.slidingWindowSize) {
+      throw new RangeError(`CircuitBreaker '${config.name}': minimumCalls (${config.minimumCalls}) cannot exceed slidingWindowSize (${config.slidingWindowSize}) -- thresholds would never be evaluated`);
+    }
     if (config.halfOpenMaxCalls < 1) {
       throw new RangeError(`CircuitBreaker '${config.name}': halfOpenMaxCalls must be >= 1, got ${config.halfOpenMaxCalls}`);
     }
@@ -205,6 +216,8 @@ export class CircuitBreaker {
     task: () => Promise<T>,
     fallback?: (error: unknown) => T | Promise<T>,
   ): Promise<T> {
+    let generation: number;
+
     await this.mutex.acquire();
     try {
       if (!this.canAttempt()) {
@@ -219,6 +232,7 @@ export class CircuitBreaker {
       }
 
       this.totalCalls++;
+      generation = this.generation;
     } finally {
       this.mutex.release();
     }
@@ -229,16 +243,16 @@ export class CircuitBreaker {
       const result = await task();
       await this.mutex.acquire();
       try {
-        this.onSuccess(Date.now() - startTime);
+        this.onSuccess(Date.now() - startTime, generation);
       } finally {
         this.mutex.release();
       }
       return result;
     } catch (error: unknown) {
-      const isInfrastructure = this.config.isFailure(error);
+      const isInfrastructure = this.classify(error);
       await this.mutex.acquire();
       try {
-        this.onError(error);
+        this.onError(error, isInfrastructure, generation);
       } finally {
         this.mutex.release();
       }
@@ -248,12 +262,33 @@ export class CircuitBreaker {
     }
   }
 
-  onSuccess(durationMs: number): void {
+  /**
+   * Runs `isFailure` and falls back to treating the error as an
+   * infrastructure failure if the classifier itself throws, so a faulty
+   * classifier can never mask the original error or leave the call unrecorded.
+   */
+  private classify(error: unknown): boolean {
+    try {
+      return this.config.isFailure(error);
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * @param generation - Internal: the breaker's generation when the call
+   *   started, used to discard window/half-open effects from calls that
+   *   outlived a state transition. Duck-typed callers (e.g. `@backendkit-labs/retry`)
+   *   can omit it -- it defaults to the current generation, i.e. "not stale".
+   */
+  onSuccess(durationMs: number, generation: number = this.generation): void {
     const isSlow = durationMs >= this.config.slowCallDurationMs;
     this.successfulCalls++;
+    if (isSlow) this.slowCalls++;
+
+    if (generation !== this.generation) return;
 
     if (isSlow) {
-      this.slowCalls++;
       this.record('slow');
     } else {
       this.record('success');
@@ -267,19 +302,39 @@ export class CircuitBreaker {
     }
   }
 
-  onError(error: unknown): void {
-    const isInfrastructure = this.config.isFailure(error);
-
+  /**
+   * @param isInfrastructure - Internal: precomputed result of `isFailure` so
+   *   `execute()` doesn't invoke the classifier twice per error. Duck-typed
+   *   callers can omit it -- it's computed safely via {@link classify}.
+   * @param generation - See {@link onSuccess}.
+   */
+  onError(
+    error: unknown,
+    isInfrastructure: boolean = this.classify(error),
+    generation: number = this.generation,
+  ): void {
     if (isInfrastructure) {
       this.failedCalls++;
+    } else {
+      // Business error -- transparent to the circuit breaker
+      this.successfulCalls++;
+    }
+
+    if (generation !== this.generation) return;
+
+    if (isInfrastructure) {
       this.record('failure');
       if (this.state === CircuitBreakerState.HALF_OPEN) {
         this.transitionTo(CircuitBreakerState.OPEN);
       }
     } else {
-      // Business error -- transparent to the circuit breaker
-      this.successfulCalls++;
       this.record('success');
+      if (this.state === CircuitBreakerState.HALF_OPEN) {
+        this.halfOpenSuccesses++;
+        if (this.halfOpenSuccesses >= this.config.halfOpenMaxCalls) {
+          this.transitionTo(CircuitBreakerState.CLOSED);
+        }
+      }
     }
   }
 
@@ -304,10 +359,14 @@ export class CircuitBreaker {
     const failureRate  = (failures / total) * 100;
     const slowCallRate = (slow / total) * 100;
 
-    if (
-      failureRate  >= this.config.failureThreshold ||
-      slowCallRate >= this.config.slowCallThreshold
-    ) {
+    // `failures > 0` / `slow > 0` guards a 0% threshold from matching a 0%
+    // observed rate (no failures at all). `< 100` makes the documented
+    // "100 disables slow-call tripping" default actually true, instead of
+    // still opening once every call in the window happens to be slow.
+    const failureTripped = failures > 0 && failureRate >= this.config.failureThreshold;
+    const slowTripped     = slow > 0 && this.config.slowCallThreshold < 100 && slowCallRate >= this.config.slowCallThreshold;
+
+    if (failureTripped || slowTripped) {
       this.transitionTo(CircuitBreakerState.OPEN);
     }
   }
@@ -325,6 +384,7 @@ export class CircuitBreaker {
   private transitionTo(next: CircuitBreakerState): void {
     const prev = this.state;
     this.state = next;
+    this.generation++;
 
     if (next === CircuitBreakerState.OPEN) {
       this.openedAt          = Date.now();

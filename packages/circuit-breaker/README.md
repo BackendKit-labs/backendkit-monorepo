@@ -488,7 +488,9 @@ export class AppModule {}
 
 ### Guard — per-route protection
 
-Protects individual endpoints declaratively. Returns `503 Service Unavailable` when the circuit is `OPEN`.
+Rejects a request with `503 Service Unavailable` when the named circuit is already `OPEN` — before body parsing, validation, or any other pipe runs, so it's cheaper than letting a doomed request reach the handler.
+
+**`CircuitBreakerGuard` only ever reads state.** NestJS's `CanActivate` contract has no "after the handler ran" hook, so a guard by itself can check whether a circuit is open but can never *open* it — nothing would ever record a failure. Pair it with `@WithCircuitBreaker({ name })` using the **same `name`** on the handler so something in the chain actually records success/failure; the guard then just short-circuits the doomed request earlier than the decorator would.
 
 When the circuit is `CLOSED` or `HALF_OPEN`, the guard attaches a `CircuitBreakerRequestInfo` object to `request['circuitBreaker']` so downstream handlers can read the circuit state:
 
@@ -505,24 +507,34 @@ This is an **immutable snapshot** — it does not expose `execute()` or any muta
 ```typescript
 import {
   UseCircuitBreaker,
+  WithCircuitBreaker,
   CircuitBreakerGuard,
+  CircuitBreakerRegistry,
 } from '@backendkit-labs/circuit-breaker/nestjs';
+
+@Injectable()
+export class PaymentsService {
+  constructor(public readonly circuitBreakerRegistry: CircuitBreakerRegistry) {}
+
+  // Actually records success/failure against the 'stripe-api' circuit.
+  @WithCircuitBreaker({ name: 'stripe-api', failureThreshold: 40 })
+  charge(dto: ChargeDto) {
+    return this.stripeClient.charge(dto);
+  }
+}
 
 @Controller('payments')
 export class PaymentsController {
+  constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post()
+  // Same name as the @WithCircuitBreaker above -- shared circuit state.
+  // Rejects early with 503 while the circuit is OPEN; recording still
+  // happens in PaymentsService.charge() via @WithCircuitBreaker.
   @UseCircuitBreaker({ name: 'stripe-api', failureThreshold: 40 })
   @UseGuards(CircuitBreakerGuard)
   charge(@Body() dto: ChargeDto) {
     return this.paymentsService.charge(dto);
-  }
-
-  @Get(':id')
-  @UseCircuitBreaker({ name: 'stripe-api' }) // same circuit, shared state
-  @UseGuards(CircuitBreakerGuard)
-  getCharge(@Param('id') id: string) {
-    return this.paymentsService.getCharge(id);
   }
 }
 ```
@@ -570,6 +582,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import {
   CircuitBreakerRegistry,
   CircuitBreakerOpenError,
+  isHttpServerError,
 } from '@backendkit-labs/circuit-breaker';
 import { WithCircuitBreaker } from '@backendkit-labs/circuit-breaker/nestjs';
 

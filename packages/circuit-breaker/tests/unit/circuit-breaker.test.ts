@@ -307,8 +307,100 @@ describe('CircuitBreaker — config validation', () => {
   it('accepts valid boundary values without throwing', () => {
     expect(() => new CircuitBreaker(makeConfig({ failureThreshold: 0 }))).not.toThrow();
     expect(() => new CircuitBreaker(makeConfig({ failureThreshold: 100 }))).not.toThrow();
-    expect(() => new CircuitBreaker(makeConfig({ slidingWindowSize: 1 }))).not.toThrow();
+    expect(() => new CircuitBreaker(makeConfig({ slidingWindowSize: 1, minimumCalls: 1 }))).not.toThrow();
     expect(() => new CircuitBreaker(makeConfig({ minimumCalls: 1 }))).not.toThrow();
+  });
+
+  it('throws RangeError when minimumCalls exceeds slidingWindowSize', () => {
+    expect(() => new CircuitBreaker(makeConfig({ minimumCalls: 10, slidingWindowSize: 5 }))).toThrow(RangeError);
+  });
+
+  it('accepts minimumCalls equal to slidingWindowSize', () => {
+    expect(() => new CircuitBreaker(makeConfig({ minimumCalls: 5, slidingWindowSize: 5 }))).not.toThrow();
+  });
+});
+
+describe('CircuitBreaker — HALF_OPEN edge cases', () => {
+  it('a business error during HALF_OPEN counts as a probe success, not a stuck probe', async () => {
+    const cb = new CircuitBreaker(makeConfig({
+      minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1,
+      openTimeoutMs: 50, halfOpenMaxCalls: 2,
+      isFailure: (e) => !(e instanceof BusinessError),
+    }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+    await new Promise(r => setTimeout(r, 80));
+    expect(cb.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+
+    // Business error during the probe must NOT burn the probe budget without
+    // ever letting the circuit close -- it should behave like a successful probe.
+    await expect(cb.execute(() => Promise.reject(new BusinessError()))).rejects.toThrow(BusinessError);
+    await cb.execute(succeed);
+    expect(cb.getState()).toBe(CircuitBreakerState.CLOSED);
+  }, 2000);
+
+  it('a call started in CLOSED that resolves after the circuit moved to HALF_OPEN does not fake-close it', async () => {
+    const cb = new CircuitBreaker(makeConfig({
+      minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1,
+      openTimeoutMs: 30, halfOpenMaxCalls: 1,
+    }));
+
+    let release!: (v: string) => void;
+    const inflight = cb.execute(() => new Promise<string>((r) => { release = r; }));
+    await new Promise((r) => setTimeout(r, 0));
+
+    await expect(cb.execute(fail)).rejects.toThrow(InfraError);
+    expect(cb.getState()).toBe(CircuitBreakerState.OPEN);
+
+    await new Promise((r) => setTimeout(r, 60));
+    expect(cb.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+
+    // Resolve the call that started back in CLOSED -- it must not count as
+    // the HALF_OPEN probe and close the circuit without a real probe.
+    release('late');
+    await inflight;
+    expect(cb.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+  }, 2000);
+});
+
+describe('CircuitBreaker — threshold edge cases', () => {
+  it('failureThreshold: 0 does not open the circuit on all-successful traffic', async () => {
+    const cb = new CircuitBreaker(makeConfig({ failureThreshold: 0, minimumCalls: 1, slidingWindowSize: 1 }));
+    await cb.execute(succeed);
+    expect(cb.getState()).toBe(CircuitBreakerState.CLOSED);
+  });
+
+  it('failureThreshold: 0 still opens on any real failure', async () => {
+    const cb = new CircuitBreaker(makeConfig({ failureThreshold: 0, minimumCalls: 1, slidingWindowSize: 1 }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+    expect(cb.getState()).toBe(CircuitBreakerState.OPEN);
+  });
+
+  it('default slowCallThreshold (100) never opens the circuit, even if every call is slow', async () => {
+    const cb = new CircuitBreaker(makeConfig({
+      slowCallDurationMs: 1, minimumCalls: 1, slidingWindowSize: 1,
+    }));
+    await cb.execute(() => new Promise((r) => setTimeout(r, 20)));
+    expect(cb.getState()).toBe(CircuitBreakerState.CLOSED);
+  });
+});
+
+describe('CircuitBreaker — classifier safety', () => {
+  it('a throwing isFailure counts the call as an infrastructure failure and rethrows the original error', async () => {
+    const cb = new CircuitBreaker(makeConfig({
+      minimumCalls: 1, slidingWindowSize: 1, failureThreshold: 1,
+      isFailure: () => { throw new Error('classifier boom'); },
+    }));
+    const original = new InfraError('original failure');
+    await expect(cb.execute(() => Promise.reject(original))).rejects.toBe(original);
+    expect(cb.getState()).toBe(CircuitBreakerState.OPEN);
+    expect(cb.getMetrics().failedCalls).toBe(1);
+  });
+
+  it('isFailure is invoked exactly once per error', async () => {
+    let calls = 0;
+    const cb = new CircuitBreaker(makeConfig({ isFailure: () => { calls++; return true; } }));
+    await expect(cb.execute(fail)).rejects.toThrow();
+    expect(calls).toBe(1);
   });
 });
 
