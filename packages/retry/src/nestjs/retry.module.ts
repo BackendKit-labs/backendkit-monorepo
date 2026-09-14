@@ -9,6 +9,17 @@ import type { RetryEngineConfig } from '../retry/types.js';
 
 export interface RetryModuleOptions {
   engineConfig?: Partial<RetryEngineConfig>;
+  /**
+   * Registers RetryInterceptor as a global APP_INTERCEPTOR, retrying the
+   * whole request pipeline (`next.handle()`) for handlers carrying
+   * `@Retry` metadata.
+   *
+   * Default: `false`. `@Retry` already retries the decorated method
+   * directly -- turning this on for methods that also use `@Retry` retries
+   * them twice (once via the decorator's own wrapping, once via the
+   * interceptor re-running the whole pipeline around it). Only enable this
+   * if you specifically want pipeline-level retry instead of method-level.
+   */
   globalInterceptor?: boolean;
 }
 
@@ -35,7 +46,7 @@ export class RetryModule {
       },
     ];
 
-    if (options?.globalInterceptor !== false) {
+    if (options?.globalInterceptor === true) {
       providers.push({
         provide: APP_INTERCEPTOR,
         useClass: RetryInterceptor,

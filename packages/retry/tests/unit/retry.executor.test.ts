@@ -255,4 +255,140 @@ describe('RetryExecutor', () => {
       expect(backoffSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('error normalization', () => {
+    it('reads status from a NestJS-style getStatus() method', async () => {
+      const err = { message: 'unavailable', getStatus: () => 503 };
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 1 }));
+      const result = await executor.run(() => Promise.reject(err));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.type).toBe('http');
+        expect(result.error.status).toBe(503);
+      }
+    });
+
+    it('classifies a native fetch() failure via error.cause.code', async () => {
+      // fetch() wraps the real network error in TypeError('fetch failed', { cause }).
+      const err = Object.assign(new TypeError('fetch failed'), {
+        cause: Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+      });
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 1 }));
+      const result = await executor.run(() => Promise.reject(err));
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.type).toBe('network');
+    });
+
+    it('classifies axios-style ERR_NETWORK (no response) as a network error', async () => {
+      const err = Object.assign(new Error('Network Error'), { isAxiosError: true, code: 'ERR_NETWORK' });
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 1 }));
+      const result = await executor.run(() => Promise.reject(err));
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.type).toBe('network');
+    });
+  });
+
+  describe('circuit breaker classification', () => {
+    it('does NOT notify the circuit breaker of a permanent (business) failure', async () => {
+      const circuitBreaker = {
+        canAttempt: vi.fn().mockReturnValue(true),
+        onSuccess: vi.fn(),
+        onError: vi.fn(),
+        getState: vi.fn().mockReturnValue('closed'),
+      };
+      const err = Object.assign(new Error('not found'), { status: 404 });
+      const executor = new RetryExecutor(makeDeps({ circuitBreaker }), makeConfig({ maxAttempts: 1 }));
+      await executor.run(() => Promise.reject(err));
+      expect(circuitBreaker.onError).not.toHaveBeenCalled();
+    });
+
+    it('notifies the circuit breaker of a transient (infra) failure', async () => {
+      const circuitBreaker = {
+        canAttempt: vi.fn().mockReturnValue(true),
+        onSuccess: vi.fn(),
+        onError: vi.fn(),
+        getState: vi.fn().mockReturnValue('closed'),
+      };
+      const err = Object.assign(new Error('down'), { status: 503 });
+      const executor = new RetryExecutor(makeDeps({ circuitBreaker }), makeConfig({ maxAttempts: 1 }));
+      await executor.run(() => Promise.reject(err));
+      expect(circuitBreaker.onError).toHaveBeenCalledOnce();
+    });
+
+    it('reports the duration of the successful attempt, not the cumulative retry time', async () => {
+      let reported = -1;
+      const circuitBreaker = {
+        canAttempt: () => true,
+        onSuccess: (ms: number) => { reported = ms; },
+        onError: () => {},
+        getState: () => 'closed',
+      };
+      let calls = 0;
+      const deps = makeDeps({
+        circuitBreaker,
+        backoff: new FixedBackoff({ baseDelay: 100 }),
+      });
+      const task = () => {
+        calls++;
+        if (calls < 2) return Promise.reject(Object.assign(new Error('err'), { status: 503 }));
+        return Promise.resolve('ok');
+      };
+      const executor = new RetryExecutor(deps, makeConfig({ maxAttempts: 2 }));
+      await executor.run(task);
+      // The backoff delay (100ms) must not leak into the reported duration
+      // of the (near-instant) successful attempt.
+      expect(reported).toBeLessThan(50);
+    });
+  });
+
+  describe('idempotency', () => {
+    it('round-trips a task that resolves undefined', async () => {
+      const store = new Map<string, string>();
+      const idempotency = {
+        getResult: async (key: string) => store.get(key) ?? null,
+        storeResult: async (key: string, value: string) => { store.set(key, value); },
+      };
+      let calls = 0;
+      const task = () => { calls++; return Promise.resolve(undefined); };
+      const executor = new RetryExecutor(
+        makeDeps({ idempotency: idempotency as ExecutorDependencies['idempotency'] }),
+        makeConfig({ idempotency: { key: 'k1' } }),
+      );
+      const r1 = await executor.run(task);
+      const r2 = await executor.run(task);
+      expect(r1.ok).toBe(true);
+      expect(r2.ok).toBe(true);
+      if (r1.ok) expect(r1.value).toBeUndefined();
+      if (r2.ok) expect(r2.value).toBeUndefined();
+      expect(calls).toBe(1); // second call served from cache
+    });
+  });
+
+  describe('AbortSignal', () => {
+    it('passes a live AbortSignal to the task', async () => {
+      let receivedSignal: AbortSignal | undefined;
+      const executor = new RetryExecutor(makeDeps(), makeConfig({ maxAttempts: 1 }));
+      await executor.run((signal) => {
+        receivedSignal = signal;
+        return Promise.resolve('ok');
+      });
+      expect(receivedSignal).toBeInstanceOf(AbortSignal);
+      expect(receivedSignal?.aborted).toBe(false);
+    });
+
+    it('aborts the signal when attemptTimeoutMs elapses, and a cooperative task stops early', async () => {
+      const deps = makeDeps({ timeoutManager: new TimeoutManager({ globalTimeoutMs: 0, attemptTimeoutMs: 30 }) });
+      const executor = new RetryExecutor(deps, makeConfig({ maxAttempts: 1 }));
+      let aborted = false;
+      const start = Date.now();
+      const result = await executor.run((signal) => new Promise((resolve, reject) => {
+        const t = setTimeout(() => resolve('too-late'), 300);
+        signal.addEventListener('abort', () => { aborted = true; clearTimeout(t); reject(signal.reason as Error); });
+      }));
+      expect(aborted).toBe(true);
+      expect(Date.now() - start).toBeLessThan(200);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.type).toBe('timeout');
+    });
+  });
 });

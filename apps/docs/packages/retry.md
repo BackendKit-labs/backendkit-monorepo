@@ -29,19 +29,20 @@ npm install @nestjs/common @nestjs/core rxjs
 
 ```typescript
 import { retry } from '@backendkit-labs/retry';
+import { match } from '@backendkit-labs/result';
 
 const result = await retry(() => fetchUser(userId), {
   maxAttempts: 3,
   backoff: { type: 'exponential', baseDelay: 200 },
 });
 
-result.match(
-  (user)  => res.json(user),
-  (error) => res.status(502).json({ error: error.message }),
-);
+match(result, {
+  ok:   (user)  => res.json(user),
+  fail: (error) => res.status(502).json({ error: error.message }),
+});
 ```
 
-`retry()` returns `Result<T, RetryError>` — it **never throws**. Use `.match()`, `.ok`, or `.error` to handle both paths.
+`retry()` returns `Result<T, RetryError>` — a plain `{ ok, value } | { ok, error }` object — and **never throws**. Check `result.ok`, or use `match()` from `@backendkit-labs/result` to handle both paths.
 
 ## Core API
 
@@ -145,7 +146,7 @@ await retry(task, {
 });
 ```
 
-Default: retry on 5xx, network, and timeout; abort on 4xx (except 429).
+Default is driven by the [classifier](#classifiers): 5xx/network/timeout classify `'transient'` (retry), 4xx (except 429) classify `'permanent'` (abort). `abortIf` is checked before `retryIf` -- overriding only one still lets the classifier-driven default win on the other.
 
 ### `timeout`
 
@@ -157,6 +158,8 @@ await retry(task, {
   },
 });
 ```
+
+The task receives an `AbortSignal` (`(signal) => Promise<T>`) that fires on either timeout -- pass it to `fetch`/anything cancellable so a timed-out attempt actually stops instead of just being abandoned in the background. Ignoring the parameter is fine and behaves as before.
 
 ### `budget`
 
@@ -270,24 +273,31 @@ const result = await retry(() => chargePayment(order), {
 });
 ```
 
-#### NestJS — automatic key extraction
+#### NestJS — deriving the key from the request
 
-When using `RetryModule`, the `RetryInterceptor` can extract the idempotency key from the `Idempotency-Key` HTTP header automatically and apply it to methods decorated with `@Retry`:
+`@Retry` wraps the method directly, so it decorates before there's a request to read a header from -- pass the `Idempotency-Key` header through explicitly instead:
 
 ```typescript
-// Client sends: POST /payments  Idempotency-Key: order-abc-123
-
 @Controller('payments')
 export class PaymentsController {
-  @Retry({
-    maxAttempts: 3,
-    backoff: { type: 'exponential', baseDelay: 200 },
-    idempotency: { enabled: true, ttlMs: 3_600_000 },
-    // key is injected from the Idempotency-Key header by RetryInterceptor
-  })
+  constructor(private readonly paymentsService: PaymentsService) {}
+
   @Post()
-  charge(@Body() dto: ChargeDto) {
-    return this.paymentsService.charge(dto);
+  charge(@Body() dto: ChargeDto, @Headers('idempotency-key') idempotencyKey: string) {
+    return this.paymentsService.charge(dto, idempotencyKey);
+  }
+}
+
+@Injectable()
+export class PaymentsService {
+  async charge(dto: ChargeDto, idempotencyKey: string) {
+    const result = await retry(() => this.gateway.charge(dto), {
+      maxAttempts: 3,
+      backoff: { type: 'exponential', baseDelay: 200 },
+      idempotency: { enabled: true, key: idempotencyKey, ttlMs: 3_600_000 },
+    });
+    if (!result.ok) throw new ServiceUnavailableException(result.error.message);
+    return result.value;
   }
 }
 ```
@@ -349,7 +359,7 @@ All integrations are **duck-typed** — `retry` never imports other BackendKit p
 ```typescript
 import { CircuitBreaker } from '@backendkit-labs/circuit-breaker';
 
-const cb = new CircuitBreaker({ name: 'payments', threshold: 5 });
+const cb = new CircuitBreaker({ name: 'payments', failureThreshold: 50, minimumCalls: 5 });
 
 const engine = new RetryEngine({
   name: 'payments',
@@ -357,7 +367,7 @@ const engine = new RetryEngine({
 });
 ```
 
-Before each attempt: calls `cb.canAttempt()`. Returns `{ type: 'circuit-open' }` immediately if `false`. On success → `cb.onSuccess()`. On transient failure → `cb.onError()`.
+Before each attempt: calls `cb.canAttempt()`. Returns `{ type: 'circuit-open' }` immediately if `false`. On success → `cb.onSuccess(durationMs)` for that attempt. On transient failure → `cb.onError()`; a permanent/business failure (e.g. 422) does not notify the breaker.
 
 ### Bulkhead
 
@@ -393,7 +403,7 @@ const engine = new RetryEngine({
     timeout:  { attemptTimeoutMs: 3_000, globalTimeoutMs: 12_000 },
   },
   integrations: {
-    circuitBreaker: new CircuitBreaker({ name: 'payments', threshold: 5 }),
+    circuitBreaker: new CircuitBreaker({ name: 'payments', failureThreshold: 50, minimumCalls: 5 }),
     bulkhead:       new Bulkhead({ maxConcurrent: 10, maxQueue: 20 }),
     observability:  { logger: new Logger({ service: 'payments-client' }), metrics: metricsRegistry },
   },
@@ -465,6 +475,8 @@ export class PaymentsService {
 
 ### `@Retry` decorator
 
+Wraps the method directly -- no `RetryModule` import needed, works with or without DI:
+
 ```typescript
 import { Retry } from '@backendkit-labs/retry/nestjs';
 
@@ -476,6 +488,8 @@ export class InventoryService {
   }
 }
 ```
+
+`RetryInterceptor` (`globalInterceptor: true`) is a separate, opt-in mechanism for retrying the whole request pipeline instead of just the method -- don't enable both for the same handler, or it retries twice.
 
 ### DI tokens
 
@@ -502,8 +516,8 @@ export class MyService {
 @backendkit-labs/retry/nestjs   (optional NestJS layer)
   RetryModule                   RetryModule.forRoot(options)
   RetryService                  injectable execute()
-  @Retry                        method decorator
-  RetryInterceptor              intercepts @Retry-decorated methods
+  @Retry                        method decorator (wraps directly, self-contained)
+  RetryInterceptor              opt-in pipeline-level retry (globalInterceptor: true)
   RETRY_ENGINE_TOKEN            DI token for RetryEngine
   RETRY_REGISTRY_TOKEN          DI token for RetryRegistry
 ```

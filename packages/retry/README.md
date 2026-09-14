@@ -67,23 +67,24 @@ npm install @nestjs/common @nestjs/core rxjs
 
 ## Quick Start
 
-`Retry()` is a standalone function backed by a global registry. It covers 90% of use cases in two lines:
+`retry()` is a standalone function backed by a global registry. It covers 90% of use cases in two lines:
 
 ```typescript
-import { Retry } from '@backendkit-labs/retry';
+import { retry } from '@backendkit-labs/retry';
+import { match } from '@backendkit-labs/result';
 
 const result = await retry(() => fetchUser(userId), {
   maxAttempts: 3,
   backoff: { type: 'exponential', baseDelay: 200 },
 });
 
-result.match(
-  (user) => res.json(user),
-  (error) => res.status(502).json({ error: error.message }),
-);
+match(result, {
+  ok:   (user)  => res.json(user),
+  fail: (error) => res.status(502).json({ error: error.message }),
+});
 ```
 
-`Retry()` returns `Result<T, RetryError>` — it **never throws**. Use `.match()`, `.ok`, or `.error` to handle both paths.
+`retry()` returns `Result<T, RetryError>` — a plain `{ ok, value } | { ok, error }` object — and **never throws**. Check `result.ok`, or use `match()` from `@backendkit-labs/result` to handle both paths.
 
 ### Minimal retry with default config
 
@@ -211,7 +212,9 @@ await retry(task, {
 });
 ```
 
-Both accept a plain function `(error: RetryErrorPayload) => boolean | Promise<boolean>` or an object implementing `RetryCondition` / `AbortCondition`. Default behavior: retry on 5xx, network, and timeout errors; abort on 4xx (except 429).
+Both accept a plain function `(error: RetryErrorPayload) => boolean | Promise<boolean>` or an object implementing `RetryCondition` / `AbortCondition`.
+
+**Default behavior is driven by the [classifier](#classifiers):** an error classified `'transient'` retries, `'permanent'` aborts (5xx/network/timeout → transient; 4xx except 429 → permanent, by default). Supplying custom `classifiers` changes this default without needing to also set `retryIf`/`abortIf`. `retryIf`/`abortIf` are independent overrides on top of that -- `abortIf` is checked first, so if you only override `retryIf` to force a retry, also set `abortIf: () => false` or the classifier-driven default abort will still win.
 
 ### timeout
 
@@ -229,6 +232,17 @@ await retry(task, {
 - `attemptTimeoutMs` expiration → error classified as `type: 'timeout'` → triggers retry (if retryable)
 - `globalTimeoutMs` expiration → operation aborted immediately regardless of attempt count
 - `0` means unlimited (default)
+
+Your task receives an `AbortSignal` that fires on either timeout -- pass it through to anything that supports cancellation (`fetch`, database drivers, etc.) so a timed-out attempt actually stops instead of just being abandoned:
+
+```typescript
+await retry(
+  (signal) => fetch('https://api.example.com/data', { signal }).then(r => r.json()),
+  { timeout: { attemptTimeoutMs: 5_000 } },
+);
+```
+
+A task that ignores the signal (most existing code) keeps running in the background after the timeout fires -- `retry()` stops waiting on it and moves to the next attempt, but the abandoned call isn't force-killed. The signal is optional to use; omitting the parameter is fine and behaves exactly as before.
 
 ### budget
 
@@ -304,7 +318,7 @@ await retry(task, {
 
 ### classifiers
 
-Add custom rules that classify errors as `'transient'` (retryable) or `'permanent'` (abort):
+Add custom rules that classify errors as `'transient'` (retryable) or `'permanent'` (abort). This classification **is** the default retry/abort decision (see [retryIf / abortIf](#retryif--abortif)) -- adding a rule here changes what actually gets retried, not just how it's logged:
 
 ```typescript
 await retry(task, {
@@ -463,7 +477,7 @@ The circuit breaker controls whether to attempt a call. `Retry` checks it before
 import { CircuitBreaker } from '@backendkit-labs/circuit-breaker';
 import { RetryEngine } from '@backendkit-labs/retry';
 
-const cb = new CircuitBreaker({ name: 'payments', threshold: 5 });
+const cb = new CircuitBreaker({ name: 'payments', failureThreshold: 50, minimumCalls: 5 });
 
 const engine = new RetryEngine({
   name: 'payments',
@@ -515,20 +529,21 @@ const engine = new RetryEngine({
 
 ### `@backendkit-labs/result`
 
-`Retry()` already returns `Result<T, RetryError>` — direct integration, no adapter needed:
+`retry()` already returns `Result<T, RetryError>` — direct integration, no adapter needed:
 
 ```typescript
-import { Retry } from '@backendkit-labs/retry';
+import { retry } from '@backendkit-labs/retry';
+import { match } from '@backendkit-labs/result';
 
 const result = await retry(() => fetchOrder(id), {
   maxAttempts: 3,
   backoff: { type: 'exponential', baseDelay: 200 },
 });
 
-result.match(
-  (order) => res.json(order),
-  (err)   => res.status(502).json({ message: err.message, attempts: err.metadata.attempts }),
-);
+match(result, {
+  ok:   (order) => res.json(order),
+  fail: (err)   => res.status(502).json({ message: err.message, attempts: err.metadata.attempts }),
+});
 ```
 
 When combining with `@backendkit-labs/http-client` (which also returns `Result`), unwrap between layers so `Retry` sees a thrown error instead of a nested `Result`:
@@ -596,7 +611,7 @@ import { Bulkhead }        from '@backendkit-labs/bulkhead';
 import { Logger }          from '@backendkit-labs/observability';
 import { RetryEngine }     from '@backendkit-labs/retry';
 
-const cb       = new CircuitBreaker({ name: 'payments', threshold: 5 });
+const cb       = new CircuitBreaker({ name: 'payments', failureThreshold: 50, minimumCalls: 5 });
 const bulkhead = new Bulkhead({ maxConcurrent: 10, maxQueue: 20 });
 const logger   = new Logger({ service: 'payments-client' });
 
@@ -635,7 +650,7 @@ budget.recordCall()
 
 ## NestJS Integration
 
-Import `RetryModule` once at the application root. It registers `RetryService` and an optional global `RetryInterceptor`.
+Import `RetryModule` once at the application root. It registers `RetryService` and, only if `globalInterceptor: true` is set (default: `false`), a global `RetryInterceptor`.
 
 ### Module setup
 
@@ -683,7 +698,7 @@ export class PaymentsService {
 
 ### @Retry decorator
 
-Mark a method for retry without changing its signature. Pairs with `RetryInterceptor`:
+Wraps the method directly -- works on any `@Injectable()` (or plain) class, with or without NestJS DI, no `RetryModule` import required:
 
 ```typescript
 import { Retry } from '@backendkit-labs/retry/nestjs';
@@ -699,6 +714,22 @@ export class InventoryService {
   }
 }
 ```
+
+Each `@Retry`-decorated method gets its own named `RetryEngine`, so `budget`/`idempotency` config actually accumulates across calls. By default that engine lives in an internal registry private to `@Retry`; inject `public readonly retryRegistry: RetryRegistry` on the class to use your own instead (so you can read its metrics, or share it with other code):
+
+```typescript
+import { RetryRegistry } from '@backendkit-labs/retry';
+
+@Injectable()
+export class InventoryService {
+  constructor(public readonly retryRegistry: RetryRegistry) {}
+
+  @Retry({ maxAttempts: 3 })
+  async reserveStock(productId: string, quantity: number) { ... }
+}
+```
+
+`@Retry` also sets metadata for `RetryInterceptor` to read, but you don't need the interceptor for this to work -- the decorator retries the method itself. Only turn on `RetryModule`'s `globalInterceptor` if you specifically want pipeline-level retry (re-running `next.handle()`, including other interceptors) instead of method-level retry; enabling both for the same method retries it twice.
 
 ### DI tokens
 
@@ -751,7 +782,7 @@ registry.reset('payments');
 
 ## API Reference
 
-### `Retry(task, options?)`
+### `retry(task, options?)`
 
 Standalone function using a global default registry.
 

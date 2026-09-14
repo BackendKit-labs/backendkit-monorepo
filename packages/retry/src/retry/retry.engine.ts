@@ -1,15 +1,16 @@
 import { type Result } from '@backendkit-labs/result';
-import type { RetryConfig, RetryEngineConfig, RetryError, RetryMetricsSnapshot, RetryCondition, AbortCondition, RetryConditionFn, AbortConditionFn, BackoffConfig, BackoffStrategy } from './types.js';
+import type { RetryConfig, RetryEngineConfig, RetryError, RetryMetricsSnapshot, RetryCondition, AbortCondition, RetryConditionFn, AbortConditionFn, BackoffConfig, BackoffStrategy, RetryErrorPayload, IdempotencyStore } from './types.js';
+import type { SlidingWindowBudget } from './retry.budget.js';
 import { RetryExecutor } from './retry.executor.js';
 import { HookRunner } from './retry.hooks.js';
 import { SlidingWindowBudgetImpl } from './retry.budget.js';
 import { DefaultErrorClassifier } from '../conditions/error.classifier.js';
 import { TimeoutManager } from '../timeout/timeout.manager.js';
 import { IdempotencyManager } from '../idempotency/idempotency.manager.js';
+import { InMemoryIdempotencyStore } from '../idempotency/memory.store.js';
 import { FixedBackoff } from '../backoff/fixed.backoff.js';
 import { LinearBackoff } from '../backoff/linear.backoff.js';
 import { ExponentialBackoff } from '../backoff/exponential.backoff.js';
-import { defaultRetryCondition, defaultAbortCondition } from '../conditions/http.conditions.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -28,14 +29,26 @@ function createBackoff(config: BackoffConfig): BackoffStrategy {
   }
 }
 
-function wrapRetryCondition(condition?: RetryCondition | RetryConditionFn): RetryCondition {
-  if (!condition) return defaultRetryCondition;
+/**
+ * When the caller doesn't supply `retryIf`, retry exactly the errors the
+ * classifier calls 'transient' -- so a custom `classifiers` rule actually
+ * changes retry behavior instead of only affecting logging/metrics tags.
+ */
+function wrapRetryCondition(
+  condition: RetryCondition | RetryConditionFn | undefined,
+  classifier: DefaultErrorClassifier,
+): RetryCondition {
+  if (!condition) return { shouldRetry: (error: RetryErrorPayload) => classifier.classify(error) === 'transient' };
   if (typeof condition === 'function') return { shouldRetry: condition };
   return condition;
 }
 
-function wrapAbortCondition(condition?: AbortCondition | AbortConditionFn): AbortCondition {
-  if (!condition) return defaultAbortCondition;
+/** See {@link wrapRetryCondition} -- aborts exactly what the classifier calls 'permanent'. */
+function wrapAbortCondition(
+  condition: AbortCondition | AbortConditionFn | undefined,
+  classifier: DefaultErrorClassifier,
+): AbortCondition {
+  if (!condition) return { shouldAbort: (error: RetryErrorPayload) => classifier.classify(error) === 'permanent' };
   if (typeof condition === 'function') return { shouldAbort: condition };
   return condition;
 }
@@ -52,10 +65,25 @@ export class RetryEngine {
     totalTimeouts: 0,
   };
 
+  /**
+   * A budget is a *shared* sliding window -- recreating it on every execute()
+   * call means it never accumulates enough history to reject anything. Built
+   * lazily from whichever call first enables it, then reused for the life of
+   * this engine.
+   */
+  private budget: SlidingWindowBudget | undefined;
+
+  /**
+   * Same problem for idempotency: the cache has to outlive a single
+   * execute() call to do anything. Only the default in-memory store needs
+   * this -- a caller-supplied store (e.g. Redis) is already persistent.
+   */
+  private defaultIdempotencyStore: IdempotencyStore | undefined;
+
   constructor(private config: RetryEngineConfig) {}
 
   async execute<T>(
-    task: () => Promise<T>,
+    task: (signal: AbortSignal) => Promise<T>,
     options?: Partial<RetryConfig>,
   ): Promise<Result<T, RetryError>> {
     const merged: Partial<RetryConfig> = { ...this.config.defaultConfig, ...options };
@@ -76,9 +104,10 @@ export class RetryEngine {
       ...merged.timeout,
     });
 
-    const budget = merged.budget
-      ? new SlidingWindowBudgetImpl({ windowMs: 60_000, maxRetryRatio: 0.1, minRequestCount: 10, ...merged.budget })
-      : undefined;
+    if (merged.budget && !this.budget) {
+      this.budget = new SlidingWindowBudgetImpl({ windowMs: 60_000, maxRetryRatio: 0.1, minRequestCount: 10, ...merged.budget });
+    }
+    const budget = merged.budget ? this.budget : undefined;
 
     const idempotency =
       merged.idempotency?.enabled
@@ -88,12 +117,13 @@ export class RetryEngine {
             headerName: 'Idempotency-Key',
             ttlMs: 24 * 60 * 60 * 1000,
             ...merged.idempotency,
+            store: merged.idempotency.store ?? (this.defaultIdempotencyStore ??= new InMemoryIdempotencyStore()),
           })
         : undefined;
 
     const hookRunner = new HookRunner(merged.hooks ?? {}, merged.correlationId);
-    const RetryCondition = wrapRetryCondition(merged.retryIf);
-    const abortCondition = wrapAbortCondition(merged.abortIf);
+    const RetryCondition = wrapRetryCondition(merged.retryIf, classifier);
+    const abortCondition = wrapAbortCondition(merged.abortIf, classifier);
 
     const fullConfig: RetryConfig = {
       maxAttempts: 3,
@@ -136,7 +166,7 @@ export class RetryEngine {
   }
 
   async executeWithContext<T>(
-    task: () => Promise<T>,
+    task: (signal: AbortSignal) => Promise<T>,
     context: { correlationId?: string },
     options?: Partial<RetryConfig>,
   ): Promise<Result<T, RetryError>> {

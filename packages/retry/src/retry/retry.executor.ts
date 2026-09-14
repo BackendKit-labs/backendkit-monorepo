@@ -43,6 +43,7 @@ function sleep(ms: number): Promise<void> {
 const NETWORK_CODES = new Set([
   'ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'ETIMEDOUT',
   'EAI_AGAIN', 'ECONNABORTED', 'EPIPE',
+  'ERR_NETWORK', // axios, no response received
 ]);
 
 function getHttpStatus(err: unknown): number | undefined {
@@ -50,10 +51,30 @@ function getHttpStatus(err: unknown): number | undefined {
   const e = err as Record<string, unknown>;
   if (typeof e['status'] === 'number') return e['status'];
   if (typeof e['statusCode'] === 'number') return e['statusCode'];
+  if (typeof e['getStatus'] === 'function') {
+    const status = (e['getStatus'] as () => unknown)();
+    if (typeof status === 'number') return status;
+  }
   const response = e['response'];
   if (response != null && typeof response === 'object') {
     const r = response as Record<string, unknown>;
     if (typeof r['status'] === 'number') return r['status'];
+  }
+  return undefined;
+}
+
+/**
+ * Reads `.code`, falling back to `.cause.code` -- native `fetch()` wraps the
+ * real network error (e.g. `ECONNREFUSED`) in `TypeError('fetch failed', { cause })`.
+ */
+function getErrorCode(err: unknown): string | undefined {
+  if (err == null || typeof err !== 'object') return undefined;
+  const e = err as Record<string, unknown>;
+  if (typeof e['code'] === 'string') return e['code'];
+  const cause = e['cause'];
+  if (cause != null && typeof cause === 'object') {
+    const causeCode = (cause as Record<string, unknown>)['code'];
+    if (typeof causeCode === 'string') return causeCode;
   }
   return undefined;
 }
@@ -71,12 +92,10 @@ function normalizeError(err: unknown, attempt: number, startTime: number): Retry
     return { type: 'http', message, status, attempt, elapsedMs, cause: err };
   }
 
-  if (err != null && typeof err === 'object') {
-    const code = (err as Record<string, unknown>)['code'];
-    if (typeof code === 'string' && NETWORK_CODES.has(code)) {
-      const message = err instanceof Error ? err.message : 'Network error';
-      return { type: 'network', message, attempt, elapsedMs, cause: err };
-    }
+  const code = getErrorCode(err);
+  if (code !== undefined && NETWORK_CODES.has(code)) {
+    const message = err instanceof Error ? err.message : 'Network error';
+    return { type: 'network', message, attempt, elapsedMs, cause: err };
   }
 
   const message = err instanceof Error ? err.message : String(err);
@@ -103,7 +122,15 @@ export class RetryExecutor {
     private config: RetryConfig,
   ) {}
 
-  async run<T>(task: () => Promise<T>): Promise<Result<T, RetryError>> {
+  async run<T>(task: (signal: AbortSignal) => Promise<T>): Promise<Result<T, RetryError>> {
+    try {
+      return await this.attempt(task);
+    } finally {
+      this.deps.timeoutManager.dispose();
+    }
+  }
+
+  private async attempt<T>(task: (signal: AbortSignal) => Promise<T>): Promise<Result<T, RetryError>> {
     const {
       backoff, budget, classifier, timeoutManager,
       RetryCondition, abortCondition, hooks,
@@ -116,11 +143,14 @@ export class RetryExecutor {
     const startTime = Date.now();
     let lastError: RetryErrorPayload | undefined;
 
-    // Return cached result for duplicate requests
+    // Return cached result for duplicate requests. Cached as { value } rather
+    // than the bare value -- JSON.stringify(undefined) is `undefined`, not a
+    // string, so a task resolving `undefined` would otherwise fail to
+    // round-trip through the store.
     if (idempotency && idempotencyKey) {
       const cached = await idempotency.getResult(idempotencyKey);
       if (cached !== null) {
-        return ok(JSON.parse(cached) as T);
+        return ok((JSON.parse(cached) as { value: T }).value);
       }
     }
 
@@ -157,12 +187,14 @@ export class RetryExecutor {
       }
 
       // Execute the task (with optional bulkhead + per-attempt timeout)
+      const attemptStart = Date.now();
       try {
         const executeTask = (): Promise<T> => timeoutManager.executeWithAttemptTimeout(task);
         const value = await (bulkhead ? bulkhead.execute(executeTask) : executeTask());
 
-        // SUCCESS
-        circuitBreaker?.onSuccess(Date.now() - startTime);
+        // SUCCESS -- duration is for this attempt alone, not the cumulative
+        // time across earlier failed attempts and their backoff delays.
+        circuitBreaker?.onSuccess(Date.now() - attemptStart);
         budget?.recordSuccess();
 
         if (attempt > 1) {
@@ -170,7 +202,7 @@ export class RetryExecutor {
         }
         metrics?.emit({ name: 'Retry.success', value: 1, tags: { attempt: String(attempt) } });
         if (idempotency && idempotencyKey) {
-          await idempotency.storeResult(idempotencyKey, JSON.stringify(value));
+          await idempotency.storeResult(idempotencyKey, JSON.stringify({ value }));
         }
         return ok(value);
 
@@ -180,7 +212,12 @@ export class RetryExecutor {
 
         const classification = classifier.classify(payload);
 
-        circuitBreaker?.onError(err);
+        // Only notify the circuit breaker of transient (infrastructure-shaped)
+        // failures -- a permanent/business failure (e.g. 404, 422) says nothing
+        // about whether the dependency itself is healthy.
+        if (classification === 'transient') {
+          circuitBreaker?.onError(err);
+        }
         budget?.recordFailure();
 
         logger?.warn('Retry: attempt failed', { attempt, message: payload.message, type: payload.type, classification, correlationId });

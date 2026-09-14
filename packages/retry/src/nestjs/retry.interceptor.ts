@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Inject,
   NestInterceptor,
   ExecutionContext,
   CallHandler,
@@ -14,8 +15,8 @@ import type { RetryConfig } from '../retry/types.js';
 @Injectable()
 export class RetryInterceptor implements NestInterceptor {
   constructor(
-    private readonly RetryService: RetryService,
-    private readonly reflector: Reflector,
+    @Inject(RetryService) private readonly RetryService: RetryService,
+    @Inject(Reflector) private readonly reflector: Reflector,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {

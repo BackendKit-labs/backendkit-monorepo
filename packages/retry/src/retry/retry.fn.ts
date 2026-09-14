@@ -18,7 +18,7 @@ const defaultRegistry = new RetryRegistry();
  * ```
  */
 export async function retry<T>(
-  task: () => Promise<T>,
+  task: (signal: AbortSignal) => Promise<T>,
   options?: Partial<RetryConfig>,
 ): Promise<Result<T, RetryError>> {
   const engine = defaultRegistry.getOrCreate('__default__');

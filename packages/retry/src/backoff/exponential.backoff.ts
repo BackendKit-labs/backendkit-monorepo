@@ -18,7 +18,9 @@ export class ExponentialBackoff implements BackoffStrategy {
     const delay = this.config.baseDelay * Math.pow(this.config.multiplier ?? 2, attempt - 1);
     const capped = Math.min(delay, this.config.maxDelay ?? Infinity);
     if (this.config.jitter) {
-      return applyJitter(capped, this.config.jitter);
+      // 'decorrelated' can multiply capped by up to 3x -- re-clamp so
+      // maxDelay is an actual upper bound, not just a pre-jitter target.
+      return Math.min(applyJitter(capped, this.config.jitter), this.config.maxDelay ?? Infinity);
     }
     return capped;
   }
