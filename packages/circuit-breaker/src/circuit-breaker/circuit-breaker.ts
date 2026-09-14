@@ -73,6 +73,10 @@ export interface CircuitBreakerMetrics {
   notPermittedCalls: number;
 }
 
+export interface CircuitBreakerOptions extends Partial<CircuitBreakerConfig> {
+  name: string;
+}
+
 export class CircuitBreakerOpenError extends Error {
   constructor(name: string) {
     super(`Circuit breaker '${name}' is OPEN -- calls not permitted`);
@@ -136,8 +140,16 @@ export class CircuitBreaker {
 
   private readonly mutex = new AsyncMutex();
 
-  constructor(private config: CircuitBreakerConfig) {
+  private config: CircuitBreakerConfig;
+
+  constructor(options: CircuitBreakerOptions) {
+    const config: CircuitBreakerConfig = {
+      ...DEFAULT_CIRCUIT_BREAKER_CONFIG,
+      ...options,
+      name: options.name,
+    };
     this.validateConfig(config);
+    this.config = config;
   }
 
   updateConfig(partial: Partial<Omit<CircuitBreakerConfig, 'name'>>): void {
@@ -236,7 +248,7 @@ export class CircuitBreaker {
     }
   }
 
-  private onSuccess(durationMs: number): void {
+  onSuccess(durationMs: number): void {
     const isSlow = durationMs >= this.config.slowCallDurationMs;
     this.successfulCalls++;
 
@@ -255,7 +267,7 @@ export class CircuitBreaker {
     }
   }
 
-  private onError(error: unknown): void {
+  onError(error: unknown): void {
     const isInfrastructure = this.config.isFailure(error);
 
     if (isInfrastructure) {

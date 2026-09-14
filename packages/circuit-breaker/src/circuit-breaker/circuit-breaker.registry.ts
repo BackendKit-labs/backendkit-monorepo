@@ -1,26 +1,18 @@
 import {
   CircuitBreaker,
-  CircuitBreakerConfig,
   CircuitBreakerMetrics,
+  CircuitBreakerOptions,
   CircuitBreakerState,
-  DEFAULT_CIRCUIT_BREAKER_CONFIG,
 } from './circuit-breaker.js';
 
-export interface CircuitBreakerOptions extends Partial<CircuitBreakerConfig> {
-  name: string;
-}
+export type { CircuitBreakerOptions } from './circuit-breaker.js';
 
 export class CircuitBreakerRegistry {
   private readonly breakers = new Map<string, CircuitBreaker>();
 
   getOrCreate(options: CircuitBreakerOptions): CircuitBreaker {
     if (!this.breakers.has(options.name)) {
-      const config: CircuitBreakerConfig = {
-        ...DEFAULT_CIRCUIT_BREAKER_CONFIG,
-        ...options,
-        name: options.name,
-      };
-      this.breakers.set(options.name, new CircuitBreaker(config));
+      this.breakers.set(options.name, new CircuitBreaker(options));
     }
     return this.breakers.get(options.name)!;
   }
