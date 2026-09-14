@@ -119,7 +119,9 @@ const client = new HttpClient({
     shouldRetry: (err) => err.type === 'network' || err.type === 'timeout',
   },
 
-  // Circuit breaker
+  // Circuit breaker -- by default, 4xx responses are business errors and never
+  // trip it; network errors, timeouts, and 5xx responses do. Pass a custom
+  // `isFailure` to override.
   circuitBreaker: {
     failureThreshold:  50,    // % of calls that must fail to open the circuit
     minimumCalls:      5,     // minimum calls before evaluating thresholds

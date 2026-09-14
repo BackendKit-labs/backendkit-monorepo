@@ -1,4 +1,4 @@
-export { HttpClient } from './core/http-client.js';
+export { HttpClient, isAxiosServerError } from './core/http-client.js';
 export { CancelManager } from './core/cancel-manager.js';
 export {
   defineHttpClient,

@@ -54,7 +54,8 @@ export interface HttpClientConfig {
   baseURL?:       string;
   timeout?:       number;
   headers?:       Record<string, string>;
-  circuitBreaker?: CircuitBreakerOptions;
+  /** `name` defaults to `'http-client'` when omitted. */
+  circuitBreaker?: Partial<CircuitBreakerOptions>;
   retry?:         RetryConfig;
   /** Pre-request pipeline steps. Receive and transform the HttpCtx before the call is made. */
   steps?:         PipelineStep<HttpCtx, HttpClientError>[];

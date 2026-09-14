@@ -2,8 +2,7 @@ import axios from 'axios';
 import type { AxiosInstance, CancelToken } from 'axios';
 import { ok, fail } from '@backendkit-labs/result';
 import type { Result } from '@backendkit-labs/result';
-import { CircuitBreaker, CircuitBreakerOpenError, DEFAULT_CIRCUIT_BREAKER_CONFIG, isHttpServerError } from '@backendkit-labs/circuit-breaker';
-import type { CircuitBreakerConfig } from '@backendkit-labs/circuit-breaker';
+import { CircuitBreaker, CircuitBreakerOpenError } from '@backendkit-labs/circuit-breaker';
 import { Pipeline } from '@backendkit-labs/pipeline';
 import { CancelManager } from './cancel-manager.js';
 import type {
@@ -25,6 +24,26 @@ const DEFAULT_RETRY: Required<RetryConfig> = {
     e.type === 'network' || e.type === 'timeout' || (e.type === 'http' && (e.status ?? 0) >= 500),
 };
 
+/**
+ * Circuit-breaker error classifier for real axios errors.
+ *
+ * `@backendkit-labs/circuit-breaker`'s own `isHttpServerError` only recognizes
+ * errors with a `getStatus(): number` method (the NestJS `HttpException`
+ * shape) -- axios errors expose the status at `error.response.status`
+ * instead, so `isHttpServerError` treated every axios error, 404s included,
+ * as an infrastructure failure. This mirrors its 5xx-vs-4xx semantics using
+ * axios's actual error shape: network/timeout errors (no `response`) and
+ * 5xx responses open the circuit; 4xx responses are business errors and
+ * pass through transparently.
+ */
+export function isAxiosServerError(error: unknown): boolean {
+  if (axios.isAxiosError(error)) {
+    if (!error.response) return true;
+    return error.response.status >= 500;
+  }
+  return true;
+}
+
 export class HttpClient {
   private readonly axiosInstance: AxiosInstance;
   private readonly cb:            CircuitBreaker | undefined;
@@ -43,13 +62,11 @@ export class HttpClient {
     });
 
     if (config.circuitBreaker) {
-      const { name: cbName, ...cbRest } = config.circuitBreaker;
       this.cb = new CircuitBreaker({
-        name:      cbName ?? 'http-client',
-        ...DEFAULT_CIRCUIT_BREAKER_CONFIG,
-        isFailure: isHttpServerError,
-        ...cbRest,
-      } as CircuitBreakerConfig);
+        name:      'http-client',
+        isFailure: isAxiosServerError,
+        ...config.circuitBreaker,
+      });
     }
 
     const p = new Pipeline<HttpCtx, HttpClientError>();

@@ -237,7 +237,7 @@ describe('circuit breaker', () => {
 
   it('getCircuitBreakerState returns state object when configured', () => {
     const { client } = makeClient({
-      circuitBreaker: { failureThreshold: 3, successThreshold: 1, timeout: 5000 },
+      circuitBreaker: { failureThreshold: 3, halfOpenMaxCalls: 1, openTimeoutMs: 5000 },
     });
     expect(client.getCircuitBreakerState()).toBeDefined();
   });
@@ -245,6 +245,43 @@ describe('circuit breaker', () => {
   it('getCircuitBreakerState returns undefined when not configured', () => {
     const { client } = makeClient();
     expect(client.getCircuitBreakerState()).toBeUndefined();
+  });
+
+  it('does not open the circuit on repeated 4xx responses (business errors)', async () => {
+    const { client, mock } = makeClient({
+      circuitBreaker: {
+        failureThreshold:  50,
+        minimumCalls:      1,
+        slidingWindowSize: 2,
+        openTimeoutMs:     60_000,
+      },
+    });
+
+    mock.onGet('/not-found').reply(404, { message: 'not found' });
+
+    await client.get('/not-found');
+    await client.get('/not-found');
+    await client.get('/not-found');
+
+    expect(client.getCircuitBreakerState()).toBe('closed');
+  });
+
+  it('opens the circuit on repeated network errors (no response)', async () => {
+    const { client, mock } = makeClient({
+      circuitBreaker: {
+        failureThreshold:  50,
+        minimumCalls:      1,
+        slidingWindowSize: 2,
+        openTimeoutMs:     60_000,
+      },
+    });
+
+    mock.onGet('/unreachable').networkError();
+
+    await client.get('/unreachable');
+    await client.get('/unreachable');
+
+    expect(client.getCircuitBreakerState()).toBe('open');
   });
 });
 
