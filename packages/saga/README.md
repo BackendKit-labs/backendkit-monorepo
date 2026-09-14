@@ -737,7 +737,8 @@ scanner.stop();
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { SagaModule, InMemoryStore, InMemoryLock, SagaEventBusImpl } from '@backendkit-labs/saga';
+import { SagaModule } from '@backendkit-labs/saga/nestjs';
+import { InMemoryStore, InMemoryLock, SagaEventBusImpl } from '@backendkit-labs/saga';
 
 @Module({
   imports: [
@@ -807,9 +808,9 @@ export class OrdersModule {}
 import { Injectable } from '@nestjs/common';
 import {
   Saga, Step, Compensate,
-  StepContext as StepCtx,
+  StepContextDecorator as StepCtx,
   SagaEventHandler,
-} from '@backendkit-labs/saga';
+} from '@backendkit-labs/saga/nestjs';
 import type { StepContext, CompensationContext, SagaEvent } from '@backendkit-labs/saga';
 import { ok } from '@backendkit-labs/result';
 
@@ -852,7 +853,7 @@ export class OrderSagaHandler {
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { SagaOrchestrator } from '@backendkit-labs/saga';
+import { SagaOrchestrator } from '@backendkit-labs/saga/nestjs';
 import { isOk } from '@backendkit-labs/result';
 
 @Injectable()
@@ -922,10 +923,10 @@ const step = {
 ```typescript
 import { SagaObservability, ConsoleSagaLogger, NoopSagaMetrics } from '@backendkit-labs/saga';
 
-const observability = new SagaObservability({
-  logger: new ConsoleSagaLogger(),
-  metrics: new NoopSagaMetrics(),
-});
+const observability = new SagaObservability(
+  new ConsoleSagaLogger(),
+  new NoopSagaMetrics(),
+);
 ```
 
 ### Pipeline Middleware

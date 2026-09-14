@@ -116,29 +116,10 @@ export type {
   StepMiddleware,
 } from './integration';
 
-// ===== NestJS Integration (optional) =====
-export {
-  SagaModule,
-  SagaOrchestrator,
-  Saga,
-  Step,
-  Compensate,
-  StepContextDecorator,
-  SagaEventHandler,
-  SagaCorrelationIdInterceptor,
-  CORRELATION_ID_HEADER,
-  getSagaConfig,
-  getStepMetadata,
-  getCompensateMetadata,
-  getStepContextParamIndex,
-  getEventHandlerMetadata,
-} from './nestjs';
-export type {
-  SagaModuleOptions,
-  SagaStoreSet,
-  SagaConfig,
-  StepConfig,
-  ReflectStepMetadata,
-  ReflectCompensateMetadata,
-  ReflectEventHandlerMetadata,
-} from './nestjs';
+// NestJS integration (SagaModule, SagaOrchestrator, @Saga/@Step/@Compensate, ...)
+// lives exclusively under the './nestjs' subpath -- @backendkit-labs/saga/nestjs.
+// It is NOT re-exported here: @nestjs/common, @nestjs/core, and rxjs are optional
+// peer dependencies, and re-exporting NestJS-dependent values/types from this
+// main entry point would make their type declarations (and, transitively, this
+// package's own dist/index.d.ts) require @nestjs/common and rxjs to be
+// installed even for consumers who never touch NestJS at all.
