@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // @backendkit-labs/saga -- tests/integration/circuit-breaker-adapter.test.ts
 //
-// Integration tests for SagaCircuitBreaker.
+// Integration tests for SagaCircuitBreaker, backed by the real
+// @backendkit-labs/circuit-breaker state machine.
 // ---------------------------------------------------------------------------
 
 import { ok, fail, isOk, isFail } from '@backendkit-labs/result';
@@ -9,11 +10,9 @@ import { SagaCircuitBreaker } from '../../src/integration/circuit-breaker-adapte
 import type { SagaResult, StepError, SagaEngineError } from '../../src/types/error.types';
 
 describe('SagaCircuitBreaker', () => {
-  const config = { failureThreshold: 2, successThreshold: 2, timeoutMs: 100 };
-
   describe('execute() with success', () => {
     it('should return ok when the function succeeds', async () => {
-      const cb = new SagaCircuitBreaker(config);
+      const cb = new SagaCircuitBreaker();
       const result = await cb.execute(async () => ok({ done: true }) as SagaResult<unknown>);
 
       expect(isOk(result)).toBe(true);
@@ -22,48 +21,42 @@ describe('SagaCircuitBreaker', () => {
       }
     });
 
-    it('should return ok after multiple consecutive successes', async () => {
-      const cb = new SagaCircuitBreaker(config);
+    it('should stay closed after multiple consecutive successes', async () => {
+      const cb = new SagaCircuitBreaker({ minimumCalls: 1, slidingWindowSize: 5 });
 
       for (let i = 0; i < 5; i++) {
         const result = await cb.execute(async () => ok({ i }) as SagaResult<unknown>);
         expect(isOk(result)).toBe(true);
       }
 
-      // State should show success count incrementing
-      const state = cb.getState();
-      expect(state.opened).toBe(false);
-      expect(state.failureCount).toBe(0);
+      expect(await cb.getState()).toBe('closed');
+      expect((await cb.getMetrics()).failedCalls).toBe(0);
     });
   });
 
   describe('execute() with INFRASTRUCTURE_ERROR', () => {
-    it('should open the circuit after failureThreshold errors', async () => {
-      const cb = new SagaCircuitBreaker({ failureThreshold: 2, successThreshold: 1, timeoutMs: 5000 });
+    it('should open the circuit once failureThreshold is exceeded', async () => {
+      const cb = new SagaCircuitBreaker({ failureThreshold: 50, minimumCalls: 2, slidingWindowSize: 2 });
 
       const err: StepError = { type: 'INFRASTRUCTURE_ERROR', step: 'test', cause: new Error('timeout'), code: 'T' };
 
-      // First two calls: failures
       const r1 = await cb.execute(async () => fail(err) as SagaResult<unknown>);
       const r2 = await cb.execute(async () => fail(err) as SagaResult<unknown>);
       expect(isFail(r1)).toBe(true);
       expect(isFail(r2)).toBe(true);
 
-      // Circuit should be open
-      const stateAfter = cb.getState();
-      expect(stateAfter.opened).toBe(true);
-      expect(stateAfter.failureCount).toBe(2);
+      expect(await cb.getState()).toBe('open');
+      expect((await cb.getMetrics()).failedCalls).toBe(2);
     });
 
-    it('should fail fast with SAGA_INTERNAL when circuit is open', async () => {
-      const cb = new SagaCircuitBreaker({ failureThreshold: 1, successThreshold: 1, timeoutMs: 5000 });
+    it('should fail fast with SAGA_INTERNAL when the circuit is open', async () => {
+      const cb = new SagaCircuitBreaker({ failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1 });
 
       const err: StepError = { type: 'INFRASTRUCTURE_ERROR', step: 'test', cause: new Error('fail'), code: 'F' };
 
-      // Trip the circuit
       await cb.execute(async () => fail(err) as SagaResult<unknown>);
+      expect(await cb.getState()).toBe('open');
 
-      // Circuit is open, should fail fast
       const r2 = await cb.execute(async () => ok({}) as SagaResult<unknown>);
       expect(isFail(r2)).toBe(true);
       if (isFail(r2)) {
@@ -71,101 +64,109 @@ describe('SagaCircuitBreaker', () => {
       }
     });
 
-    it('should transition to half-open after timeoutMs', async () => {
-      const cb = new SagaCircuitBreaker({ failureThreshold: 1, successThreshold: 1, timeoutMs: 50 });
+    it('should transition to half-open after openTimeoutMs and allow a probe through', async () => {
+      const cb = new SagaCircuitBreaker({
+        failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1, openTimeoutMs: 50,
+      });
 
       const err: StepError = { type: 'INFRASTRUCTURE_ERROR', step: 'test', cause: new Error('fail'), code: 'F' };
 
-      // Trip the circuit
       await cb.execute(async () => fail(err) as SagaResult<unknown>);
-      expect(cb.getState().opened).toBe(true);
+      expect(await cb.getState()).toBe('open');
 
-      // Wait for timeout
       await new Promise((r) => setTimeout(r, 60));
 
-      // Should allow request (half-open)
       const r2 = await cb.execute(async () => ok({ recovered: true }) as SagaResult<unknown>);
       expect(isOk(r2)).toBe(true);
       if (isOk(r2)) {
         expect(r2.value).toEqual({ recovered: true });
       }
-    });
+    }, 2000);
   });
 
-  describe('BUSINESS_ERROR', () => {
-    it('should NOT open the circuit on BUSINESS_ERROR', async () => {
-      const cb = new SagaCircuitBreaker({ failureThreshold: 1, successThreshold: 1, timeoutMs: 5000 });
+  describe('business vs infrastructure classification', () => {
+    it('should NOT count BUSINESS_ERROR against the circuit', async () => {
+      const cb = new SagaCircuitBreaker({ failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1 });
 
       const err: StepError = { type: 'BUSINESS_ERROR', step: 'test', cause: new Error('invalid'), code: 'B' };
 
       await cb.execute(async () => fail(err) as SagaResult<unknown>);
 
-      // Circuit should NOT be open (BUSINESS_ERROR is not retryable)
-      const state = cb.getState();
-      expect(state.opened).toBe(false);
-      expect(state.failureCount).toBe(0);
+      expect(await cb.getState()).toBe('closed');
+      expect((await cb.getMetrics()).failedCalls).toBe(0);
     });
-  });
 
-  describe('PERSISTENCE_ERROR', () => {
+    it('should NOT count STEP_TIMEOUT against the circuit', async () => {
+      const cb = new SagaCircuitBreaker({ failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1 });
+
+      const err: StepError = { type: 'STEP_TIMEOUT', step: 'test', timeoutMs: 5000 };
+
+      await cb.execute(async () => fail(err) as SagaResult<unknown>);
+
+      expect(await cb.getState()).toBe('closed');
+    });
+
     it('should open the circuit on PERSISTENCE_ERROR', async () => {
-      const cb = new SagaCircuitBreaker({ failureThreshold: 1, successThreshold: 1, timeoutMs: 5000 });
+      const cb = new SagaCircuitBreaker({ failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1 });
 
       const err: SagaEngineError = { category: 'PERSISTENCE_ERROR', cause: new Error('DB down') };
 
       await cb.execute(async () => fail(err) as SagaResult<unknown>);
 
-      const state = cb.getState();
-      expect(state.opened).toBe(true);
+      expect(await cb.getState()).toBe('open');
     });
-  });
 
-  describe('LOCK_ACQUISITION_FAILED', () => {
     it('should open the circuit on LOCK_ACQUISITION_FAILED', async () => {
-      const cb = new SagaCircuitBreaker({ failureThreshold: 1, successThreshold: 1, timeoutMs: 5000 });
+      const cb = new SagaCircuitBreaker({ failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1 });
 
       const err: SagaEngineError = { category: 'LOCK_ACQUISITION_FAILED', lockKey: 'key' };
 
       await cb.execute(async () => fail(err) as SagaResult<unknown>);
 
-      const state = cb.getState();
-      expect(state.opened).toBe(true);
+      expect(await cb.getState()).toBe('open');
+    });
+
+    it('should NOT count other SagaEngineError categories against the circuit', async () => {
+      const cb = new SagaCircuitBreaker({ failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1 });
+
+      const err: SagaEngineError = { category: 'COMPENSATION_ERROR', step: 'test', cause: new Error('boom') };
+
+      await cb.execute(async () => fail(err) as SagaResult<unknown>);
+
+      expect(await cb.getState()).toBe('closed');
     });
   });
 
   describe('reset()', () => {
-    it('should reset the circuit breaker state', async () => {
-      const cb = new SagaCircuitBreaker({ failureThreshold: 1, successThreshold: 1, timeoutMs: 5000 });
+    it('should reset the circuit breaker to closed with cleared counters', async () => {
+      const cb = new SagaCircuitBreaker({ failureThreshold: 1, minimumCalls: 1, slidingWindowSize: 1 });
 
       const err: StepError = { type: 'INFRASTRUCTURE_ERROR', step: 'test', cause: new Error('fail'), code: 'F' };
       await cb.execute(async () => fail(err) as SagaResult<unknown>);
+      expect(await cb.getState()).toBe('open');
 
-      expect(cb.getState().opened).toBe(true);
+      await cb.reset();
 
-      cb.reset();
-
-      const state = cb.getState();
-      expect(state.opened).toBe(false);
-      expect(state.failureCount).toBe(0);
-      expect(state.successCount).toBe(0);
+      expect(await cb.getState()).toBe('closed');
+      const metrics = await cb.getMetrics();
+      expect(metrics.failedCalls).toBe(0);
+      expect(metrics.totalCalls).toBe(0);
     });
   });
 
-  describe('getState()', () => {
-    it('should return a copy of the current state', () => {
-      const cb = new SagaCircuitBreaker(config);
-      const state = cb.getState();
+  describe('getMetrics()', () => {
+    it('should reflect calls made through execute()', async () => {
+      const cb = new SagaCircuitBreaker({ minimumCalls: 1, slidingWindowSize: 5 });
 
-      expect(state).toEqual({
-        opened: false,
-        failureCount: 0,
-        successCount: 0,
-        lastFailureAt: undefined,
-      });
+      await cb.execute(async () => ok({}) as SagaResult<unknown>);
+      const err: StepError = { type: 'BUSINESS_ERROR', step: 'test', cause: new Error('x'), code: 'X' };
+      await cb.execute(async () => fail(err) as SagaResult<unknown>);
 
-      // Mutating the returned state should not affect internal state
-      state.opened = true;
-      expect(cb.getState().opened).toBe(false);
+      const metrics = await cb.getMetrics();
+      expect(metrics.totalCalls).toBe(2);
+      // BUSINESS_ERROR is transparent to the circuit -- counted as a success.
+      expect(metrics.successfulCalls).toBe(2);
+      expect(metrics.failedCalls).toBe(0);
     });
   });
 });

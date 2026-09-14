@@ -4,8 +4,8 @@
 // Integration adapters barrel.
 // ---------------------------------------------------------------------------
 
-export { SagaCircuitBreaker } from './circuit-breaker-adapter';
-export type { CircuitBreakerConfig, CircuitBreakerState } from './circuit-breaker-adapter';
+export { SagaCircuitBreaker, isCircuitBreakerFailure } from './circuit-breaker-adapter';
+export type { CircuitBreakerConfig, CircuitBreakerState, CircuitBreakerMetrics } from './circuit-breaker-adapter';
 
 export { SagaBulkhead } from './bulkhead-adapter';
 export type { BulkheadConfig, BulkheadMetrics } from './bulkhead-adapter';

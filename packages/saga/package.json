@@ -1,6 +1,6 @@
 {
   "name": "@backendkit-labs/saga",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "author": {
     "name": "BackendKit Labs",
@@ -110,6 +110,7 @@
     "rxjs": { "optional": true }
   },
   "devDependencies": {
+    "@backendkit-labs/circuit-breaker": "*",
     "@backendkit-labs/result": "*",
     "@eslint/js": "^9.39.4",
     "@nestjs/common": "^10.0.0",

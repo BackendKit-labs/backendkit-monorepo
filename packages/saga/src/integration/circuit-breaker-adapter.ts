@@ -1,103 +1,117 @@
 // ---------------------------------------------------------------------------
 // @backendkit-labs/saga -- src/integration/circuit-breaker-adapter.ts
 //
-// Adapter for @backendkit-labs/circuit-breaker.
-// Provides a saga-friendly wrapper that classifies failures as business
-// vs infrastructure for circuit breaker decisions.
+// Real adapter for @backendkit-labs/circuit-breaker. Wraps a saga step
+// function in the actual CircuitBreaker state machine (sliding window,
+// half-open probing, onStateChange hooks) instead of a hand-rolled one,
+// classifying SagaResult failures as business vs infrastructure the same
+// way this package's own StepError/SagaEngineError types already do.
 //
-// Optional peer dependency -- import only if @backendkit-labs/circuit-breaker
-// is installed.
+// Optional peer dependency -- @backendkit-labs/circuit-breaker is imported
+// dynamically, lazily, on first use. Constructing a SagaCircuitBreaker
+// without it installed is fine; calling execute()/getState()/reset() on one
+// throws a clear error telling you to install it.
 // ---------------------------------------------------------------------------
 
-import { fail, isOk } from '@backendkit-labs/result';
-import type { SagaResult } from '../types/error.types';
+import { ok, fail } from '@backendkit-labs/result';
+import { isOk } from '@backendkit-labs/result';
+import { isInfrastructureError, isPersistenceError, isLockError } from './result-adapter.js';
+import type { SagaResult, SagaError, StepError, SagaEngineError } from '../types/error.types';
+import type {
+  CircuitBreaker as RealCircuitBreaker,
+  CircuitBreakerConfig as RealCircuitBreakerConfig,
+  CircuitBreakerMetrics,
+  CircuitBreakerState,
+} from '@backendkit-labs/circuit-breaker';
 
-export interface CircuitBreakerConfig {
-  failureThreshold: number;
-  successThreshold: number;
-  timeoutMs: number;
-  halfOpenMaxRequests?: number;
-}
+/**
+ * Saga-flavored subset of @backendkit-labs/circuit-breaker's own
+ * CircuitBreakerConfig -- same percentage + sliding-window semantics, same
+ * field names. `name` defaults to `'saga'`. `isFailure` isn't accepted here:
+ * SagaCircuitBreaker always classifies via {@link isCircuitBreakerFailure}, so
+ * BUSINESS_ERROR/STEP_TIMEOUT steps never trip it and INFRASTRUCTURE_ERROR/
+ * PERSISTENCE_ERROR/LOCK_ACQUISITION_FAILED always do -- override that
+ * yourself by using @backendkit-labs/circuit-breaker directly if you need a
+ * different split.
+ */
+export type CircuitBreakerConfig = Partial<Omit<RealCircuitBreakerConfig, 'isFailure'>>;
 
-export interface CircuitBreakerState {
-  opened: boolean;
-  failureCount: number;
-  successCount: number;
-  lastFailureAt?: number;
+export type { CircuitBreakerMetrics, CircuitBreakerState };
+
+/**
+ * Classifies a SagaError as an infrastructure failure (opens the circuit) or
+ * a business error (transparent) -- built from this package's own
+ * isInfrastructureError/isPersistenceError/isLockError classifiers
+ * (./result-adapter.js) rather than re-deriving the split.
+ */
+export function isCircuitBreakerFailure(error: SagaError): boolean {
+  return isInfrastructureError(error) || isPersistenceError(error) || isLockError(error);
 }
 
 /**
- * SagaCircuitBreaker wraps an external circuit-breaker implementation.
+ * SagaCircuitBreaker wraps @backendkit-labs/circuit-breaker so saga steps
+ * can be protected without each caller re-deriving the business/infra split
+ * from StepError/SagaEngineError themselves.
+ *
  * Usage:
- *   const cb = new SagaCircuitBreaker(config);
+ *   const cb = new SagaCircuitBreaker({ failureThreshold: 50, openTimeoutMs: 30_000 });
  *   const result = await cb.execute(() => step.execute(ctx));
  */
 export class SagaCircuitBreaker {
-  private state: CircuitBreakerState = {
-    opened: false,
-    failureCount: 0,
-    successCount: 0,
-  };
+  private readonly module: Promise<typeof import('@backendkit-labs/circuit-breaker')>;
+  private readonly ready: Promise<RealCircuitBreaker>;
 
-  constructor(private readonly config: CircuitBreakerConfig) {}
+  constructor(private readonly config: CircuitBreakerConfig = {}) {
+    this.module = SagaCircuitBreaker.load();
+    this.ready = this.module.then(({ CircuitBreaker }) => new CircuitBreaker({
+      name: 'saga',
+      ...this.config,
+      isFailure: (error: unknown) => isCircuitBreakerFailure(error as SagaError),
+    }));
+  }
 
   async execute<T>(fn: () => Promise<SagaResult<T>>): Promise<SagaResult<T>> {
-    if (this.state.opened) {
-      const elapsed = Date.now() - (this.state.lastFailureAt ?? 0);
-      if (elapsed >= this.config.timeoutMs) {
-        // Move to half-open -- allow one request
-        this.state.opened = false;
-        this.state.failureCount = 0;
-      } else {
-        return fail({
-          category: 'SAGA_INTERNAL',
-          cause: new Error('Circuit breaker is OPEN'),
-        } as const);
+    const [cb, { CircuitBreakerOpenError }] = await Promise.all([this.ready, this.module]);
+
+    try {
+      const value = await cb.execute(async () => {
+        const result = await fn();
+        if (isOk(result)) return result.value;
+        throw result.error;
+      });
+      return ok(value);
+    } catch (error) {
+      if (error instanceof CircuitBreakerOpenError) {
+        return fail({ category: 'SAGA_INTERNAL', cause: error } as const);
       }
-    }
-
-    const result = await fn();
-
-    // Classify result to update circuit breaker state
-    if (isOk(result)) {
-      this.onSuccess();
-    } else {
-      const error = result.error;
-      const shouldTrip =
-        ('type' in error && error.type === 'INFRASTRUCTURE_ERROR') ||
-        ('category' in error && (error.category === 'PERSISTENCE_ERROR' || error.category === 'LOCK_ACQUISITION_FAILED'));
-
-      if (shouldTrip) {
-        this.onFailure();
-      }
-    }
-
-    return result;
-  }
-
-  getState(): CircuitBreakerState {
-    return { ...this.state };
-  }
-
-  reset(): void {
-    this.state = { opened: false, failureCount: 0, successCount: 0 };
-  }
-
-  private onSuccess(): void {
-    this.state.successCount++;
-    if (this.state.successCount >= this.config.successThreshold) {
-      this.state.successCount = 0;
-      this.state.opened = false;
-      this.state.failureCount = 0;
+      // Anything else was thrown by us above -- it's the original SagaError.
+      return fail(error as StepError | SagaEngineError);
     }
   }
 
-  private onFailure(): void {
-    this.state.failureCount++;
-    this.state.lastFailureAt = Date.now();
-    if (this.state.failureCount >= this.config.failureThreshold) {
-      this.state.opened = true;
-      this.state.successCount = 0;
+  async getState(): Promise<CircuitBreakerState> {
+    const cb = await this.ready;
+    return cb.getState();
+  }
+
+  async getMetrics(): Promise<CircuitBreakerMetrics> {
+    const cb = await this.ready;
+    return cb.getMetrics();
+  }
+
+  async reset(): Promise<void> {
+    const cb = await this.ready;
+    cb.reset();
+  }
+
+  private static async load(): Promise<typeof import('@backendkit-labs/circuit-breaker')> {
+    try {
+      return await import('@backendkit-labs/circuit-breaker');
+    } catch {
+      throw new Error(
+        '@backendkit-labs/circuit-breaker is required to use SagaCircuitBreaker. ' +
+        'Install it: npm install @backendkit-labs/circuit-breaker',
+      );
     }
   }
 }

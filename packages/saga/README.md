@@ -885,15 +885,23 @@ Optional adapters for resilience and observability. All are opt-in.
 
 ### Circuit Breaker
 
+Wraps a step in the real `@backendkit-labs/circuit-breaker` state machine (percentage + sliding-window, half-open probing). Requires `@backendkit-labs/circuit-breaker` to be installed -- it's an optional peer dependency, imported dynamically on first use.
+
+`BUSINESS_ERROR` and `STEP_TIMEOUT` steps never trip the circuit; `INFRASTRUCTURE_ERROR`, `PERSISTENCE_ERROR`, and `LOCK_ACQUISITION_FAILED` always do.
+
 ```typescript
 import { SagaCircuitBreaker } from '@backendkit-labs/saga';
 
-const breaker = new SagaCircuitBreaker({ failureThreshold: 5, successThreshold: 2, timeout: 30_000 });
+const breaker = new SagaCircuitBreaker({ failureThreshold: 50, minimumCalls: 5, openTimeoutMs: 30_000 });
 
 const step = {
   name: 'call-payment-api',
   execute: (ctx) => breaker.execute(() => paymentApi.charge(ctx.input)),
 };
+
+await breaker.getState();   // 'closed' | 'open' | 'half_open'
+await breaker.getMetrics(); // failedCalls, successfulCalls, totalCalls, ...
+await breaker.reset();
 ```
 
 ### Bulkhead (Concurrency Limit)

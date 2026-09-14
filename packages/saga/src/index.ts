@@ -67,6 +67,7 @@ export { currentTimestamp, createTimer } from './utils/time';
 // ===== Integration Adapters =====
 export {
   SagaCircuitBreaker,
+  isCircuitBreakerFailure,
   SagaBulkhead,
   SagaObservability,
   ConsoleSagaLogger,
@@ -102,6 +103,7 @@ export {
 export type {
   CircuitBreakerConfig,
   CircuitBreakerState,
+  CircuitBreakerMetrics,
   BulkheadConfig,
   BulkheadMetrics,
   SagaLogger,

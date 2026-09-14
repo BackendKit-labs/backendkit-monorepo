@@ -8,7 +8,7 @@
 //   - Publishes events for every transition.
 // ---------------------------------------------------------------------------
 
-import { ok, isFail, isOk } from '@backendkit-labs/result';
+import { ok, fail, isFail, isOk } from '@backendkit-labs/result';
 import type { SagaResult, SagaError } from '../types/error.types';
 import type { SagaState, SagaOutput, SagaId } from '../types/saga.types';
 import { SagaStatus, StepStatus } from '../types/saga.types';
